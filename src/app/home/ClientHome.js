@@ -1,4 +1,3 @@
-// src/app/home/ClientHome.js
 "use client";
 
 import { useEffect, useState } from "react";
@@ -15,7 +14,13 @@ import ContactInfo from "@/components/RightPanel/ContactInfo";
 
 import { publicAPI } from "@/lib/api/public";
 
+// Skeleton components
+import Skeleton from "@/components/ui/Skeleton";
+
 export default function ClientHome() {
+  /** -----------------------------
+   * STATES
+   * ------------------------------*/
   const [cities, setCities] = useState([]);
   const [areas, setAreas] = useState([]);
   const [masjids, setMasjids] = useState([]);
@@ -27,7 +32,17 @@ export default function ClientHome() {
   const [prayerTimings, setPrayerTimings] = useState([]);
   const [contacts, setContacts] = useState([]);
 
-  // 1. LOAD USER LOCATION MASJID
+  /** -----------------------------
+   * LOADING STATES
+   * ------------------------------*/
+  const [loadingCities, setLoadingCities] = useState(true);
+  const [loadingAreas, setLoadingAreas] = useState(false);
+  const [loadingMasjids, setLoadingMasjids] = useState(false);
+  const [loadingMasjidDetails, setLoadingMasjidDetails] = useState(false);
+
+  /** -----------------------------
+   * 1. AUTO-DETECT USER LOCATION MASJID
+   * ------------------------------*/
   useEffect(() => {
     if (!navigator.geolocation) return;
 
@@ -45,7 +60,6 @@ export default function ClientHome() {
           setSelectedCity(m.cityId);
           setSelectedArea(m.areaId);
 
-          // Fetch full masjid details now
           const fullMasjid = await publicAPI.getMasjidById(m._id);
           setSelectedMasjid(fullMasjid);
         }
@@ -55,22 +69,52 @@ export default function ClientHome() {
     });
   }, []);
 
-  // LOAD CITIES
+  /** -----------------------------
+   * 2. LOAD CITIES (INITIAL)
+   * ------------------------------*/
   useEffect(() => {
-    publicAPI.getCities().then(setCities).catch(console.error);
+    async function loadCities() {
+      setLoadingCities(true);
+      try {
+        const res = await publicAPI.getCities();
+        setCities(res || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingCities(false);
+      }
+    }
+    loadCities();
   }, []);
 
-  // LOAD AREAS WHEN CITY CHANGES
+  /** -----------------------------
+   * 3. LOAD AREAS WHEN CITY CHANGES
+   * ------------------------------*/
   useEffect(() => {
     if (!selectedCity) {
       setAreas([]);
       setSelectedArea("");
       return;
     }
-    publicAPI.getAreas(selectedCity).then(setAreas).catch(console.error);
+
+    async function loadAreas() {
+      setLoadingAreas(true);
+      try {
+        const res = await publicAPI.getAreas(selectedCity);
+        setAreas(res || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingAreas(false);
+      }
+    }
+
+    loadAreas();
   }, [selectedCity]);
 
-  // LOAD MASJIDS WHEN AREA CHANGES
+  /** -----------------------------
+   * 4. LOAD MASJIDS WHEN AREA CHANGES
+   * ------------------------------*/
   useEffect(() => {
     if (!selectedArea) {
       setMasjids([]);
@@ -78,26 +122,56 @@ export default function ClientHome() {
       return;
     }
 
-    publicAPI
-      .getMasjids({ areaId: selectedArea })
-      .then(setMasjids)
-      .catch(console.error);
+    async function loadMasjids() {
+      setLoadingMasjids(true);
+      try {
+        const res = await publicAPI.getMasjids({ areaId: selectedArea });
+        setMasjids(res || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingMasjids(false);
+      }
+    }
+
+    loadMasjids();
   }, [selectedArea]);
 
-  // LOAD MASJID DETAILS
+  /** -----------------------------
+   * 5. LOAD MASJID DETAILS
+   * ------------------------------*/
   useEffect(() => {
     if (!selectedMasjid?._id) return;
 
-    publicAPI
-      .getMasjidById(selectedMasjid._id)
-      .then((data) => {
+    async function loadDetails() {
+      setLoadingMasjidDetails(true);
+      try {
+        const data = await publicAPI.getMasjidById(selectedMasjid._id);
         setPrayerTimings(data.prayerTimings || []);
         setContacts(data.contacts || []);
-      })
-      .catch(console.error);
 
-    console.log(selectedMasjid.prayerTimings);
-  }, [selectedMasjid]);
+        // update full details so components use fresh data
+        setSelectedMasjid(data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingMasjidDetails(false);
+      }
+    }
+
+    loadDetails();
+  }, [selectedMasjid?._id]);
+
+  /** -----------------------------
+   * SKELETON: Masjid Selector Row
+   * ------------------------------*/
+  const SelectorSkeleton = () => (
+    <div className="flex gap-2 p-2">
+      <Skeleton className="h-12 w-40" />
+      <Skeleton className="h-12 w-40" />
+      <Skeleton className="h-12 w-40" />
+    </div>
+  );
 
   const left = (
     <>
@@ -109,21 +183,55 @@ export default function ClientHome() {
 
   const right = (
     <>
-      <MasjidSelector
-        cities={cities}
-        areas={areas}
-        masjids={masjids}
-        selectedCity={selectedCity}
-        selectedArea={selectedArea}
-        selectedMasjid={selectedMasjid}
-        setSelectedCity={setSelectedCity}
-        setSelectedArea={setSelectedArea}
-        setSelectedMasjid={setSelectedMasjid}
-      />
+      {/* -----------------------------
+          Show selector skeleton while cities loading
+      ------------------------------*/}
+      {loadingCities ? (
+        <SelectorSkeleton />
+      ) : (
+        <MasjidSelector
+          cities={cities}
+          areas={areas}
+          masjids={masjids}
+          selectedCity={selectedCity}
+          selectedArea={selectedArea}
+          selectedMasjid={selectedMasjid}
+          setSelectedCity={setSelectedCity}
+          setSelectedArea={setSelectedArea}
+          setSelectedMasjid={setSelectedMasjid}
+        />
+      )}
 
-      <MasjidInfo masjid={selectedMasjid} />
-      <PrayerTimingsTable prayerTimings={prayerTimings} />
-      <ContactInfo contacts={contacts} />
+      {/* AREA SKELETON */}
+      {loadingAreas && (
+        <div className="mt-2">
+          <Skeleton className="h-12 w-40" />
+        </div>
+      )}
+
+      {/* MASJIDS SKELETON */}
+      {loadingMasjids && (
+        <div className="mt-2">
+          <Skeleton className="h-12 w-40" />
+        </div>
+      )}
+
+      {/* -----------------------------
+          MASJID DETAILS SKELETON
+      ------------------------------*/}
+      {loadingMasjidDetails ? (
+        <div className="space-y-4 mt-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      ) : (
+        <>
+          <MasjidInfo masjid={selectedMasjid} />
+          <PrayerTimingsTable prayerTimings={prayerTimings} />
+          <ContactInfo contacts={contacts} />
+        </>
+      )}
     </>
   );
 

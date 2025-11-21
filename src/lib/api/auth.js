@@ -20,6 +20,12 @@ export const authAPI = {
       method: "POST",
     }),
 
+  updateProfile: (data) =>
+    httpFetch(`/auth/update-profile`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
   me: () =>
     httpFetch(`${BASE}/me`, {
       method: "GET",

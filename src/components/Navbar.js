@@ -1,5 +1,3 @@
-// src/components/Navbar
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -9,22 +7,31 @@ import { useRouter } from "next/navigation";
 
 export default function ModernNavbar() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [hidden, setHidden] = useState(false); // NEW: hidden flag
-  const { loggedIn } = useAuth();
+  const [hidden, setHidden] = useState(false);
+  const { loggedIn, user } = useAuth();
   const router = useRouter();
 
   // Auto-hide after 5 sec
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setHidden(true);
-    }, 5000);
+    const timer = setTimeout(() => setHidden(true), 5000);
     return () => clearTimeout(timer);
   }, []);
 
+  // Handle dashboard redirect based on role
+  const goToDashboard = () => {
+    if (!user) return;
+
+    if (user.role === "super_admin") {
+      router.push("/dashboard/super-admin");
+    } else if (user.role === "masjid_admin") {
+      router.push("/dashboard/masjid-admin");
+    } else {
+      router.push("/"); // public → home
+    }
+  };
+
   return (
-    // Group wrapper to detect hover
     <div className="group fixed top-0 left-0 right-0 z-50">
-      {/* Navbar container with slide animation */}
       <header
         className={`
           bg-slate-400 shadow-lg 
@@ -35,7 +42,7 @@ export default function ModernNavbar() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            {/* Left side */}
+            {/* Logo */}
             <div className="flex items-center">
               <Link
                 href="/"
@@ -45,7 +52,7 @@ export default function ModernNavbar() {
               </Link>
             </div>
 
-            {/* Right side desktop menu */}
+            {/* Desktop menu */}
             <nav className="hidden md:flex space-x-6 items-center">
               <Link
                 href="/contact"
@@ -53,6 +60,15 @@ export default function ModernNavbar() {
               >
                 Contact Us
               </Link>
+
+              {loggedIn && (
+                <button
+                  onClick={goToDashboard}
+                  className="text-gray-900 hover:text-white transition"
+                >
+                  Dashboard
+                </button>
+              )}
 
               {loggedIn ? (
                 <>
@@ -114,29 +130,42 @@ export default function ModernNavbar() {
 
         {/* Mobile menu */}
         {menuOpen && (
-          <div className="md:hidden bg-white dark:bg-gray-900 shadow-md">
+          <div className="md:hidden bg-white shadow-md">
             <nav className="flex flex-col space-y-2 p-4">
               <Link
                 href="/contact"
-                className="text-gray-700 dark:text-gray-200 hover:text-blue-600 transition"
                 onClick={() => setMenuOpen(false)}
+                className="text-gray-700 hover:text-blue-600"
               >
                 Contact Us
               </Link>
+
+              {loggedIn && (
+                <button
+                  onClick={() => {
+                    goToDashboard();
+                    setMenuOpen(false);
+                  }}
+                  className="text-gray-700 hover:text-blue-600 text-left"
+                >
+                  Dashboard
+                </button>
+              )}
 
               {loggedIn ? (
                 <>
                   <Link
                     href="/profile"
-                    className="text-gray-700 dark:text-gray-200 hover:text-blue-600 transition"
                     onClick={() => setMenuOpen(false)}
+                    className="text-gray-700 hover:text-blue-600"
                   >
                     Profile
                   </Link>
+
                   <Link
                     href="/logout"
-                    className="text-red-600 hover:text-red-400 transition"
                     onClick={() => setMenuOpen(false)}
+                    className="text-red-600 hover:text-red-400"
                   >
                     Logout
                   </Link>
@@ -144,8 +173,8 @@ export default function ModernNavbar() {
               ) : (
                 <Link
                   href="/login"
-                  className="text-gray-700 dark:text-gray-200 hover:text-blue-600 transition"
                   onClick={() => setMenuOpen(false)}
+                  className="text-gray-700 hover:text-blue-600"
                 >
                   Login
                 </Link>
@@ -155,7 +184,7 @@ export default function ModernNavbar() {
         )}
       </header>
 
-      {/* Hover zone to bring navbar back */}
+      {/* Hover zone */}
       <div className="h-3 w-full group-hover:h-6"></div>
     </div>
   );

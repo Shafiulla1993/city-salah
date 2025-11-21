@@ -1,5 +1,3 @@
-/// src/app/register/page.js
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,6 +6,8 @@ import { publicAPI } from "@/lib/api/public";
 import { Input } from "@/components/form/Input";
 import { Button } from "@/components/form/Button";
 import { Select } from "@/components/form/Select";
+import Link from "next/link";
+import { Alert } from "@/components/alerts/Alert";
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -20,24 +20,16 @@ export default function RegisterPage() {
 
   const [cities, setCities] = useState([]);
   const [areas, setAreas] = useState([]);
-  const [error, setError] = useState("");
+  const [alert, setAlert] = useState({ type: "", message: "" });
   const [loading, setLoading] = useState(false);
 
-  // Load cities
   useEffect(() => {
-    publicAPI
-      .getCities()
-      .then(setCities)
-      .catch((err) => console.error("Failed to load cities:", err));
+    publicAPI.getCities().then(setCities).catch(console.error);
   }, []);
 
-  // Load areas when city changes
   useEffect(() => {
     if (!form.city) return setAreas([]);
-    publicAPI
-      .getAreas(form.city)
-      .then(setAreas)
-      .catch((err) => console.error("Failed to load areas:", err));
+    publicAPI.getAreas(form.city).then(setAreas).catch(console.error);
   }, [form.city]);
 
   const handleChange = (e) =>
@@ -46,67 +38,160 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError("");
+    setAlert({ type: "", message: "" });
 
     try {
       const data = await authAPI.register(form);
-      console.log("User registered:", data);
-      // redirect to login/dashboard
+      setAlert({ type: "success", message: "Registered successfully!" });
     } catch (err) {
-      setError(err.message || "Registration failed");
+      setAlert({
+        type: "error",
+        message: err.message || "Registration failed",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-20 p-6 border rounded-md shadow-md ">
-      <h1 className="text-2xl font-bold mb-4">Register</h1>
-      {error && <p className="text-red-500 mb-2">{error}</p>}
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <Input
-          label="Name"
-          name="name"
-          value={form.name}
-          onChange={handleChange}
-        />
-        <Input
-          label="Phone"
-          name="phone"
-          value={form.phone}
-          onChange={handleChange}
-        />
-        <Input
-          label="Password"
-          type="password"
-          name="password"
-          value={form.password}
-          onChange={handleChange}
-        />
+    <div className="w-full min-h-screen flex items-center justify-center">
+      <div
+        className="
+          w-full max-w-md bg-slate-300/40 backdrop-blur-xl 
+          border border-slate-100/30 shadow-2xl rounded-2xl p-10
+        "
+      >
+        <h1 className="text-3xl font-bold text-slate-900 text-center drop-shadow mb-6">
+          Create an Account
+        </h1>
 
-        <Select
-          label="City"
-          name="city"
-          value={form.city}
-          onChange={handleChange}
-          options={cities}
-          required
-        />
+        {alert.message && (
+          <Alert
+            type={alert.type}
+            message={alert.message}
+            duration={3500}
+            onClose={() => setAlert({ type: "", message: "" })}
+          />
+        )}
 
-        <Select
-          label="Area"
-          name="area"
-          value={form.area}
-          onChange={handleChange}
-          options={areas}
-          disabled={!form.city || areas.length === 0}
-          required
-        />
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6 mt-4">
+          {/* Name */}
+          <div className="flex flex-col gap-2">
+            <label className="text-slate-900 font-semibold">Full Name</label>
+            <Input
+              name="name"
+              placeholder="Enter your name"
+              value={form.name}
+              onChange={handleChange}
+              className="
+                w-full h-12 text-slate-900 placeholder-slate-500 
+                bg-white rounded-lg
+                border border-slate-400
+                focus:ring-2 focus:ring-slate-700
+                focus:border-slate-700
+              "
+            />
+          </div>
 
-        <Button type="submit" className={loading ? "opacity-50" : ""}>
-          {loading ? "Registering..." : "Register"}
-        </Button>
-      </form>
+          {/* Phone */}
+          <div className="flex flex-col gap-2">
+            <label className="text-slate-900 font-semibold">Phone</label>
+            <Input
+              name="phone"
+              placeholder="Enter your phone"
+              value={form.phone}
+              onChange={handleChange}
+              className="
+                w-full h-12 text-slate-900 placeholder-slate-500 
+                bg-white rounded-lg
+                border border-slate-400
+                focus:ring-2 focus:ring-slate-700
+                focus:border-slate-700
+              "
+            />
+          </div>
+
+          {/* Password */}
+          <div className="flex flex-col gap-2">
+            <label className="text-slate-900 font-semibold">Password</label>
+            <Input
+              type="password"
+              name="password"
+              placeholder="Enter password"
+              value={form.password}
+              onChange={handleChange}
+              className="
+                w-full h-12 text-slate-900 placeholder-slate-500 
+                bg-white rounded-lg
+                border border-slate-400
+                focus:ring-2 focus:ring-slate-700
+                focus:border-slate-700
+              "
+            />
+          </div>
+
+          {/* City */}
+          <div className="flex flex-col gap-2">
+            <label className="text-slate-900 font-semibold">City</label>
+            <Select
+              name="city"
+              value={form.city}
+              onChange={handleChange}
+              options={cities}
+              required
+              className="
+                w-full h-12 text-slate-900 
+                bg-white rounded-lg 
+                border border-slate-400
+                focus:ring-2 focus:ring-slate-700
+              "
+            />
+          </div>
+
+          {/* Area */}
+          <div className="flex flex-col gap-2">
+            <label className="text-slate-900 font-semibold">Area</label>
+            <Select
+              name="area"
+              value={form.area}
+              onChange={handleChange}
+              options={areas}
+              disabled={!form.city || areas.length === 0}
+              required
+              className="
+                w-full h-12 text-slate-900 
+                bg-white rounded-lg 
+                border border-slate-400 
+                focus:ring-2 focus:ring-slate-700
+              "
+            />
+          </div>
+
+          {/* Submit */}
+          <Button
+            type="submit"
+            className="
+              w-full h-12 mt-2 rounded-lg text-lg font-semibold
+              bg-slate-900 text-white 
+              hover:bg-slate-800
+              transition-all duration-200 shadow-md
+            "
+            disabled={loading}
+          >
+            {loading ? "Registering..." : "Register"}
+          </Button>
+        </form>
+
+        <p className="mt-6 text-center text-slate-800">
+          Already have an account?
+          <Link
+            href="/login"
+            className="ml-1 font-semibold underline text-slate-900 hover:text-black"
+          >
+            Login
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }
