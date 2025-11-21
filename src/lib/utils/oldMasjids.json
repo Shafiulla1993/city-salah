@@ -1,0 +1,1474 @@
+[{
+  "_id": {
+    "$oid": "6918a049df70e610fb47a910"
+  },
+  "name": "Masjid-e-Nabawi Nazarbad",
+  "slug": "masjid-e-nabawi-nazarbad",
+  "address": "Nazarbad Main Road, Mysore",
+  "area": {
+    "$oid": "69189ddedf70e610fb47a8f4"
+  },
+  "city": {
+    "$oid": "691896a1df70e610fb47a8e1"
+  },
+  "location": {
+    "coordinates": [
+      76.6575,
+      12.2956
+    ],
+    "type": "Point"
+  },
+  "imageUrl": "https://placehold.co/600x400",
+  "contacts": [
+    {
+      "role": "imam",
+      "name": "Maulana Rafiq",
+      "phone": "9000000001"
+    },
+    {
+      "role": "mutawalli",
+      "name": "Abdul Kareem",
+      "phone": "9000000002"
+    }
+  ],
+  "description": "A central masjid serving the Nazarbad locality.",
+  "prayerTimings": [
+    {
+      "type": "weekly",
+      "prayers": []
+    },
+    {
+      "type": "weekly",
+      "prayers": []
+    },
+    {
+      "type": "weekly",
+      "prayers": []
+    },
+    {
+      "type": "weekly",
+      "prayers": []
+    },
+    {
+      "type": "weekly",
+      "prayers": []
+    }
+  ],
+  "createdAt": {
+    "$date": "2025-11-15T15:46:17.394Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-15T17:31:05.215Z"
+  },
+  "__v": 1
+},
+{
+  "_id": {
+    "$oid": "6918a05edf70e610fb47a914"
+  },
+  "name": "Masjid-e-Quba Nazarbad",
+  "slug": "masjid-e-quba-nazarbad",
+  "address": "Chamundi Hill Road, Nazarbad, Mysore",
+  "area": {
+    "$oid": "69189ddedf70e610fb47a8f4"
+  },
+  "city": {
+    "$oid": "691896a1df70e610fb47a8e1"
+  },
+  "location": {
+    "coordinates": [
+      76.6592,
+      12.2921
+    ],
+    "type": "Point"
+  },
+  "imageUrl": "https://placehold.co/600x400",
+  "contacts": [
+    {
+      "role": "imam",
+      "name": "Maulana Salman",
+      "phone": "9000000003"
+    },
+    {
+      "role": "mozin",
+      "name": "Yusuf Ali",
+      "phone": "9000000004"
+    }
+  ],
+  "description": "Located near Chamundi foothills with good community presence.",
+  "prayerTimings": [],
+  "createdAt": {
+    "$date": "2025-11-15T15:46:38.109Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-15T15:46:38.109Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6918a067df70e610fb47a918"
+  },
+  "name": "Masjid-e-Furqan Udayagiri",
+  "slug": "masjid-e-furqan-udayagiri",
+  "address": "Udayagiri 2nd Cross, Mysore",
+  "area": {
+    "$oid": "69189decdf70e610fb47a8f8"
+  },
+  "city": {
+    "$oid": "691896a1df70e610fb47a8e1"
+  },
+  "location": {
+    "coordinates": [
+      76.6678,
+      12.3224
+    ],
+    "type": "Point"
+  },
+  "imageUrl": "https://placehold.co/600x400",
+  "contacts": [
+    {
+      "role": "imam",
+      "name": "Maulana Azeem",
+      "phone": "9000000005"
+    }
+  ],
+  "description": "Well-known masjid for youth religious programs.",
+  "prayerTimings": [],
+  "createdAt": {
+    "$date": "2025-11-15T15:46:47.360Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-15T15:46:47.360Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6918a07adf70e610fb47a91e"
+  },
+  "name": "Masjid-e-Salam Udayagiri",
+  "slug": "masjid-e-salam-udayagiri",
+  "address": "Udayagiri Main Road, Mysore",
+  "area": {
+    "$oid": "69189decdf70e610fb47a8f8"
+  },
+  "city": {
+    "$oid": "691896a1df70e610fb47a8e1"
+  },
+  "location": {
+    "coordinates": [
+      76.6691,
+      12.326
+    ],
+    "type": "Point"
+  },
+  "imageUrl": "https://placehold.co/600x400",
+  "contacts": [
+    {
+      "role": "mutawalli",
+      "name": "Ibrahim",
+      "phone": "9000000006"
+    }
+  ],
+  "description": "A calm masjid located in the heart of Udayagiri.",
+  "prayerTimings": [],
+  "createdAt": {
+    "$date": "2025-11-15T15:47:06.636Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-15T15:47:06.636Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6918a082df70e610fb47a922"
+  },
+  "name": "Masjid-e-Noor Vivekananda Nagar",
+  "slug": "masjid-e-noor-vivekananda-nagar",
+  "address": "Vivekananda Nagar Circle, Mandya",
+  "area": {
+    "$oid": "69189df6df70e610fb47a8fc"
+  },
+  "city": {
+    "$oid": "691896c6df70e610fb47a8e6"
+  },
+  "location": {
+    "coordinates": [
+      76.9068,
+      12.5273
+    ],
+    "type": "Point"
+  },
+  "imageUrl": "https://placehold.co/600x400",
+  "contacts": [
+    {
+      "role": "imam",
+      "name": "Maulana Sameer",
+      "phone": "9000000007"
+    }
+  ],
+  "description": "A growing masjid serving the new Mandya extension.",
+  "prayerTimings": [],
+  "createdAt": {
+    "$date": "2025-11-15T15:47:14.332Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-15T15:47:14.332Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6918a089df70e610fb47a926"
+  },
+  "name": "Masjid-e-Rahma Vivekananda Nagar",
+  "slug": "masjid-e-rahma-vivekananda-nagar",
+  "address": "Near Govt School, Vivekananda Nagar, Mandya",
+  "area": {
+    "$oid": "69189df6df70e610fb47a8fc"
+  },
+  "city": {
+    "$oid": "691896c6df70e610fb47a8e6"
+  },
+  "location": {
+    "coordinates": [
+      76.9041,
+      12.525
+    ],
+    "type": "Point"
+  },
+  "imageUrl": "https://placehold.co/600x400",
+  "contacts": [
+    {
+      "role": "mutawalli",
+      "name": "Fahim",
+      "phone": "9000000008"
+    }
+  ],
+  "description": "Popular masjid with active madrasa.",
+  "prayerTimings": [],
+  "createdAt": {
+    "$date": "2025-11-15T15:47:21.911Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-15T15:47:21.911Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6918a096df70e610fb47a92a"
+  },
+  "name": "Masjid-e-Huda Shivalli",
+  "slug": "masjid-e-huda-shivalli",
+  "address": "Shivalli Road, Mandya",
+  "area": {
+    "$oid": "69189e02df70e610fb47a900"
+  },
+  "city": {
+    "$oid": "691896c6df70e610fb47a8e6"
+  },
+  "location": {
+    "coordinates": [
+      76.9204,
+      12.5431
+    ],
+    "type": "Point"
+  },
+  "imageUrl": "https://placehold.co/600x400",
+  "contacts": [
+    {
+      "role": "imam",
+      "name": "Maulana Bilal",
+      "phone": "9000000009"
+    }
+  ],
+  "description": "A peaceful masjid in the Shivalli village area.",
+  "prayerTimings": [],
+  "createdAt": {
+    "$date": "2025-11-15T15:47:34.953Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-15T15:47:34.954Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6918a09cdf70e610fb47a92e"
+  },
+  "name": "Masjid-e-Rehmat Shivalli",
+  "slug": "masjid-e-rehmat-shivalli",
+  "address": "Shivalli Cross, Mandya",
+  "area": {
+    "$oid": "69189e02df70e610fb47a900"
+  },
+  "city": {
+    "$oid": "691896c6df70e610fb47a8e6"
+  },
+  "location": {
+    "coordinates": [
+      76.9182,
+      12.5459
+    ],
+    "type": "Point"
+  },
+  "imageUrl": "https://placehold.co/600x400",
+  "contacts": [
+    {
+      "role": "mozin",
+      "name": "Rashid",
+      "phone": "9000000010"
+    }
+  ],
+  "description": "One of the oldest masjids in Shivalli.",
+  "prayerTimings": [],
+  "createdAt": {
+    "$date": "2025-11-15T15:47:40.846Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-15T15:47:40.846Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6918a0a7df70e610fb47a932"
+  },
+  "name": "Masjid-e-Iqra BR Hills Road",
+  "slug": "masjid-e-iqra-br-hills-road",
+  "address": "BR Hills Road, Chamarajanagar",
+  "area": {
+    "$oid": "69189e0ddf70e610fb47a904"
+  },
+  "city": {
+    "$oid": "691896d0df70e610fb47a8eb"
+  },
+  "location": {
+    "coordinates": [
+      77.032,
+      12.0602
+    ],
+    "type": "Point"
+  },
+  "imageUrl": "https://placehold.co/600x400",
+  "contacts": [
+    {
+      "role": "mutawalli",
+      "name": "Shahid",
+      "phone": "9000000011"
+    }
+  ],
+  "description": "A masjid positioned on the scenic BR Hills stretch.",
+  "prayerTimings": [],
+  "createdAt": {
+    "$date": "2025-11-15T15:47:51.125Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-15T15:47:51.126Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6918a0b1df70e610fb47a936"
+  },
+  "name": "Masjid-e-Khaleel BR Hills Road",
+  "slug": "masjid-e-khaleel-br-hills-road",
+  "address": "Near Forest Checkpost, BR Hills Road",
+  "area": {
+    "$oid": "69189e0ddf70e610fb47a904"
+  },
+  "city": {
+    "$oid": "691896d0df70e610fb47a8eb"
+  },
+  "location": {
+    "coordinates": [
+      77.0288,
+      12.0635
+    ],
+    "type": "Point"
+  },
+  "imageUrl": "https://placehold.co/600x400",
+  "contacts": [
+    {
+      "role": "imam",
+      "name": "Maulana Aadil",
+      "phone": "9000000012"
+    }
+  ],
+  "description": "A small but active masjid on the main highway.",
+  "prayerTimings": [],
+  "createdAt": {
+    "$date": "2025-11-15T15:48:01.166Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-15T15:48:01.166Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6918a0b8df70e610fb47a93a"
+  },
+  "name": "Masjid-e-Noorani Santhemarahalli",
+  "slug": "masjid-e-noorani-santhemarahalli",
+  "address": "Santhemarahalli Market Road",
+  "area": {
+    "$oid": "69189e14df70e610fb47a908"
+  },
+  "city": {
+    "$oid": "691896d0df70e610fb47a8eb"
+  },
+  "location": {
+    "coordinates": [
+      77.0089,
+      12.0115
+    ],
+    "type": "Point"
+  },
+  "imageUrl": "https://placehold.co/600x400",
+  "contacts": [
+    {
+      "role": "mutawalli",
+      "name": "Mubarak",
+      "phone": "9000000013"
+    }
+  ],
+  "description": "Popular masjid in the Santhemarahalli village center.",
+  "prayerTimings": [],
+  "createdAt": {
+    "$date": "2025-11-15T15:48:08.145Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-15T15:48:08.145Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6918a0c0df70e610fb47a93e"
+  },
+  "name": "Masjid-e-Sabreen Santhemarahalli",
+  "slug": "masjid-e-sabreen-santhemarahalli",
+  "address": "Old Bus Stand Road, Santhemarahalli",
+  "area": {
+    "$oid": "69189e14df70e610fb47a908"
+  },
+  "city": {
+    "$oid": "691896d0df70e610fb47a8eb"
+  },
+  "location": {
+    "coordinates": [
+      77.0045,
+      12.0082
+    ],
+    "type": "Point"
+  },
+  "imageUrl": "https://placehold.co/600x400",
+  "contacts": [
+    {
+      "role": "imam",
+      "name": "Maulana Taha",
+      "phone": "9000000014"
+    }
+  ],
+  "description": "Busy masjid for commuters and travelers.",
+  "prayerTimings": [],
+  "createdAt": {
+    "$date": "2025-11-15T15:48:16.086Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-15T15:48:16.086Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6913c8809b8479fa71a16daf"
+  },
+  "name": "Masjid-e-Bilal",
+  "slug": "masjid-e-bilal",
+  "address": "Main Road, Nehru Nagar, Mysore",
+  "area": {
+    "$oid": "691276a0666346656f69d0e5"
+  },
+  "city": {
+    "$oid": "69127302c1ce1885262e4008"
+  },
+  "location": {
+    "type": "Point",
+    "coordinates": [
+      76.6421,
+      12.3298
+    ]
+  },
+  "imageUrl": null,
+  "contacts": [
+    {
+      "role": "imam",
+      "name": "Maulana Abdul Rahman",
+      "phone": "9876543210",
+      "email": "imam.bilal@citysalah.com"
+    },
+    {
+      "role": "mozin",
+      "name": "Yusuf Khan",
+      "phone": "9876543211",
+      "email": "mozin.bilal@citysalah.com"
+    },
+    {
+      "role": "mutawalli",
+      "name": "Mohammed Arif",
+      "phone": "9876543212",
+      "email": "mutawalli.bilal@citysalah.com"
+    },
+    {
+      "role": "other",
+      "name": "Ali Ahmed",
+      "phone": "9876543213",
+      "email": "info.bilal@citysalah.com",
+      "note": "Caretaker"
+    }
+  ],
+  "prayerTimings": [
+    {
+      "type": "weekly",
+      "dayOfWeek": 0,
+      "prayers": [
+        {
+          "name": "Fajr",
+          "azaanTime": "05:15",
+          "iqaamatTime": "05:30"
+        },
+        {
+          "name": "Dhuhr",
+          "azaanTime": "12:30",
+          "iqaamatTime": "12:45"
+        },
+        {
+          "name": "Asr",
+          "azaanTime": "16:00",
+          "iqaamatTime": "16:15"
+        },
+        {
+          "name": "Maghrib",
+          "azaanTime": "18:10",
+          "iqaamatTime": "18:15"
+        },
+        {
+          "name": "Isha",
+          "azaanTime": "19:30",
+          "iqaamatTime": "19:45"
+        }
+      ]
+    }
+  ],
+  "timezone": "Asia/Kolkata",
+  "description": "A well-known mosque in Nehru Nagar with daily prayers and Friday khutbah.",
+  "createdAt": {
+    "$date": "2025-11-11T23:36:32.692Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-11T23:36:32.692Z"
+  },
+  "updatedBy": "mueez@citysalah.com",
+  "createdBy": "mueez@citysalah.com",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6913c89d9b8479fa71a16db3"
+  },
+  "name": "Masjid-e-Quba",
+  "slug": "masjid-e-quba",
+  "address": "Masjid Street, Lashkar Mohalla, Mysore",
+  "area": {
+    "$oid": "6913c466ff680746cf6ad07a"
+  },
+  "city": {
+    "$oid": "6911ddb26f73f5346acaf315"
+  },
+  "location": {
+    "type": "Point",
+    "coordinates": [
+      76.6568,
+      12.3089
+    ]
+  },
+  "imageUrl": null,
+  "contacts": [
+    {
+      "role": "imam",
+      "name": "Maulana Ahmed Siddiq",
+      "phone": "9876543214",
+      "email": "imam.quba@citysalah.com"
+    },
+    {
+      "role": "mozin",
+      "name": "Salman Khan",
+      "phone": "9876543215",
+      "email": "mozin.quba@citysalah.com"
+    },
+    {
+      "role": "mutawalli",
+      "name": "Faisal Rahman",
+      "phone": "9876543216",
+      "email": "mutawalli.quba@citysalah.com"
+    },
+    {
+      "role": "other",
+      "name": "Zubair Ali",
+      "phone": "9876543217",
+      "email": "info.quba@citysalah.com",
+      "note": "Maintenance head"
+    }
+  ],
+  "prayerTimings": [
+    {
+      "type": "weekly",
+      "dayOfWeek": 0,
+      "prayers": [
+        {
+          "name": "Fajr",
+          "azaanTime": "05:10",
+          "iqaamatTime": "05:25"
+        },
+        {
+          "name": "Dhuhr",
+          "azaanTime": "12:35",
+          "iqaamatTime": "12:45"
+        },
+        {
+          "name": "Asr",
+          "azaanTime": "16:05",
+          "iqaamatTime": "16:20"
+        },
+        {
+          "name": "Maghrib",
+          "azaanTime": "18:15",
+          "iqaamatTime": "18:20"
+        },
+        {
+          "name": "Isha",
+          "azaanTime": "19:40",
+          "iqaamatTime": "19:50"
+        }
+      ]
+    }
+  ],
+  "timezone": "Asia/Kolkata",
+  "description": "Historic mosque known for its large congregation and Friday gatherings.",
+  "createdAt": {
+    "$date": "2025-11-11T23:37:01.781Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-11T23:37:01.781Z"
+  },
+  "updatedBy": "mueez@citysalah.com",
+  "createdBy": "mueez@citysalah.com",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6913c8b09b8479fa71a16db7"
+  },
+  "name": "Masjid-e-Noor",
+  "slug": "masjid-e-noor",
+  "address": "Main Bazaar, Udayagiri, Mysore",
+  "area": {
+    "$oid": "6913c488ff680746cf6ad07f"
+  },
+  "city": {
+    "$oid": "6911ddb26f73f5346acaf315"
+  },
+  "location": {
+    "type": "Point",
+    "coordinates": [
+      76.6745,
+      12.334
+    ]
+  },
+  "imageUrl": null,
+  "contacts": [
+    {
+      "role": "imam",
+      "name": "Maulana Imran",
+      "phone": "9876543218",
+      "email": "imam.noor@citysalah.com"
+    },
+    {
+      "role": "mozin",
+      "name": "Nasir Khan",
+      "phone": "9876543219",
+      "email": "mozin.noor@citysalah.com"
+    },
+    {
+      "role": "mutawalli",
+      "name": "Sadiq Hussain",
+      "phone": "9876543220",
+      "email": "mutawalli.noor@citysalah.com"
+    },
+    {
+      "role": "other",
+      "name": "Shabbir Ahmed",
+      "phone": "9876543221",
+      "email": "info.noor@citysalah.com",
+      "note": "Volunteer coordinator"
+    }
+  ],
+  "prayerTimings": [
+    {
+      "type": "weekly",
+      "dayOfWeek": 0,
+      "prayers": [
+        {
+          "name": "Fajr",
+          "azaanTime": "05:12",
+          "iqaamatTime": "05:25"
+        },
+        {
+          "name": "Dhuhr",
+          "azaanTime": "12:33",
+          "iqaamatTime": "12:45"
+        },
+        {
+          "name": "Asr",
+          "azaanTime": "16:10",
+          "iqaamatTime": "16:20"
+        },
+        {
+          "name": "Maghrib",
+          "azaanTime": "18:12",
+          "iqaamatTime": "18:17"
+        },
+        {
+          "name": "Isha",
+          "azaanTime": "19:38",
+          "iqaamatTime": "19:45"
+        }
+      ]
+    }
+  ],
+  "timezone": "Asia/Kolkata",
+  "description": "A peaceful mosque at the heart of Udayagiri with daily Qur’an classes.",
+  "createdAt": {
+    "$date": "2025-11-11T23:37:20.937Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-11T23:37:20.937Z"
+  },
+  "updatedBy": "mueez@citysalah.com",
+  "createdBy": "mueez@citysalah.com",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6913c8c59b8479fa71a16dbb"
+  },
+  "name": "Masjid-e-Ayesha",
+  "slug": "masjid-e-ayesha",
+  "address": "2nd Cross, N.R Mohalla, Mysore",
+  "area": {
+    "$oid": "6913c488ff680746cf6ad083"
+  },
+  "city": {
+    "$oid": "6911ddb26f73f5346acaf315"
+  },
+  "location": {
+    "type": "Point",
+    "coordinates": [
+      76.6678,
+      12.3225
+    ]
+  },
+  "imageUrl": null,
+  "contacts": [
+    {
+      "role": "imam",
+      "name": "Maulana Rashid",
+      "phone": "9876543222",
+      "email": "imam.ayesha@citysalah.com"
+    },
+    {
+      "role": "mozin",
+      "name": "Zahid Khan",
+      "phone": "9876543223",
+      "email": "mozin.ayesha@citysalah.com"
+    },
+    {
+      "role": "mutawalli",
+      "name": "Sameer Ahmed",
+      "phone": "9876543224",
+      "email": "mutawalli.ayesha@citysalah.com"
+    },
+    {
+      "role": "other",
+      "name": "Tariq Hussain",
+      "phone": "9876543225",
+      "email": "info.ayesha@citysalah.com",
+      "note": "Committee member"
+    }
+  ],
+  "prayerTimings": [
+    {
+      "type": "weekly",
+      "dayOfWeek": 0,
+      "prayers": [
+        {
+          "name": "Fajr",
+          "azaanTime": "05:14",
+          "iqaamatTime": "05:28"
+        },
+        {
+          "name": "Dhuhr",
+          "azaanTime": "12:32",
+          "iqaamatTime": "12:45"
+        },
+        {
+          "name": "Asr",
+          "azaanTime": "16:07",
+          "iqaamatTime": "16:20"
+        },
+        {
+          "name": "Maghrib",
+          "azaanTime": "18:11",
+          "iqaamatTime": "18:15"
+        },
+        {
+          "name": "Isha",
+          "azaanTime": "19:35",
+          "iqaamatTime": "19:45"
+        }
+      ]
+    }
+  ],
+  "timezone": "Asia/Kolkata",
+  "description": "Modern mosque with educational programs and women’s prayer area.",
+  "createdAt": {
+    "$date": "2025-11-11T23:37:41.415Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-11T23:37:41.415Z"
+  },
+  "updatedBy": "mueez@citysalah.com",
+  "createdBy": "mueez@citysalah.com",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6913c8c99b8479fa71a16dbf"
+  },
+  "name": "Masjid-e-Rehmani",
+  "slug": "masjid-e-rehmani",
+  "address": "Kalyangiri Main Road, Mysore",
+  "area": {
+    "$oid": "6913c488ff680746cf6ad087"
+  },
+  "city": {
+    "$oid": "6911ddb26f73f5346acaf315"
+  },
+  "location": {
+    "type": "Point",
+    "coordinates": [
+      76.6872,
+      12.3508
+    ]
+  },
+  "imageUrl": null,
+  "contacts": [
+    {
+      "role": "imam",
+      "name": "Maulana Farooq",
+      "phone": "9876543226",
+      "email": "imam.rehmani@citysalah.com"
+    },
+    {
+      "role": "mozin",
+      "name": "Khalid Pasha",
+      "phone": "9876543227",
+      "email": "mozin.rehmani@citysalah.com"
+    },
+    {
+      "role": "mutawalli",
+      "name": "Hameed Khan",
+      "phone": "9876543228",
+      "email": "mutawalli.rehmani@citysalah.com"
+    },
+    {
+      "role": "other",
+      "name": "Rafi Ahmed",
+      "phone": "9876543229",
+      "email": "info.rehmani@citysalah.com",
+      "note": "Treasurer"
+    }
+  ],
+  "prayerTimings": [
+    {
+      "type": "weekly",
+      "dayOfWeek": 0,
+      "prayers": [
+        {
+          "name": "Fajr",
+          "azaanTime": "05:13",
+          "iqaamatTime": "05:27"
+        },
+        {
+          "name": "Dhuhr",
+          "azaanTime": "12:31",
+          "iqaamatTime": "12:45"
+        },
+        {
+          "name": "Asr",
+          "azaanTime": "16:08",
+          "iqaamatTime": "16:20"
+        },
+        {
+          "name": "Maghrib",
+          "azaanTime": "18:13",
+          "iqaamatTime": "18:18"
+        },
+        {
+          "name": "Isha",
+          "azaanTime": "19:37",
+          "iqaamatTime": "19:45"
+        }
+      ]
+    }
+  ],
+  "timezone": "Asia/Kolkata",
+  "description": "Large mosque serving Kalyangiri residents with madarsa facilities.",
+  "createdAt": {
+    "$date": "2025-11-11T23:37:45.787Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-11T23:37:45.787Z"
+  },
+  "updatedBy": "mueez@citysalah.com",
+  "createdBy": "mueez@citysalah.com",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6913ca5ab082a02b6d540b62"
+  },
+  "name": "Masjid-e-Tawheed",
+  "slug": "masjid-e-tawheed",
+  "address": "1st Cross, Nehru Nagar, Mysore",
+  "area": {
+    "$oid": "691276a0666346656f69d0e5"
+  },
+  "city": {
+    "$oid": "69127302c1ce1885262e4008"
+  },
+  "location": {
+    "type": "Point",
+    "coordinates": [
+      76.6391,
+      12.3264
+    ]
+  },
+  "imageUrl": null,
+  "contacts": [
+    {
+      "role": "imam",
+      "name": "Maulana Usman Ali",
+      "phone": "9876543210"
+    },
+    {
+      "role": "mozin",
+      "name": "Abdul Samad",
+      "phone": "9876543211"
+    },
+    {
+      "role": "mutawalli",
+      "name": "Hafiz Kareem",
+      "phone": "9876543212"
+    },
+    {
+      "role": "other",
+      "name": "Arshad Khan",
+      "phone": "9876543213"
+    }
+  ],
+  "prayerTimings": [
+    {
+      "type": "weekly",
+      "dayOfWeek": 0,
+      "prayers": [
+        {
+          "name": "Fajr",
+          "azaanTime": "05:15",
+          "iqaamatTime": "05:25"
+        },
+        {
+          "name": "Dhuhr",
+          "azaanTime": "12:45",
+          "iqaamatTime": "12:55"
+        },
+        {
+          "name": "Asr",
+          "azaanTime": "16:00",
+          "iqaamatTime": "16:10"
+        },
+        {
+          "name": "Maghrib",
+          "azaanTime": "18:05",
+          "iqaamatTime": "18:07"
+        },
+        {
+          "name": "Isha",
+          "azaanTime": "19:30",
+          "iqaamatTime": "19:40"
+        }
+      ]
+    }
+  ],
+  "timezone": "Asia/Kolkata",
+  "createdAt": {
+    "$date": "2025-11-11T23:44:26.764Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-11T23:44:26.764Z"
+  },
+  "updatedBy": "mueez@citysalah.com",
+  "createdBy": "mueez@citysalah.com",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6913cc33773b30b825cf692d"
+  },
+  "name": "Masjid-e-Noor",
+  "slug": "masjid-e-noor",
+  "address": "Main Road, Lashkar Mohalla, Mysore",
+  "area": {
+    "$oid": "6913c466ff680746cf6ad07a"
+  },
+  "city": {
+    "$oid": "6911ddb26f73f5346acaf315"
+  },
+  "location": {
+    "type": "Point",
+    "coordinates": [
+      76.6573,
+      12.3056
+    ]
+  },
+  "imageUrl": null,
+  "contacts": [
+    {
+      "role": "imam",
+      "name": "Mufti Rahman",
+      "phone": "9876543220"
+    },
+    {
+      "role": "mozin",
+      "name": "Mohammed Salim",
+      "phone": "9876543221"
+    },
+    {
+      "role": "mutawalli",
+      "name": "Javed Khan",
+      "phone": "9876543222"
+    },
+    {
+      "role": "other",
+      "name": "Imran Pasha",
+      "phone": "9876543223"
+    }
+  ],
+  "prayerTimings": [
+    {
+      "type": "weekly",
+      "dayOfWeek": 0,
+      "prayers": [
+        {
+          "name": "Fajr",
+          "azaanTime": "05:10",
+          "iqaamatTime": "05:20"
+        },
+        {
+          "name": "Dhuhr",
+          "azaanTime": "12:40",
+          "iqaamatTime": "12:50"
+        },
+        {
+          "name": "Asr",
+          "azaanTime": "16:05",
+          "iqaamatTime": "16:15"
+        },
+        {
+          "name": "Maghrib",
+          "azaanTime": "18:10",
+          "iqaamatTime": "18:12"
+        },
+        {
+          "name": "Isha",
+          "azaanTime": "19:35",
+          "iqaamatTime": "19:45"
+        }
+      ]
+    }
+  ],
+  "timezone": "Asia/Kolkata",
+  "createdAt": {
+    "$date": "2025-11-11T23:52:19.791Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-11T23:52:19.791Z"
+  },
+  "updatedBy": "mueez@citysalah.com",
+  "createdBy": "mueez@citysalah.com",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6913cc52773b30b825cf6931"
+  },
+  "name": "Masjid-e-Hamza",
+  "slug": "masjid-e-hamza",
+  "address": "6th Cross, Kalyangiri, Mysore",
+  "area": {
+    "$oid": "6913c488ff680746cf6ad087"
+  },
+  "city": {
+    "$oid": "6911ddb26f73f5346acaf315"
+  },
+  "location": {
+    "type": "Point",
+    "coordinates": [
+      76.6801,
+      12.3329
+    ]
+  },
+  "imageUrl": null,
+  "contacts": [
+    {
+      "role": "imam",
+      "name": "Maulana Hamid",
+      "phone": "9876543240"
+    },
+    {
+      "role": "mozin",
+      "name": "Rashid Khan",
+      "phone": "9876543241"
+    },
+    {
+      "role": "mutawalli",
+      "name": "Shahid Ali",
+      "phone": "9876543242"
+    },
+    {
+      "role": "other",
+      "name": "Salman Pasha",
+      "phone": "9876543243"
+    }
+  ],
+  "prayerTimings": [
+    {
+      "type": "weekly",
+      "dayOfWeek": 0,
+      "prayers": [
+        {
+          "name": "Fajr",
+          "azaanTime": "05:18",
+          "iqaamatTime": "05:28"
+        },
+        {
+          "name": "Dhuhr",
+          "azaanTime": "12:48",
+          "iqaamatTime": "12:58"
+        },
+        {
+          "name": "Asr",
+          "azaanTime": "16:12",
+          "iqaamatTime": "16:22"
+        },
+        {
+          "name": "Maghrib",
+          "azaanTime": "18:07",
+          "iqaamatTime": "18:09"
+        },
+        {
+          "name": "Isha",
+          "azaanTime": "19:38",
+          "iqaamatTime": "19:48"
+        }
+      ]
+    }
+  ],
+  "timezone": "Asia/Kolkata",
+  "createdAt": {
+    "$date": "2025-11-11T23:52:50.857Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-11T23:52:50.857Z"
+  },
+  "updatedBy": "mueez@citysalah.com",
+  "createdBy": "mueez@citysalah.com",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6913cc5f773b30b825cf6935"
+  },
+  "name": "Masjid-e-Fatima",
+  "slug": "masjid-e-fatima",
+  "address": "Behind Circle, N.R Mohalla, Mysore",
+  "area": {
+    "$oid": "6913c488ff680746cf6ad083"
+  },
+  "city": {
+    "$oid": "6911ddb26f73f5346acaf315"
+  },
+  "location": {
+    "type": "Point",
+    "coordinates": [
+      76.6645,
+      12.3237
+    ]
+  },
+  "imageUrl": null,
+  "contacts": [
+    {
+      "role": "imam",
+      "name": "Maulana Farooq",
+      "phone": "9876543250"
+    },
+    {
+      "role": "mozin",
+      "name": "Yusuf Ali",
+      "phone": "9876543251"
+    },
+    {
+      "role": "mutawalli",
+      "name": "Akbar Pasha",
+      "phone": "9876543252"
+    },
+    {
+      "role": "other",
+      "name": "Junaid Ahmed",
+      "phone": "9876543253"
+    }
+  ],
+  "prayerTimings": [
+    {
+      "type": "weekly",
+      "dayOfWeek": 0,
+      "prayers": [
+        {
+          "name": "Fajr",
+          "azaanTime": "05:13",
+          "iqaamatTime": "05:23"
+        },
+        {
+          "name": "Dhuhr",
+          "azaanTime": "12:43",
+          "iqaamatTime": "12:53"
+        },
+        {
+          "name": "Asr",
+          "azaanTime": "16:09",
+          "iqaamatTime": "16:19"
+        },
+        {
+          "name": "Maghrib",
+          "azaanTime": "18:09",
+          "iqaamatTime": "18:11"
+        },
+        {
+          "name": "Isha",
+          "azaanTime": "19:36",
+          "iqaamatTime": "19:46"
+        }
+      ]
+    }
+  ],
+  "timezone": "Asia/Kolkata",
+  "createdAt": {
+    "$date": "2025-11-11T23:53:03.073Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-11T23:53:03.073Z"
+  },
+  "updatedBy": "mueez@citysalah.com",
+  "createdBy": "mueez@citysalah.com",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6913cc68773b30b825cf6939"
+  },
+  "name": "Masjid-e-Quba",
+  "slug": "masjid-e-quba",
+  "address": "Main Road, Mandi Mohalla, Mysore",
+  "area": {
+    "$oid": "6913c488ff680746cf6ad087"
+  },
+  "city": {
+    "$oid": "6911ddb26f73f5346acaf315"
+  },
+  "location": {
+    "type": "Point",
+    "coordinates": [
+      76.6529,
+      12.3142
+    ]
+  },
+  "imageUrl": null,
+  "contacts": [
+    {
+      "role": "imam",
+      "name": "Maulana Qasim",
+      "phone": "9876543260"
+    },
+    {
+      "role": "mozin",
+      "name": "Nizamuddin",
+      "phone": "9876543261"
+    },
+    {
+      "role": "mutawalli",
+      "name": "Haroon Khan",
+      "phone": "9876543262"
+    },
+    {
+      "role": "other",
+      "name": "Asif Ali",
+      "phone": "9876543263"
+    }
+  ],
+  "prayerTimings": [
+    {
+      "type": "weekly",
+      "dayOfWeek": 0,
+      "prayers": [
+        {
+          "name": "Fajr",
+          "azaanTime": "05:11",
+          "iqaamatTime": "05:21"
+        },
+        {
+          "name": "Dhuhr",
+          "azaanTime": "12:41",
+          "iqaamatTime": "12:51"
+        },
+        {
+          "name": "Asr",
+          "azaanTime": "16:06",
+          "iqaamatTime": "16:16"
+        },
+        {
+          "name": "Maghrib",
+          "azaanTime": "18:08",
+          "iqaamatTime": "18:10"
+        },
+        {
+          "name": "Isha",
+          "azaanTime": "19:33",
+          "iqaamatTime": "19:43"
+        }
+      ]
+    }
+  ],
+  "timezone": "Asia/Kolkata",
+  "createdAt": {
+    "$date": "2025-11-11T23:53:12.632Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-11T23:53:12.632Z"
+  },
+  "updatedBy": "mueez@citysalah.com",
+  "createdBy": "mueez@citysalah.com",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "69144ccf289853f8845de416"
+  },
+  "name": "Masjid-e-Rahmania",
+  "slug": "masjid-e-rahmania",
+  "address": "Shanthinagar, Mysore",
+  "area": {
+    "$oid": "6913c488ff680746cf6ad083"
+  },
+  "city": {
+    "$oid": "6911ddb26f73f5346acaf315"
+  },
+  "location": {
+    "type": "Point",
+    "coordinates": [
+      76.6882,
+      12.3176
+    ]
+  },
+  "imageUrl": null,
+  "contacts": [
+    {
+      "role": "imam",
+      "name": "Maulana Rahman",
+      "phone": "9876543280"
+    },
+    {
+      "role": "mozin",
+      "name": "Yasir Khan",
+      "phone": "9876543281"
+    },
+    {
+      "role": "mutawalli",
+      "name": "Firoz Pasha",
+      "phone": "9876543282"
+    },
+    {
+      "role": "other",
+      "name": "Zakir Hussain",
+      "phone": "9876543283"
+    }
+  ],
+  "prayerTimings": [
+    {
+      "type": "weekly",
+      "dayOfWeek": 0,
+      "prayers": [
+        {
+          "name": "Fajr",
+          "azaanTime": "05:14",
+          "iqaamatTime": "05:24"
+        },
+        {
+          "name": "Dhuhr",
+          "azaanTime": "12:44",
+          "iqaamatTime": "12:54"
+        },
+        {
+          "name": "Asr",
+          "azaanTime": "16:08",
+          "iqaamatTime": "16:18"
+        },
+        {
+          "name": "Maghrib",
+          "azaanTime": "18:09",
+          "iqaamatTime": "18:11"
+        },
+        {
+          "name": "Isha",
+          "azaanTime": "19:34",
+          "iqaamatTime": "19:44"
+        }
+      ]
+    }
+  ],
+  "timezone": "Asia/Kolkata",
+  "createdAt": {
+    "$date": "2025-11-12T09:01:03.955Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-12T09:01:03.955Z"
+  },
+  "updatedBy": "mueez@citysalah.com",
+  "createdBy": "mueez@citysalah.com",
+  "__v": 0
+}]
