@@ -1,4 +1,4 @@
-// src/components/Dashboard/Card.js
+// src/components/sAdminDashboard/Card.js
 "use client";
 
 import React from "react";

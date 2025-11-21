@@ -1,11 +1,15 @@
-
-
 "use client";
 import React from "react";
-import { Slab } from "react-loading-indicators"; // <-- import the loader
+import { Slab } from "react-loading-indicators";
 
-export default function PrayerTimingsTable({ prayerTimings, loading }) {
-  // SHOW LOADING
+export default function PrayerTimingsTable({
+  prayerTimings,
+  loading,
+  masjidExists, // NEW prop from ClientHome
+}) {
+  // ------------------------------
+  // 1. SHOW LOADING
+  // ------------------------------
   if (loading) {
     return (
       <div className="flex justify-center items-center py-10">
@@ -14,15 +18,28 @@ export default function PrayerTimingsTable({ prayerTimings, loading }) {
     );
   }
 
-  // NO DATA
+  // ------------------------------
+  // 2. No masjid selected yet → show nothing
+  //    (ClientHome will show the “select city/area/masjid” message)
+  // ------------------------------
+  if (!masjidExists) {
+    return null;
+  }
+
+  // ------------------------------
+  // 3. Masjid exists → but no timings
+  // ------------------------------
   if (!prayerTimings?.length) {
     return (
-      <div className="bg-white shadow rounded p-4 text-center text-gray-500">
+      <div className="bg-white shadow rounded p-4 text-center text-gray-600">
         No prayer timings available.
       </div>
     );
   }
 
+  // ------------------------------
+  // 4. Normal rendering
+  // ------------------------------
   const timing = prayerTimings[0];
 
   const timingsArray = [

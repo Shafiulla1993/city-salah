@@ -2,6 +2,7 @@ import "./globals.css";
 
 import { AuthProvider } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
+import ToastProviderClient from "@/components/ui/ToastProviderClient";
 
 export const metadata = {
   title: "City Salah",
@@ -31,6 +32,7 @@ export default function RootLayout({ children }) {
           {/* Navbar */}
           <Navbar />
 
+          <ToastProviderClient />
           {/* Main content */}
           <main className="max-w-7xl mx-auto p-6 md:p-10 min-h-screen">
             {children}

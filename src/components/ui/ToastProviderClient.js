@@ -1,0 +1,22 @@
+// src/components/ToastProviderClient.js
+"use client";
+
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+export default function ToastProviderClient() {
+  return (
+    <ToastContainer
+      position="top-right"
+      autoClose={3500}
+      hideProgressBar={false}
+      newestOnTop
+      closeOnClick
+      rtl={false}
+      pauseOnFocusLoss
+      draggable
+      pauseOnHover
+      theme="dark"
+    />
+  );
+}

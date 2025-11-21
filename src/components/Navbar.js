@@ -1,23 +1,41 @@
+// src/components/Navbar.js
+
 "use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 export default function ModernNavbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const [lastScroll, setLastScroll] = useState(0);
   const { loggedIn, user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
-  // Auto-hide after 5 sec
+  // For hiding on scroll down, showing on scroll up
   useEffect(() => {
-    const timer = setTimeout(() => setHidden(true), 5000);
-    return () => clearTimeout(timer);
-  }, []);
+    const handleScroll = () => {
+      const current = window.scrollY;
 
-  // Handle dashboard redirect based on role
+      if (current > lastScroll && current > 70) {
+        // scrolling down
+        setHidden(true);
+      } else {
+        // scrolling up
+        setHidden(false);
+      }
+
+      setLastScroll(current);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScroll]);
+
+  // Go to dashboard based on role
   const goToDashboard = () => {
     if (!user) return;
 
@@ -26,24 +44,31 @@ export default function ModernNavbar() {
     } else if (user.role === "masjid_admin") {
       router.push("/dashboard/masjid-admin");
     } else {
-      router.push("/"); // public → home
+      router.push("/");
     }
   };
 
   return (
     <div className="group fixed top-0 left-0 right-0 z-50">
       <header
-        className={`
-          bg-slate-400 shadow-lg 
-          transition-transform duration-500 
-          ${hidden ? "-translate-y-full" : "translate-y-0"}
-          group-hover:translate-y-0
-        `}
+        className={`bg-slate-400 shadow-lg transition-transform duration-500
+        ${hidden ? "-translate-y-full" : "translate-y-0"}
+      `}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            {/* Logo */}
+            {/* Back Button (hide on root) */}
             <div className="flex items-center">
+              {pathname !== "/" && (
+                <button
+                  onClick={() => router.back()}
+                  className="mr-3 text-white bg-gray-700 px-3 py-1 rounded-lg hover:bg-gray-900 transition"
+                >
+                  ←
+                </button>
+              )}
+
+              {/* Logo */}
               <Link
                 href="/"
                 className="text-2xl font-bold text-gray-900 hover:text-white"
@@ -99,7 +124,7 @@ export default function ModernNavbar() {
             <div className="md:hidden flex items-center">
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="text-gray-900 hover:text-white focus:outline-none"
+                className="text-gray-900 hover:text-white"
               >
                 <svg
                   className="h-6 w-6"
@@ -183,9 +208,6 @@ export default function ModernNavbar() {
           </div>
         )}
       </header>
-
-      {/* Hover zone */}
-      <div className="h-3 w-full group-hover:h-6"></div>
     </div>
   );
 }

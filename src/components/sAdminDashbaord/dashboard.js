@@ -1,4 +1,4 @@
-// src/components/Dashboard/SuperAdminDashboard.js
+// src/components/sAdminDashboard/dashboard.js
 "use client";
 
 import React, { useState } from "react";
