@@ -365,8 +365,9 @@ export default function ClientHome() {
             <PrayerTimingsTable
               prayerTimings={prayerTimings}
               loading={loadingMasjidDetails}
-              masjidLoaded={Boolean(selectedMasjid)}
+              masjidSelected={!!selectedMasjid}
             />
+
             <ContactInfo contacts={contacts} />
           </>
         ) : (

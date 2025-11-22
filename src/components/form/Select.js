@@ -34,7 +34,7 @@ export const Select = React.forwardRef(
           required={required}
           ref={ref}
           className={cn(
-            "flex h-10 w-full rounded-md border border-input bg-white px-3 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50",
+            "flex h-10 w-full rounded-md border border-input bg-slate-100/40 text-base shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400/30 disabled:opacity-50",
             className
           )}
         >
@@ -42,7 +42,6 @@ export const Select = React.forwardRef(
           <option value="">
             {placeholder || `Select ${label?.toLowerCase() || "option"}`}
           </option>
-
           {options.map((opt) => (
             <option key={opt._id} value={opt._id}>
               {opt.name}

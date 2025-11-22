@@ -6,7 +6,7 @@ export default function ContactInfo({ contacts }) {
   if (!contacts?.length) return null;
 
   return (
-    <div className="bg-white shadow rounded p-4">
+    <div className="bg-slate-100/40 shadow rounded p-4">
       <h2 className="text-xl font-semibold mb-2">Contacts</h2>
       <ul className="space-y-2">
         {contacts.map((c, idx) => (
