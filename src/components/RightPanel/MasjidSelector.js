@@ -28,32 +28,31 @@ export default function MasjidSelector({
     <div className="flex gap-2">
       {/* City Selector */}
       <Select
-        label="City"
-        value={selectedCity}
-        onChange={(e) => setSelectedCity(e.target.value)}
-        options={cities}
-        placeholder="Select City"
-      />
+  label="City"
+  value={selectedCity}
+  onChange={(e) => setSelectedCity(e.target.value)}  // GOOD
+  options={cities.map(c => ({ label: c.name, value: c._id }))}
+  placeholder="Select City"
+/>
 
-      {/* Area Selector */}
-      <Select
-        label="Area"
-        value={selectedArea}
-        onChange={(e) => setSelectedArea(e.target.value)}
-        options={areas}
-        disabled={!areas.length}
-        placeholder="Select Area"
-      />
+<Select
+  label="Area"
+  value={selectedArea}
+  onChange={(e) => setSelectedArea(e.target.value)}  // GOOD
+  options={areas.map(a => ({ label: a.name, value: a._id }))}
+  disabled={!areas.length}
+  placeholder="Select Area"
+/>
 
-      {/* Masjid Selector */}
-      <Select
-        label="Masjid"
-        value={localMasjidId}
-        onChange={handleMasjidChange}
-        options={masjids}
-        disabled={!masjids.length}
-        placeholder="Select Masjid"
-      />
+<Select
+  label="Masjid"
+  value={localMasjidId}
+  onChange={handleMasjidChange}
+  options={masjids.map(m => ({ label: m.name, value: m._id }))}
+  disabled={!masjids.length}
+  placeholder="Select Masjid"
+/>
+
     </div>
   );
 }

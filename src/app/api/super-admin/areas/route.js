@@ -1,5 +1,4 @@
 // src/app/api/super-admin/areas/route.js
-
 import {
   createAreaController,
   getAreasController,
@@ -7,8 +6,11 @@ import {
 
 import { withAuth } from "@/lib/middleware/withAuth";
 
-export const GET = withAuth("super_admin", async () => {
-  const res = await getAreasController();
+export const GET = withAuth("super_admin", async ({ request }) => {
+  // convert URL search params to object and pass to controller
+  const url = new URL(request.url);
+  const query = Object.fromEntries(url.searchParams.entries());
+  const res = await getAreasController({ query });
   return res;
 });
 

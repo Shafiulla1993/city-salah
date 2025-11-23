@@ -1,14 +1,19 @@
-// src/models/ThoughtOfDay.js
 import mongoose, { Schema, models, model } from "mongoose";
 import auditPlugin from "@/lib/utils/auditPlugin";
 
 const ThoughtOfDaySchema = new Schema({
   text: { type: String, required: true },
-  city: { type: Schema.Types.ObjectId, ref: "City" },
-  area: { type: Schema.Types.ObjectId, ref: "Area" },
+
+  images: [{ type: String }], // Cloudinary URLs
+
+  startDate: { type: Date, required: true },
+  endDate: { type: Date, required: true },
+
   createdBy: { type: Schema.Types.ObjectId, ref: "User" },
+  updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
+
   createdAt: { type: Date, default: Date.now },
-  displayDate: { type: String }, // optional display date like "2025-11-14"
+  updatedAt: { type: Date, default: Date.now }
 });
 
 ThoughtOfDaySchema.plugin(auditPlugin);

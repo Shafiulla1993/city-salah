@@ -43,8 +43,8 @@ export const Select = React.forwardRef(
             {placeholder || `Select ${label?.toLowerCase() || "option"}`}
           </option>
           {options.map((opt) => (
-            <option key={opt._id} value={opt._id}>
-              {opt.name}
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
             </option>
           ))}
         </select>

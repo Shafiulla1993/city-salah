@@ -1,7 +1,7 @@
-// src/components/ToastProviderClient.js
+// src/components/ui/ToastProviderClient.js
 "use client";
 
-import { ToastContainer } from "react-toastify";
+import { ToastContainer, Slide } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 export default function ToastProviderClient() {
@@ -12,11 +12,21 @@ export default function ToastProviderClient() {
       hideProgressBar={false}
       newestOnTop
       closeOnClick
-      rtl={false}
-      pauseOnFocusLoss
       draggable
       pauseOnHover
+      pauseOnFocusLoss
+      transition={Slide}
       theme="dark"
+      toastClassName={() =>
+        "rounded-xl shadow-md text-white font-medium px-4 py-3 border border-white/20"
+      }
+      bodyClassName={() => "text-sm font-medium"}
+      style={{
+        paddingTop: "70px",
+        paddingRight: "15px",
+        paddingLeft: "15px",
+        zIndex: 999999,
+      }}
     />
   );
 }

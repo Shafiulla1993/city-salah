@@ -1,3 +1,5 @@
+// src/components/RightPanel/loaders
+
 import Skeleton from "@/components/ui/Skeleton";
 
 // 🔹 Announcement Box Loader

@@ -3,20 +3,64 @@
 @tailwind utilities;
 @plugin "daisyui";
 
-/* Toastify fix for mobile */
+
+/* src/styles/globals.css */
+
+/* ---- Toastify mobile + admin theme (CitySalah) ---- */
+/* Prevent overflow clipping */
+html, body {
+  overflow-x: hidden;
+}
+
+/* Toast container adjustments */
 .Toastify__toast-container {
   padding-top: env(safe-area-inset-top) !important;
   top: 0 !important;
 }
 
+/* Toast shape on mobile */
 .Toastify__toast {
   width: 95% !important;
   margin: 10px auto !important;
   border-radius: 12px !important;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.12);
+  font-size: 0.95rem;
 }
 
-/* Prevent overflow clipping */
-html,
-body {
-  overflow-x: hidden;
+/* --- CitySalah Admin Toast Themes --- */
+/* SUCCESS */
+.Toastify__toast--success {
+  background: linear-gradient(to right, #065f46, #047857) !important;
+  color: white !important;
 }
+
+/* ERROR */
+.Toastify__toast--error {
+  background: linear-gradient(to right, #7f1d1d, #b91c1c) !important;
+  color: white !important;
+}
+
+/* WARNING */
+.Toastify__toast--warning {
+  background: linear-gradient(to right, #78350f, #b45309) !important;
+  color: white !important;
+}
+
+/* INFO */
+.Toastify__toast--info {
+  background: linear-gradient(to right, #1e3a8a, #1e40af) !important;
+  color: white !important;
+}
+
+/* PROGRESS BAR */
+.Toastify__progress-bar--success { background:#34d399 !important; }
+.Toastify__progress-bar--error   { background:#f87171 !important; }
+.Toastify__progress-bar--warning { background:#fbbf24 !important; }
+.Toastify__progress-bar--info    { background:#60a5fa !important; }
+
+/* Icon color fixes */
+.Toastify__toast--success .Toastify__toast-icon svg { fill: #a7f3d0 !important; }
+.Toastify__toast--error .Toastify__toast-icon svg   { fill: #fecaca !important; }
+.Toastify__toast--warning .Toastify__toast-icon svg { fill: #fde68a !important; }
+.Toastify__toast--info .Toastify__toast-icon svg    { fill: #bfdbfe !important; }

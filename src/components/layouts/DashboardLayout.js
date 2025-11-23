@@ -1,5 +1,5 @@
 // src/components/Layouts/DashboardLayout.js
-"use client"; // ensure this is treated as a client component
+"use client"; 
 
 import React from "react";
 

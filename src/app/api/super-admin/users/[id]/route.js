@@ -1,25 +1,39 @@
 // src/app/api/super-admin/users/[id]/route.js
 
+import connectDB from "@/lib/db";
+import { withAuth } from "@/lib/middleware/withAuth";
+
 import {
-  getUserByIdController,
+  getUserController,
   updateUserController,
   deleteUserController,
 } from "@/server/controllers/superadmin/users.controller";
 
-import { withAuth } from "@/server/utils/withAuth";
+// GET /api/super-admin/users/:id
+export const GET = withAuth("super_admin", async (req, { params }) => {
+  await connectDB();
 
-export const GET = withAuth("super_admin", async ({ params }) => {
-  const res = await getUserByIdController({ id: params.id });
-  return res;
+  const result = await getUserController({ id: params.id });
+
+  return Response.json(result.json, { status: result.status });
 });
 
-export const PUT = withAuth("super_admin", async ({ request, params }) => {
-  const body = await request.json();
-  const res = await updateUserController({ id: params.id, body });
-  return res;
+// PUT /api/super-admin/users/:id
+export const PUT = withAuth("super_admin", async (req, { params }) => {
+  await connectDB();
+
+  const body = await req.json().catch(() => ({}));
+
+  const result = await updateUserController({ id: params.id, body });
+
+  return Response.json(result.json, { status: result.status });
 });
 
-export const DELETE = withAuth("super_admin", async ({ params }) => {
-  const res = await deleteUserController({ id: params.id });
-  return res;
+// DELETE /api/super-admin/users/:id
+export const DELETE = withAuth("super_admin", async (req, { params }) => {
+  await connectDB();
+
+  const result = await deleteUserController({ id: params.id });
+
+  return Response.json(result.json, { status: result.status });
 });

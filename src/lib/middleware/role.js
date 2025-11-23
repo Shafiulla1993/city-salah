@@ -1,3 +1,5 @@
+// src/lib/middleware/role.js
+
 export function allowRoles(...allowed) {
   return (user) => {
     if (!user || !allowed.includes(user.role)) {

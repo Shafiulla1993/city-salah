@@ -27,6 +27,7 @@
     "next": "16.0.3",
     "next-cloudinary": "^6.17.5",
     "next-rate-limit": "^0.0.3",
+    "node-cron": "^4.2.1",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-hook-form": "^7.66.0",

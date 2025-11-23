@@ -1,4 +1,4 @@
-// src/lib/http/clientFetch.js
+// src/lib/http/fetchClient
 
 let isRefreshing = false;
 let refreshQueue = [];
@@ -6,35 +6,37 @@ let refreshQueue = [];
 const BASE_URL = "/api";
 
 /**
- * Add failed requests to queue until refresh completes
+ * Queue requests when refresh token in progress
  */
-function addToQueue(callback) {
-  return new Promise((resolve, reject) => {
-    refreshQueue.push({ resolve, reject, callback });
+const addToQueue = (cb) =>
+  new Promise((resolve, reject) => {
+    refreshQueue.push({ resolve, reject, cb });
   });
-}
 
-/**
- * Resolve queued requests
- */
-function processQueue(error, token = null) {
+const processQueue = (error, token = null) => {
   refreshQueue.forEach((req) => {
     if (error) req.reject(error);
-    else req.resolve(req.callback(token));
+    else req.resolve(req.cb(token));
   });
   refreshQueue = [];
-}
+};
 
 /**
- * MAIN HTTP CLIENT (cookies + optional access token)
+ * SMART HTTP CLIENT
+ * - Auto JSON / FormData detection
+ * - Auto re-auth
+ * - Auto-cookie
+ * - No-store caching
  */
 export async function httpFetch(url, options = {}) {
+  const isFormData = options.body instanceof FormData;
+
   const config = {
     credentials: "include",
     cache: "no-store",
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(options.headers || {}),
     },
   };
@@ -42,35 +44,21 @@ export async function httpFetch(url, options = {}) {
   try {
     let res = await fetch(BASE_URL + url, config);
 
-    // -----------------------------
-    // SUCCESS
-    // -----------------------------
-    if (res.ok) return await res.json();
+    if (res.ok) return await safeJson(res);
 
-    // -----------------------------
-    // 401 HANDLING (TOKEN EXPIRED)
-    // -----------------------------
+    // 401 = EXPIRED TOKEN → refresh
     if (res.status === 401) {
-      // 👉 IMPORTANT: DO NOT REFRESH FOR LOGIN
       if (url.includes("/auth/login")) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.message || "Invalid credentials");
+        const data = await safeJson(res);
+        throw new Error(data.message || "Invalid credentials");
       }
 
-      // Queue request if another refresh is running
       if (isRefreshing) {
         return addToQueue((newToken) =>
-          httpFetch(url, {
-            ...options,
-            headers: {
-              ...config.headers,
-              Authorization: `Bearer ${newToken}`,
-            },
-          })
+          httpFetch(url, attachToken(options, newToken))
         );
       }
 
-      // BEGIN REFRESH
       isRefreshing = true;
 
       try {
@@ -81,24 +69,13 @@ export async function httpFetch(url, options = {}) {
 
         if (!refreshRes.ok) throw new Error("Refresh failed");
 
-        const data = await refreshRes.json();
+        const data = await safeJson(refreshRes);
         const newToken = data?.accessToken;
 
-        if (!newToken) throw new Error("No new access token");
-
-        // Process waiting requests
         processQueue(null, newToken);
 
-        // Retry original request
-        return httpFetch(url, {
-          ...options,
-          headers: {
-            ...config.headers,
-            Authorization: `Bearer ${newToken}`,
-          },
-        });
+        return httpFetch(url, attachToken(options, newToken));
       } catch (err) {
-        // Refresh failed → fail queued requests & logout
         processQueue(err, null);
 
         if (typeof window !== "undefined") {
@@ -111,13 +88,31 @@ export async function httpFetch(url, options = {}) {
       }
     }
 
-    // -----------------------------
-    // OTHER ERRORS
-    // -----------------------------
-    const errData = await res.json().catch(() => ({}));
+    const errData = await safeJson(res);
     throw new Error(errData.message || "Request failed");
   } catch (err) {
     console.error("httpFetch Error:", err);
     throw err;
+  }
+}
+
+/**
+ * HELPERS
+ */
+function attachToken(options, token) {
+  return {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      Authorization: `Bearer ${token}`,
+    },
+  };
+}
+
+async function safeJson(res) {
+  try {
+    return await res.json();
+  } catch {
+    return {};
   }
 }

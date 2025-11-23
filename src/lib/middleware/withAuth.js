@@ -3,56 +3,46 @@ import connectDB from "@/lib/db";
 import { protect } from "@/server/middlewares/protect";
 import { allowRoles } from "@/server/middlewares/role";
 
-/**
- * New Signature:
- * withAuth(roles, handler)
- *
- * Example:
- * export const GET = withAuth("super_admin", async ({ request, params, user }) => {
- *   return getCitiesController();
- * });
- */
 export function withAuth(roles, handler) {
-  // Normalize role(s)
   if (typeof roles === "string") roles = [roles];
 
   return async function (request, context) {
     await connectDB();
 
-    // -------- 1. AUTHENTICATION --------
+    // 1. Authenticate user
     const auth = await protect(request);
     if (auth.error) {
-      return new Response(JSON.stringify({ message: auth.error }), {
-        status: auth.status,
-      });
+      return Response.json({ message: auth.error }, { status: auth.status });
     }
 
-    // -------- 2. ROLE CHECK --------
-    const check = roles.length
-      ? allowRoles(...roles)(auth.user)
-      : { error: false };
-
+    // 2. Authorize role
+    const check = allowRoles(...roles)(auth.user);
     if (check.error) {
-      return new Response(JSON.stringify({ message: "Forbidden" }), {
-        status: 403,
-      });
+      return Response.json({ message: "Forbidden" }, { status: 403 });
     }
 
-    // -------- 3. RUN HANDLER --------
-    // Provide a consistent signature: handler({ request, context }, user)
+    // 3. Run actual route handler
     const result = await handler(
-      { request, context, user: auth.user },
-      auth.user
+      {
+        request,
+        user: auth.user,
+        nextUrl: request.nextUrl,
+        params: context?.params,
+      },
+      context
     );
 
-    // -------- 4. AUTO-WRAP CONTROLLER RESPONSE --------
-    if (result?.status && result?.json !== undefined) {
-      return new Response(JSON.stringify(result.json), {
-        status: result.status,
-      });
+    // 4. If handler returned a real Response, return it directly
+    if (result instanceof Response) {
+      return result;
     }
 
-    // -------- 5. Return raw Response if user returned Response --------
-    return result;
+    // 5. If handler returned { status, json }
+    if (result && typeof result === "object" && "status" in result && "json" in result) {
+      return Response.json(result.json, { status: result.status });
+    }
+
+    // 6. Anything else → wrap as JSON
+    return Response.json(result);
   };
 }

@@ -1,212 +1,246 @@
 // src/server/controllers/superadmin/masjids.controller.js
+// src/server/controllers/superadmin/masjids.controller.js
 import mongoose from "mongoose";
 import Masjid from "@/models/Masjid";
 import City from "@/models/City";
 import Area from "@/models/Area";
 import { generateSlug } from "@/lib/helpers/slugHelper";
-import { saveUploadedFile, deleteLocalFile } from "@/lib/middleware/parseForm";
+import { paginate } from "@/server/utils/paginate";
 
 /**
- * Safely parse JSON fields if they are strings
+ * Helper: resolve city/area if caller passed a string name instead of ObjectId.
+ * Returns { cityId, areaId } (may be same as input if already ObjectIds)
  */
-function parseJSONFields(fields) {
-  const copy = { ...fields };
-  ["contacts", "prayerTimings", "location"].forEach((key) => {
-    if (copy[key] && typeof copy[key] === "string") {
-      try {
-        copy[key] = JSON.parse(copy[key]);
-      } catch (err) {
-        throw new Error(`Invalid JSON format for ${key}`);
-      }
-    }
-  });
-  return copy;
+async function resolveCityAreaIds({ city, area }) {
+  let cityId = city;
+  let areaId = area;
+
+  if (city && typeof city === "string" && !mongoose.isValidObjectId(city)) {
+    const foundCity = await City.findOne({
+      name: { $regex: `^${city}$`, $options: "i" },
+    });
+    if (!foundCity) throw new Error(`City not found: ${city}`);
+    cityId = foundCity._id;
+  }
+
+  if (area && typeof area === "string" && !mongoose.isValidObjectId(area)) {
+    // try by name within resolved city if possible
+    const areaQuery = { name: { $regex: `^${area}$`, $options: "i" } };
+    if (cityId) areaQuery.city = cityId;
+    const foundArea = await Area.findOne(areaQuery);
+    if (!foundArea) throw new Error(`Area not found: ${area}`);
+    areaId = foundArea._id;
+  }
+
+  return { cityId, areaId };
 }
 
-// ---------------- CREATE ----------------
-export async function createMasjidController({ fields = {}, file, user }) {
+/**
+ * Create Masjid (JSON)
+ * Expects JSON body with fields matching Masjid model.
+ * imageUrl should be a string (Cloudinary or remote URL) if provided.
+ */
+export async function createMasjidController({ body = {}, user }) {
   try {
-    const b = parseJSONFields(fields);
+    // Copy fields
+    const b = { ...body };
 
-    // Handle uploaded image
-    if (file) b.imageUrl = await saveUploadedFile(file, "uploads/masjids");
-
-    // Resolve city/area IDs if strings
-    if (b.city && !mongoose.isValidObjectId(b.city)) {
-      const city = await City.findOne({ name: b.city });
-      if (!city) return { status: 404, json: { message: "City not found" } };
-      b.city = city._id;
-    }
-    if (b.area && !mongoose.isValidObjectId(b.area)) {
-      const area = await Area.findOne({ name: b.area });
-      if (!area) return { status: 404, json: { message: "Area not found" } };
-      b.area = area._id;
+    // Resolve city/area IDs if passed as names
+    try {
+      const resolved = await resolveCityAreaIds({ city: b.city, area: b.area });
+      if (resolved.cityId) b.city = resolved.cityId;
+      if (resolved.areaId) b.area = resolved.areaId;
+    } catch (err) {
+      return { status: 404, json: { success: false, message: err.message } };
     }
 
     // Validate required fields
-    if (!b.name)
-      return { status: 400, json: { message: "Masjid name is required" } };
-    if (!b.location?.coordinates?.length === 2)
+    if (!b.name) {
+      return { status: 400, json: { success: false, message: "Masjid name is required" } };
+    }
+
+    if (!b.city) {
+      return { status: 400, json: { success: false, message: "City is required" } };
+    }
+
+    if (!b.area) {
+      return { status: 400, json: { success: false, message: "Area is required" } };
+    }
+
+    if (!Array.isArray(b.location?.coordinates) || b.location.coordinates.length !== 2) {
       return {
         status: 400,
-        json: { message: "`location.coordinates` must be [lng, lat]" },
+        json: { success: false, message: "`location.coordinates` must be an array [lng, lat]" },
       };
+    }
 
-    // Slug uniqueness
+    // Slug uniqueness per area
     const slug = generateSlug(b.name);
     const exists = await Masjid.findOne({ slug, area: b.area });
     if (exists) {
-      if (b.imageUrl) deleteLocalFile(b.imageUrl, "uploads/masjids");
-      return {
-        status: 400,
-        json: { message: "Another masjid exists in this area" },
-      };
+      return { status: 400, json: { success: false, message: "Another masjid exists in this area" } };
     }
 
-    const masjidData = { ...b, slug, createdBy: user?._id };
+    const masjidData = {
+      ...b,
+      slug,
+      createdBy: user?._id,
+    };
+
     const masjid = await Masjid.create(masjidData);
 
-    return {
-      status: 201,
-      json: { message: "Masjid created successfully", masjid },
-    };
+    return { status: 201, json: { success: true, message: "Masjid created successfully", data: masjid } };
   } catch (err) {
-    console.error("createMasjidController:", err);
-    return {
-      status: 500,
-      json: { message: "Create Masjid failed", error: err.message },
-    };
+    console.error("createMasjidController error:", err);
+    return { status: 500, json: { success: false, message: "Create Masjid failed", error: err.message } };
   }
 }
 
-// ---------------- GET ALL ----------------
-export async function getAllMasjidsController() {
+/**
+ * Get paginated list of masjids
+ * Supports: page, limit, search, cityId, areaId
+ */
+export async function getAllMasjidsController({ query } = {}) {
   try {
-    const masjids = await Masjid.find()
-      .populate({ path: "city", select: "name" })
-      .populate({ path: "area", select: "name" });
+    const { page, limit, search, cityId, areaId } = query || {};
+    const filter = {};
 
-    const result = masjids.map((m) => ({
-      _id: m._id,
-      name: m.name,
-      city: m.city?.name || null,
-      area: m.area?.name || null,
-      address: m.address || "",
-      phone: m.phone || "",
-      image: m.imageUrl || "",
-      contacts: m.contacts || [],
-      prayerTimings: m.prayerTimings || [],
-      location: m.location || null,
-    }));
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { address: { $regex: search, $options: "i" } },
+      ];
+    }
 
-    return { status: 200, json: result };
+    if (cityId && mongoose.isValidObjectId(cityId)) filter.city = cityId;
+    if (areaId && mongoose.isValidObjectId(areaId)) filter.area = areaId;
+
+    // Use populate so frontend receives city/area objects (name + _id)
+    const result = await paginate(Masjid, {
+      page,
+      limit,
+      filter,
+      populate: [
+        { path: "city", select: "name" },
+        { path: "area", select: "name" },
+      ],
+      sort: { createdAt: -1 },
+    });
+
+    // Optionally flatten some fields for list convenience (maintain full object in data)
+    // We'll keep data as-is (populated objects) so frontend can show both id and name.
+    return result;
   } catch (err) {
-    console.error("getAllMasjidsController:", err);
-    return {
-      status: 500,
-      json: { message: "Server error", error: err.message },
-    };
+    console.error("getAllMasjidsController error:", err);
+    return { status: 500, json: { success: false, message: "Server error", error: err.message } };
   }
 }
 
-// ---------------- GET SINGLE ----------------
+/**
+ * Get single masjid (populated)
+ */
 export async function getMasjidController({ id }) {
   try {
-    if (!mongoose.isValidObjectId(id))
-      return { status: 400, json: { message: "Invalid Masjid ID" } };
+    if (!mongoose.isValidObjectId(id)) {
+      return { status: 400, json: { success: false, message: "Invalid Masjid ID" } };
+    }
+
     const masjid = await Masjid.findById(id).populate("city area");
-    if (!masjid) return { status: 404, json: { message: "Masjid not found" } };
-    return { status: 200, json: masjid };
+    if (!masjid) return { status: 404, json: { success: false, message: "Masjid not found" } };
+
+    return { status: 200, json: { success: true, data: masjid } };
   } catch (err) {
-    console.error("getMasjidController:", err);
-    return {
-      status: 500,
-      json: { message: "Server error", error: err.message },
-    };
+    console.error("getMasjidController error:", err);
+    return { status: 500, json: { success: false, message: "Server error", error: err.message } };
   }
 }
 
-// ---------------- UPDATE ----------------
-export async function updateMasjidController({ id, fields = {}, file, user }) {
+/**
+ * Update masjid (JSON)
+ */
+export async function updateMasjidController({ id, body = {}, user }) {
   try {
     if (!mongoose.isValidObjectId(id))
-      return { status: 400, json: { message: "Invalid Masjid ID" } };
+      return { status: 400, json: { success: false, message: "Invalid Masjid ID" } };
+
     const masjid = await Masjid.findById(id);
-    if (!masjid) return { status: 404, json: { message: "Masjid not found" } };
+    if (!masjid) return { status: 404, json: { success: false, message: "Masjid not found" } };
 
-    const b = parseJSONFields(fields);
+    const b = { ...body };
 
-    // Resolve city/area if string
-    if (b.city && !mongoose.isValidObjectId(b.city)) {
-      const city = await City.findOne({ name: b.city });
-      if (!city) return { status: 404, json: { message: "City not found" } };
-      b.city = city._id;
-    }
-    if (b.area && !mongoose.isValidObjectId(b.area)) {
-      const area = await Area.findOne({ name: b.area });
-      if (!area) return { status: 404, json: { message: "Area not found" } };
-      b.area = area._id;
+    // Resolve city/area if string names
+    try {
+      const resolved = await resolveCityAreaIds({ city: b.city, area: b.area });
+      if (resolved.cityId) b.city = resolved.cityId;
+      if (resolved.areaId) b.area = resolved.areaId;
+    } catch (err) {
+      return { status: 404, json: { success: false, message: err.message } };
     }
 
-    // Handle uploaded image
-    if (file) {
-      const newFilename = await saveUploadedFile(file, "uploads/masjids");
-      if (masjid.imageUrl) deleteLocalFile(masjid.imageUrl, "uploads/masjids");
-      masjid.imageUrl = newFilename;
+    // Validate location if provided
+    if (b.location && (!Array.isArray(b.location.coordinates) || b.location.coordinates.length !== 2)) {
+      return { status: 400, json: { success: false, message: "`location.coordinates` must be [lng, lat]" } };
     }
 
-    // Update fields
-    Object.assign(masjid, b);
-
-    // Slug update if name changed
+    // If name changed, check slug uniqueness within area
     if (b.name && b.name !== masjid.name) {
       const newSlug = generateSlug(b.name);
       const existing = await Masjid.findOne({
         slug: newSlug,
-        area: masjid.area,
+        area: b.area || masjid.area,
         _id: { $ne: masjid._id },
       });
-      if (existing)
-        return {
-          status: 400,
-          json: { message: "Another masjid exists in this area" },
-        };
+      if (existing) {
+        return { status: 400, json: { success: false, message: "Another masjid exists in this area" } };
+      }
       masjid.slug = newSlug;
     }
+
+    // Update allowed fields (merge)
+    const updatable = [
+      "name",
+      "address",
+      "area",
+      "city",
+      "location",
+      "imageUrl",
+      "contacts",
+      "prayerTimings",
+      "timezone",
+      "description",
+    ];
+    updatable.forEach((k) => {
+      if (b[k] !== undefined) masjid[k] = b[k];
+    });
 
     masjid.updatedAt = new Date();
     await masjid.save();
 
-    return {
-      status: 200,
-      json: { message: "Masjid updated successfully", masjid },
-    };
+    const populated = await Masjid.findById(masjid._id).populate("city area");
+
+    return { status: 200, json: { success: true, message: "Masjid updated successfully", data: populated } };
   } catch (err) {
-    console.error("updateMasjidController:", err);
-    return {
-      status: 500,
-      json: { message: "Failed to update masjid", error: err.message },
-    };
+    console.error("updateMasjidController error:", err);
+    return { status: 500, json: { success: false, message: "Failed to update masjid", error: err.message } };
   }
 }
 
-// ---------------- DELETE ----------------
+/**
+ * Delete masjid
+ */
 export async function deleteMasjidController({ id }) {
   try {
     if (!mongoose.isValidObjectId(id))
-      return { status: 400, json: { message: "Invalid Masjid ID" } };
-    const masjid = await Masjid.findById(id);
-    if (!masjid) return { status: 404, json: { message: "Masjid not found" } };
+      return { status: 400, json: { success: false, message: "Invalid Masjid ID" } };
 
-    if (masjid.imageUrl) deleteLocalFile(masjid.imageUrl, "uploads/masjids");
+    const masjid = await Masjid.findById(id);
+    if (!masjid) return { status: 404, json: { success: false, message: "Masjid not found" } };
+
     await Masjid.findByIdAndDelete(id);
 
-    return { status: 200, json: { message: "Masjid deleted successfully" } };
+    return { status: 200, json: { success: true, message: "Masjid deleted successfully" } };
   } catch (err) {
-    console.error("deleteMasjidController:", err);
-    return {
-      status: 500,
-      json: { message: "Server error", error: err.message },
-    };
+    console.error("deleteMasjidController error:", err);
+    return { status: 500, json: { success: false, message: "Server error", error: err.message } };
   }
 }

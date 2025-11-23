@@ -1,10 +1,11 @@
 // src/app/api/super-admin/prayer-timings/generate/route.js
 
-import { generateDailyTimingsController } from "@/server/controllers/superadmin/generalPrayerTimings.controller";
-import { withAuth } from "@/server/utils/withAuth";
+import { withAuth } from "@/lib/middleware/withAuth";
+import { generateTimingsForRange } from "@/server/controllers/superadmin/generalPrayerTimings.controller";
 
-export const POST = withAuth("super_admin", async ({ request, user }) => {
+export const POST = withAuth("super_admin", async ({ request }) => {
   const body = await request.json();
-  const res = await generateDailyTimingsController({ body, user });
+
+  const res = await generateTimingsForRange(body);
   return res;
 });

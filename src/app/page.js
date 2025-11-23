@@ -176,8 +176,24 @@ export default function ClientHome() {
             const m = nearest[0];
             // m may include only minimal fields (id, coords) depending on endpoint
             // set selected city/area and then fetch full details
-            setSelectedCity(m.cityId || m.city || "");
-            setSelectedArea(m.areaId || m.area || "");
+            // ensure ID only
+            const cityId =
+            typeof m.cityId === "string"
+            ? m.cityId
+            : typeof m.city === "object"
+            ? m.city._id
+            : m.city || "";
+
+            const areaId =
+            typeof m.areaId === "string"
+            ? m.areaId
+            : typeof m.area === "object"
+            ? m.area._id
+            : m.area || "";
+
+            setSelectedCity(cityId);
+            setSelectedArea(areaId);
+
             setLoadingLocation(false);
 
             try {
@@ -329,12 +345,14 @@ export default function ClientHome() {
           selectedArea={selectedArea}
           selectedMasjid={selectedMasjid}
           setSelectedCity={(c) => {
+            const id = typeof c === "object" ? c._id : c; 
             setSelectedCity(c);
             setSelectedArea("");
             setMasjids([]);
             setSelectedMasjid(null);
           }}
           setSelectedArea={(a) => {
+            const id = typeof a === "object" ? a._id : a;
             setSelectedArea(a);
             setSelectedMasjid(null);
           }}

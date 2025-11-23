@@ -1,15 +1,16 @@
 // src/server/controllers/superadmin/areas.controller.js
+// src/server/controllers/superadmin/areas.controller.js
 import mongoose from "mongoose";
 import Area from "@/models/Area";
 import City from "@/models/City";
 import { generateSlug } from "@/lib/helpers/slugHelper";
+import { paginate } from "@/server/utils/paginate";
 
 export async function createAreaController({ body }) {
   const { name, city, center } = body;
 
-  // Validate required fields
   if (!name || !city) {
-    return { status: 400, json: { message: "Name and city are required" } };
+    return { status: 400, json: { success: false, message: "Name and city are required" } };
   }
 
   let cityId = city;
@@ -23,28 +24,27 @@ export async function createAreaController({ body }) {
     if (!foundCity) {
       return {
         status: 404,
-        json: { message: `City not found: ${city}` },
+        json: { success: false, message: `City not found: ${city}` },
       };
     }
 
     cityId = foundCity._id;
   }
 
-  // Generate slug
   const slug = generateSlug(name);
 
-  // Check existing slug in same city
+  // Ensure uniqueness per city
   const existingSlug = await Area.findOne({ slug, city: cityId });
   if (existingSlug) {
     return {
       status: 400,
       json: {
+        success: false,
         message: `Another area with a similar name already exists in this city (${name})`,
       },
     };
   }
 
-  // Create area
   const newArea = await Area.create({
     name,
     city: cityId,
@@ -54,28 +54,47 @@ export async function createAreaController({ body }) {
 
   return {
     status: 201,
-    json: {
-      message: "Area created successfully",
-      data: newArea,
-    },
+    json: { success: true, message: "Area created successfully", data: newArea },
   };
 }
 
 export async function getAreaController({ id }) {
-  const area = await Area.findById(id);
-  if (!area) return { status: 404, json: { message: "Area not found" } };
-  return { status: 200, json: area };
+  const area = await Area.findById(id).populate("city");
+  if (!area) return { status: 404, json: { success: false, message: "Area not found" } };
+  return { status: 200, json: { success: true, data: area } };
 }
 
-export async function getAreasController() {
-  const areas = await Area.find().populate("city");
-  return { status: 200, json: areas };
+/**
+ * Paginated list of areas
+ * Accepts query: page, limit, search, cityId
+ */
+export async function getAreasController({ query } = {}) {
+  const { page, limit, search, cityId } = query || {};
+  const filter = {};
+
+  if (search) {
+    filter.name = { $regex: search, $options: "i" };
+  }
+
+  if (cityId) {
+    if (mongoose.isValidObjectId(cityId)) filter.city = cityId;
+    else filter["city.name"] = { $regex: cityId, $options: "i" }; // fallback (rare)
+  }
+
+  // We will populate city so frontend can show city.name easily
+  return paginate(Area, {
+    page,
+    limit,
+    filter,
+    populate: { path: "city", select: "name" },
+    sort: { createdAt: -1 },
+  });
 }
 
 export async function updateAreaController({ id, body }) {
   const { name, city, center } = body;
   const area = await Area.findById(id);
-  if (!area) return { status: 404, json: { message: "Area not found" } };
+  if (!area) return { status: 404, json: { success: false, message: "Area not found" } };
 
   if (name && name !== area.name) {
     const slug = generateSlug(name);
@@ -85,12 +104,7 @@ export async function updateAreaController({ id, body }) {
       _id: { $ne: id },
     });
     if (existingSlug)
-      return {
-        status: 400,
-        json: {
-          message: "Another area with this name already exists in this city",
-        },
-      };
+      return { status: 400, json: { success: false, message: "Another area with this name already exists in this city" } };
     area.name = name;
     area.slug = slug;
   }
@@ -99,10 +113,10 @@ export async function updateAreaController({ id, body }) {
   if (center) area.center = center;
 
   await area.save();
-  return { status: 200, json: { message: "Area updated successfully", area } };
+  return { status: 200, json: { success: true, message: "Area updated successfully", data: area } };
 }
 
 export async function deleteAreaController({ id }) {
   await Area.findByIdAndDelete(id);
-  return { status: 200, json: { message: "Area deleted" } };
+  return { status: 200, json: { success: true, message: "Area deleted" } };
 }

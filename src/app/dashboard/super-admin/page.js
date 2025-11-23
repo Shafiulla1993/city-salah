@@ -1,47 +1,59 @@
 // src/app/dashboard/super-admin/page.js
+
 "use client";
 
 import React, { useEffect, useState } from "react";
-import SuperAdminDashboard from "@/components/sAdminDashbaord/dashboard";
+import StatsCards from "./components/StatsCards";
+import QuickActions from "./components/QuickActions";
 import { adminAPI } from "@/lib/api/sAdmin";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import StatsCardsSkeleton from "./components/skeletons/StatsCardsSkeleton";
+import QuickActionsSkeleton from "./components/skeletons/QuickActionsSkeleton";
+import AdminCard from "@/components/admin/AdminCard";
 
-export default function SuperAdminPage() {
-  const [cities, setCities] = useState([]);
-  const [areas, setAreas] = useState([]);
-  const [masjids, setMasjids] = useState([]);
-  const [users, setUsers] = useState([]);
+export default function SuperAdminHome() {
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const citiesData = await adminAPI.getCities();
-        const areasData = await adminAPI.getAreas();
-        const masjidsData = await adminAPI.getMasjids();
-        const usersData = await adminAPI.getUsers();
+    let mounted = true;
 
-        setCities(citiesData || []);
-        setAreas(areasData || []);
-        setMasjids(masjidsData || []);
-        setUsers(usersData || []);
+    async function load() {
+      setLoading(true);
+      try {
+        const data = await adminAPI.getDashboard();
+        if (!mounted) return;
+        setStats(data);
       } catch (err) {
-        console.error(err);
+        console.error("Dashboard fetch error:", err);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
 
-    fetchData();
+    load();
+    return () => (mounted = false);
   }, []);
 
-  if (loading) return <div className="p-4">Loading...</div>;
-
   return (
-    <SuperAdminDashboard
-      cities={cities}
-      areas={areas}
-      masjids={masjids}
-      users={users}
-    />
+    <ProtectedRoute role="super_admin">
+      <div className="space-y-6">
+        <header>
+          <h1 className="text-2xl font-bold text-slate-800">Super Admin Dashboard</h1>
+        </header>
+
+        <AdminCard>
+          {loading ? <StatsCardsSkeleton /> : <StatsCards stats={stats} />}
+        </AdminCard>
+
+        <AdminCard title="Quick Actions">
+          {loading ? <QuickActionsSkeleton /> : <QuickActions />}
+        </AdminCard>
+
+        <AdminCard title="Recent Activity">
+          <p className="text-gray-600">(coming soon)</p>
+        </AdminCard>
+      </div>
+    </ProtectedRoute>
   );
 }
