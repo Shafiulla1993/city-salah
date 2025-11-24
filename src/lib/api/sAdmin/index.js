@@ -25,24 +25,30 @@ export const adminAPI = {
   getUserById: (id) => httpFetch(`/super-admin/users/${id}`),
   createUser: (data) => send(`/super-admin/users`, "POST", data),
   updateUser: (id, data) => send(`/super-admin/users/${id}`, "PUT", data),
-  deleteUser: (id) => httpFetch(`/super-admin/users/${id}`, { method: "DELETE" }),
+  deleteUser: (id) =>
+    httpFetch(`/super-admin/users/${id}`, { method: "DELETE" }),
 
   /** ------------------- CITIES ------------------- **/
   getCities: () => httpFetch(`/super-admin/cities`),
   getCityById: (id) => httpFetch(`/super-admin/cities/${id}`),
   createCity: (data) => send(`/super-admin/cities`, "POST", data),
   updateCity: (id, data) => send(`/super-admin/cities/${id}`, "PUT", data),
-  deleteCity: (id) => httpFetch(`/super-admin/cities/${id}`, { method: "DELETE" }),
+  checkCityDeleteSafe: (id) =>
+    httpFetch(`/super-admin/cities/${id}/can-delete`),
+  deleteCity: (id) =>
+    httpFetch(`/super-admin/cities/${id}`, { method: "DELETE" }),
 
   /** ------------------- AREAS ------------------- **/
-  getAreas: () => httpFetch(`/super-admin/areas`),
+  getAreas: (query = "") => httpFetch(`/super-admin/areas${query}`),
   getAreaById: (id) => httpFetch(`/super-admin/areas/${id}`),
   createArea: (data) => send(`/super-admin/areas`, "POST", data),
   updateArea: (id, data) => send(`/super-admin/areas/${id}`, "PUT", data),
-  deleteArea: (id) => httpFetch(`/super-admin/areas/${id}`, { method: "DELETE" }),
+  deleteArea: (id) =>
+    httpFetch(`/super-admin/areas/${id}`, { method: "DELETE" }),
+  checkAreaDeleteSafe: (id) => httpFetch(`/super-admin/areas/${id}/can-delete`),
 
   /** ------------------- MASJIDS ------------------- **/
-  getMasjids: () => httpFetch(`/super-admin/masjids`),
+  getMasjids: (query = "") => httpFetch(`/super-admin/masjids${query}`),
   getMasjidById: (id) => httpFetch(`/super-admin/masjids/${id}`),
   createMasjid: (data) => send(`/super-admin/masjids`, "POST", data), // supports FormData
   updateMasjid: (id, data) => send(`/super-admin/masjids/${id}`, "PUT", data),
@@ -76,11 +82,9 @@ export const adminAPI = {
     httpFetch(`/super-admin/thoughts/${id}`, { method: "DELETE" }),
 
   /** ------------------- PRAYER TIMINGS ------------------- **/
-  getTimings: (query = "") =>
-    httpFetch(`/super-admin/prayer-timings${query}`),
+  getTimings: (query = "") => httpFetch(`/super-admin/prayer-timings${query}`),
 
-  getTimingById: (id) =>
-    httpFetch(`/super-admin/prayer-timings/${id}`),
+  getTimingById: (id) => httpFetch(`/super-admin/prayer-timings/${id}`),
 
   updateTimingOffset: (data) =>
     send(`/super-admin/prayer-timings/update-offsets`, "POST", data),

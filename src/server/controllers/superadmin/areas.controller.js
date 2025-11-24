@@ -1,5 +1,4 @@
 // src/server/controllers/superadmin/areas.controller.js
-// src/server/controllers/superadmin/areas.controller.js
 import mongoose from "mongoose";
 import Area from "@/models/Area";
 import City from "@/models/City";
@@ -10,7 +9,10 @@ export async function createAreaController({ body }) {
   const { name, city, center } = body;
 
   if (!name || !city) {
-    return { status: 400, json: { success: false, message: "Name and city are required" } };
+    return {
+      status: 400,
+      json: { success: false, message: "Name and city are required" },
+    };
   }
 
   let cityId = city;
@@ -54,13 +56,18 @@ export async function createAreaController({ body }) {
 
   return {
     status: 201,
-    json: { success: true, message: "Area created successfully", data: newArea },
+    json: {
+      success: true,
+      message: "Area created successfully",
+      data: newArea,
+    },
   };
 }
 
 export async function getAreaController({ id }) {
   const area = await Area.findById(id).populate("city");
-  if (!area) return { status: 404, json: { success: false, message: "Area not found" } };
+  if (!area)
+    return { status: 404, json: { success: false, message: "Area not found" } };
   return { status: 200, json: { success: true, data: area } };
 }
 
@@ -87,14 +94,15 @@ export async function getAreasController({ query } = {}) {
     limit,
     filter,
     populate: { path: "city", select: "name" },
-    sort: { createdAt: -1 },
+    sort: { createdAt: -1, _id: -1 },
   });
 }
 
 export async function updateAreaController({ id, body }) {
   const { name, city, center } = body;
   const area = await Area.findById(id);
-  if (!area) return { status: 404, json: { success: false, message: "Area not found" } };
+  if (!area)
+    return { status: 404, json: { success: false, message: "Area not found" } };
 
   if (name && name !== area.name) {
     const slug = generateSlug(name);
@@ -104,7 +112,13 @@ export async function updateAreaController({ id, body }) {
       _id: { $ne: id },
     });
     if (existingSlug)
-      return { status: 400, json: { success: false, message: "Another area with this name already exists in this city" } };
+      return {
+        status: 400,
+        json: {
+          success: false,
+          message: "Another area with this name already exists in this city",
+        },
+      };
     area.name = name;
     area.slug = slug;
   }
@@ -113,10 +127,51 @@ export async function updateAreaController({ id, body }) {
   if (center) area.center = center;
 
   await area.save();
-  return { status: 200, json: { success: true, message: "Area updated successfully", data: area } };
+  return {
+    status: 200,
+    json: { success: true, message: "Area updated successfully", data: area },
+  };
 }
 
 export async function deleteAreaController({ id }) {
   await Area.findByIdAndDelete(id);
   return { status: 200, json: { success: true, message: "Area deleted" } };
+}
+
+export async function canDeleteAreaController({ id }) {
+  try {
+    if (!id) {
+      return {
+        status: 400,
+        json: { success: false, message: "Area ID required" },
+      };
+    }
+
+    // Count linked masjids
+    const linkedMasjids = await Masjid.countDocuments({
+      area: id,
+    });
+
+    // Count linked users
+    const linkedUsers = await User.countDocuments({
+      area: id,
+    });
+
+    const canDelete = linkedMasjids === 0 && linkedUsers === 0;
+
+    return {
+      status: 200,
+      json: {
+        success: true,
+        canDelete,
+        linkedMasjids,
+        linkedUsers,
+      },
+    };
+  } catch (err) {
+    return {
+      status: 500,
+      json: { success: false, message: "Server error", error: err.message },
+    };
+  }
 }

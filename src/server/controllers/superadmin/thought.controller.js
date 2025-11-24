@@ -13,7 +13,7 @@ export async function getThoughtsController({ query = {} }) {
       search,
       activeOnly,
       startDate,
-      endDate
+      endDate,
     } = query;
 
     const filter = {};
@@ -45,8 +45,8 @@ export async function getThoughtsController({ query = {} }) {
       page,
       limit,
       filter,
-      sort: { startDate: -1 },
-      populate: { path: "createdBy", select: "name email" }
+      sort: { createdAt: -1, _id: -1 },
+      populate: { path: "createdBy", select: "name email" },
     });
 
     return { status: 200, json: { success: true, ...result } };
@@ -65,14 +65,14 @@ export async function getActiveThoughtController() {
 
     const thought = await ThoughtOfDay.findOne({
       startDate: { $lte: now },
-      endDate: { $gte: now }
+      endDate: { $gte: now },
     })
       .sort({ startDate: -1 }) // latest starting wins
       .lean();
 
     return {
       status: 200,
-      json: { success: true, data: thought || null }
+      json: { success: true, data: thought || null },
     };
   } catch (err) {
     console.error("getActiveThoughtController:", err);
@@ -105,14 +105,29 @@ export async function createThoughtController({ body, user }) {
   try {
     const { text, startDate, endDate, images } = body;
 
-    if (!text) return { status: 400, json: { success: false, message: "Text required" } };
-    if (!startDate) return { status: 400, json: { success: false, message: "startDate required" } };
-    if (!endDate) return { status: 400, json: { success: false, message: "endDate required" } };
+    if (!text)
+      return {
+        status: 400,
+        json: { success: false, message: "Text required" },
+      };
+    if (!startDate)
+      return {
+        status: 400,
+        json: { success: false, message: "startDate required" },
+      };
+    if (!endDate)
+      return {
+        status: 400,
+        json: { success: false, message: "endDate required" },
+      };
 
     const s = new Date(startDate);
     const e = new Date(endDate);
     if (s > e) {
-      return { status: 400, json: { success: false, message: "startDate must be <= endDate" } };
+      return {
+        status: 400,
+        json: { success: false, message: "startDate must be <= endDate" },
+      };
     }
 
     const doc = await ThoughtOfDay.create({
@@ -120,10 +135,13 @@ export async function createThoughtController({ body, user }) {
       images: Array.isArray(images) ? images : images ? [images] : [],
       startDate: s,
       endDate: e,
-      createdBy: user._id
+      createdBy: user._id,
     });
 
-    return { status: 201, json: { success: true, message: "Created", data: doc } };
+    return {
+      status: 201,
+      json: { success: true, message: "Created", data: doc },
+    };
   } catch (err) {
     console.error("createThought:", err);
     return { status: 500, json: { success: false, message: "Server error" } };
@@ -136,7 +154,8 @@ export async function createThoughtController({ body, user }) {
 export async function updateThoughtController({ id, body, user }) {
   try {
     const thought = await ThoughtOfDay.findById(id);
-    if (!thought) return { status: 404, json: { success: false, message: "Not found" } };
+    if (!thought)
+      return { status: 404, json: { success: false, message: "Not found" } };
 
     const { text, startDate, endDate, images } = body;
 
@@ -144,18 +163,29 @@ export async function updateThoughtController({ id, body, user }) {
 
     if (startDate) {
       const s = new Date(startDate);
-      if (isNaN(s)) return { status: 400, json: { success: false, message: "Invalid startDate" } };
+      if (isNaN(s))
+        return {
+          status: 400,
+          json: { success: false, message: "Invalid startDate" },
+        };
       thought.startDate = s;
     }
 
     if (endDate) {
       const e = new Date(endDate);
-      if (isNaN(e)) return { status: 400, json: { success: false, message: "Invalid endDate" } };
+      if (isNaN(e))
+        return {
+          status: 400,
+          json: { success: false, message: "Invalid endDate" },
+        };
       thought.endDate = e;
     }
 
     if (thought.startDate > thought.endDate) {
-      return { status: 400, json: { success: false, message: "startDate must be <= endDate" } };
+      return {
+        status: 400,
+        json: { success: false, message: "startDate must be <= endDate" },
+      };
     }
 
     if (images !== undefined) {
@@ -166,7 +196,10 @@ export async function updateThoughtController({ id, body, user }) {
     thought.updatedAt = new Date();
     await thought.save();
 
-    return { status: 200, json: { success: true, message: "Updated", data: thought } };
+    return {
+      status: 200,
+      json: { success: true, message: "Updated", data: thought },
+    };
   } catch (err) {
     console.error("updateThought:", err);
     return { status: 500, json: { success: false, message: "Server error" } };

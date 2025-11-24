@@ -36,7 +36,7 @@ export async function getUsersController({ query } = {}) {
         { path: "area", select: "name" },
         { path: "masjidId", select: "name" },
       ],
-      sort: { createdAt: -1 },
+      sort: { createdAt: -1, _id: -1 },
       projection: { password: 0 },
     });
 
@@ -45,7 +45,7 @@ export async function getUsersController({ query } = {}) {
       status: 200,
       json: {
         success: true,
-        data: result.json.data, 
+        data: result.json.data,
         pagination: {
           page: result.json.page,
           limit: result.json.limit,
@@ -66,21 +66,26 @@ export async function getUsersController({ query } = {}) {
   }
 }
 
-
 /**
  * Get single user (no password)
  */
 export async function getUserController({ id }) {
   try {
     if (!mongoose.isValidObjectId(id))
-      return { status: 400, json: { success: false, message: "Invalid user id" } };
+      return {
+        status: 400,
+        json: { success: false, message: "Invalid user id" },
+      };
 
     const user = await User.findById(id)
       .select("-password")
       .populate("city area masjidId");
 
     if (!user)
-      return { status: 404, json: { success: false, message: "User not found" } };
+      return {
+        status: 404,
+        json: { success: false, message: "User not found" },
+      };
 
     return { status: 200, json: { success: true, data: user } };
   } catch (err) {
@@ -97,7 +102,17 @@ export async function getUserController({ id }) {
  */
 export async function createUserController({ body = {} }) {
   try {
-    const { name, email, phone, password, city, area, role, masjidId, imageUrl } = body;
+    const {
+      name,
+      email,
+      phone,
+      password,
+      city,
+      area,
+      role,
+      masjidId,
+      imageUrl,
+    } = body;
 
     if (!name || !phone || !password || !city || !area) {
       return {
@@ -111,12 +126,18 @@ export async function createUserController({ body = {} }) {
 
     const existingPhone = await User.findOne({ phone });
     if (existingPhone)
-      return { status: 400, json: { success: false, message: "Phone already in use" } };
+      return {
+        status: 400,
+        json: { success: false, message: "Phone already in use" },
+      };
 
     if (email) {
       const existingEmail = await User.findOne({ email });
       if (existingEmail)
-        return { status: 400, json: { success: false, message: "Email already in use" } };
+        return {
+          status: 400,
+          json: { success: false, message: "Email already in use" },
+        };
     }
 
     // Resolve IDs
@@ -126,7 +147,10 @@ export async function createUserController({ body = {} }) {
         name: { $regex: `^${city}$`, $options: "i" },
       });
       if (!c)
-        return { status: 404, json: { success: false, message: `City not found: ${city}` } };
+        return {
+          status: 404,
+          json: { success: false, message: `City not found: ${city}` },
+        };
       cityId = c._id;
     }
 
@@ -137,7 +161,10 @@ export async function createUserController({ body = {} }) {
         city: cityId,
       });
       if (!a)
-        return { status: 404, json: { success: false, message: `Area not found: ${area}` } };
+        return {
+          status: 404,
+          json: { success: false, message: `Area not found: ${area}` },
+        };
       areaId = a._id;
     }
 
@@ -148,7 +175,10 @@ export async function createUserController({ body = {} }) {
       if (validMasjids.length !== masjidArray.length) {
         return {
           status: 400,
-          json: { success: false, message: "One or more masjidId values are invalid" },
+          json: {
+            success: false,
+            message: "One or more masjidId values are invalid",
+          },
         };
       }
     }
@@ -190,34 +220,53 @@ export async function createUserController({ body = {} }) {
 export async function updateUserController({ id, body = {} }) {
   try {
     if (!mongoose.isValidObjectId(id))
-      return { status: 400, json: { success: false, message: "Invalid user id" } };
+      return {
+        status: 400,
+        json: { success: false, message: "Invalid user id" },
+      };
 
     const user = await User.findById(id);
     if (!user)
-      return { status: 404, json: { success: false, message: "User not found" } };
+      return {
+        status: 404,
+        json: { success: false, message: "User not found" },
+      };
 
     if (body.phone && body.phone !== user.phone) {
       const existingPhone = await User.findOne({ phone: body.phone });
       if (existingPhone)
-        return { status: 400, json: { success: false, message: "Phone already in use" } };
+        return {
+          status: 400,
+          json: { success: false, message: "Phone already in use" },
+        };
     }
 
     if (body.email && body.email !== user.email) {
       const existingEmail = await User.findOne({ email: body.email });
       if (existingEmail)
-        return { status: 400, json: { success: false, message: "Email already in use" } };
+        return {
+          status: 400,
+          json: { success: false, message: "Email already in use" },
+        };
     }
 
     const allowedRoles = ["public", "masjid_admin", "super_admin"];
     if (body.role && !allowedRoles.includes(body.role))
-      return { status: 400, json: { success: false, message: "Invalid role value" } };
+      return {
+        status: 400,
+        json: { success: false, message: "Invalid role value" },
+      };
 
     // Resolve new city/area IDs
     if (body.city && !mongoose.isValidObjectId(body.city)) {
       const c = await City.findOne({
         name: { $regex: `^${body.city}$`, $options: "i" },
       });
-      if (!c) return { status: 404, json: { success: false, message: `City not found: ${body.city}` } };
+      if (!c)
+        return {
+          status: 404,
+          json: { success: false, message: `City not found: ${body.city}` },
+        };
       body.city = c._id;
     }
 
@@ -227,7 +276,10 @@ export async function updateUserController({ id, body = {} }) {
         city: body.city || user.city,
       });
       if (!a)
-        return { status: 404, json: { success: false, message: `Area not found: ${body.area}` } };
+        return {
+          status: 404,
+          json: { success: false, message: `Area not found: ${body.area}` },
+        };
       body.area = a._id;
     }
 
@@ -241,7 +293,10 @@ export async function updateUserController({ id, body = {} }) {
       if (validMasjids.length !== masjidArray.length) {
         return {
           status: 400,
-          json: { success: false, message: "One or more masjidId values are invalid" },
+          json: {
+            success: false,
+            message: "One or more masjidId values are invalid",
+          },
         };
       }
     }
@@ -296,7 +351,10 @@ export async function updateUserController({ id, body = {} }) {
 export async function deleteUserController({ id }) {
   try {
     if (!mongoose.isValidObjectId(id))
-      return { status: 400, json: { success: false, message: "Invalid user id" } };
+      return {
+        status: 400,
+        json: { success: false, message: "Invalid user id" },
+      };
 
     await User.findByIdAndDelete(id);
     return { status: 200, json: { success: true, message: "User deleted" } };

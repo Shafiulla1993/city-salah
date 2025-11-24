@@ -56,21 +56,36 @@ export async function createMasjidController({ body = {}, user }) {
 
     // Validate required fields
     if (!b.name) {
-      return { status: 400, json: { success: false, message: "Masjid name is required" } };
+      return {
+        status: 400,
+        json: { success: false, message: "Masjid name is required" },
+      };
     }
 
     if (!b.city) {
-      return { status: 400, json: { success: false, message: "City is required" } };
+      return {
+        status: 400,
+        json: { success: false, message: "City is required" },
+      };
     }
 
     if (!b.area) {
-      return { status: 400, json: { success: false, message: "Area is required" } };
-    }
-
-    if (!Array.isArray(b.location?.coordinates) || b.location.coordinates.length !== 2) {
       return {
         status: 400,
-        json: { success: false, message: "`location.coordinates` must be an array [lng, lat]" },
+        json: { success: false, message: "Area is required" },
+      };
+    }
+
+    if (
+      !Array.isArray(b.location?.coordinates) ||
+      b.location.coordinates.length !== 2
+    ) {
+      return {
+        status: 400,
+        json: {
+          success: false,
+          message: "`location.coordinates` must be an array [lng, lat]",
+        },
       };
     }
 
@@ -78,7 +93,10 @@ export async function createMasjidController({ body = {}, user }) {
     const slug = generateSlug(b.name);
     const exists = await Masjid.findOne({ slug, area: b.area });
     if (exists) {
-      return { status: 400, json: { success: false, message: "Another masjid exists in this area" } };
+      return {
+        status: 400,
+        json: { success: false, message: "Another masjid exists in this area" },
+      };
     }
 
     const masjidData = {
@@ -89,10 +107,24 @@ export async function createMasjidController({ body = {}, user }) {
 
     const masjid = await Masjid.create(masjidData);
 
-    return { status: 201, json: { success: true, message: "Masjid created successfully", data: masjid } };
+    return {
+      status: 201,
+      json: {
+        success: true,
+        message: "Masjid created successfully",
+        data: masjid,
+      },
+    };
   } catch (err) {
     console.error("createMasjidController error:", err);
-    return { status: 500, json: { success: false, message: "Create Masjid failed", error: err.message } };
+    return {
+      status: 500,
+      json: {
+        success: false,
+        message: "Create Masjid failed",
+        error: err.message,
+      },
+    };
   }
 }
 
@@ -124,7 +156,7 @@ export async function getAllMasjidsController({ query } = {}) {
         { path: "city", select: "name" },
         { path: "area", select: "name" },
       ],
-      sort: { createdAt: -1 },
+      sort: { createdAt: -1, _id: -1 },
     });
 
     // Optionally flatten some fields for list convenience (maintain full object in data)
@@ -132,7 +164,10 @@ export async function getAllMasjidsController({ query } = {}) {
     return result;
   } catch (err) {
     console.error("getAllMasjidsController error:", err);
-    return { status: 500, json: { success: false, message: "Server error", error: err.message } };
+    return {
+      status: 500,
+      json: { success: false, message: "Server error", error: err.message },
+    };
   }
 }
 
@@ -142,16 +177,26 @@ export async function getAllMasjidsController({ query } = {}) {
 export async function getMasjidController({ id }) {
   try {
     if (!mongoose.isValidObjectId(id)) {
-      return { status: 400, json: { success: false, message: "Invalid Masjid ID" } };
+      return {
+        status: 400,
+        json: { success: false, message: "Invalid Masjid ID" },
+      };
     }
 
     const masjid = await Masjid.findById(id).populate("city area");
-    if (!masjid) return { status: 404, json: { success: false, message: "Masjid not found" } };
+    if (!masjid)
+      return {
+        status: 404,
+        json: { success: false, message: "Masjid not found" },
+      };
 
     return { status: 200, json: { success: true, data: masjid } };
   } catch (err) {
     console.error("getMasjidController error:", err);
-    return { status: 500, json: { success: false, message: "Server error", error: err.message } };
+    return {
+      status: 500,
+      json: { success: false, message: "Server error", error: err.message },
+    };
   }
 }
 
@@ -161,10 +206,17 @@ export async function getMasjidController({ id }) {
 export async function updateMasjidController({ id, body = {}, user }) {
   try {
     if (!mongoose.isValidObjectId(id))
-      return { status: 400, json: { success: false, message: "Invalid Masjid ID" } };
+      return {
+        status: 400,
+        json: { success: false, message: "Invalid Masjid ID" },
+      };
 
     const masjid = await Masjid.findById(id);
-    if (!masjid) return { status: 404, json: { success: false, message: "Masjid not found" } };
+    if (!masjid)
+      return {
+        status: 404,
+        json: { success: false, message: "Masjid not found" },
+      };
 
     const b = { ...body };
 
@@ -178,8 +230,18 @@ export async function updateMasjidController({ id, body = {}, user }) {
     }
 
     // Validate location if provided
-    if (b.location && (!Array.isArray(b.location.coordinates) || b.location.coordinates.length !== 2)) {
-      return { status: 400, json: { success: false, message: "`location.coordinates` must be [lng, lat]" } };
+    if (
+      b.location &&
+      (!Array.isArray(b.location.coordinates) ||
+        b.location.coordinates.length !== 2)
+    ) {
+      return {
+        status: 400,
+        json: {
+          success: false,
+          message: "`location.coordinates` must be [lng, lat]",
+        },
+      };
     }
 
     // If name changed, check slug uniqueness within area
@@ -191,7 +253,13 @@ export async function updateMasjidController({ id, body = {}, user }) {
         _id: { $ne: masjid._id },
       });
       if (existing) {
-        return { status: 400, json: { success: false, message: "Another masjid exists in this area" } };
+        return {
+          status: 400,
+          json: {
+            success: false,
+            message: "Another masjid exists in this area",
+          },
+        };
       }
       masjid.slug = newSlug;
     }
@@ -218,10 +286,24 @@ export async function updateMasjidController({ id, body = {}, user }) {
 
     const populated = await Masjid.findById(masjid._id).populate("city area");
 
-    return { status: 200, json: { success: true, message: "Masjid updated successfully", data: populated } };
+    return {
+      status: 200,
+      json: {
+        success: true,
+        message: "Masjid updated successfully",
+        data: populated,
+      },
+    };
   } catch (err) {
     console.error("updateMasjidController error:", err);
-    return { status: 500, json: { success: false, message: "Failed to update masjid", error: err.message } };
+    return {
+      status: 500,
+      json: {
+        success: false,
+        message: "Failed to update masjid",
+        error: err.message,
+      },
+    };
   }
 }
 
@@ -231,16 +313,29 @@ export async function updateMasjidController({ id, body = {}, user }) {
 export async function deleteMasjidController({ id }) {
   try {
     if (!mongoose.isValidObjectId(id))
-      return { status: 400, json: { success: false, message: "Invalid Masjid ID" } };
+      return {
+        status: 400,
+        json: { success: false, message: "Invalid Masjid ID" },
+      };
 
     const masjid = await Masjid.findById(id);
-    if (!masjid) return { status: 404, json: { success: false, message: "Masjid not found" } };
+    if (!masjid)
+      return {
+        status: 404,
+        json: { success: false, message: "Masjid not found" },
+      };
 
     await Masjid.findByIdAndDelete(id);
 
-    return { status: 200, json: { success: true, message: "Masjid deleted successfully" } };
+    return {
+      status: 200,
+      json: { success: true, message: "Masjid deleted successfully" },
+    };
   } catch (err) {
     console.error("deleteMasjidController error:", err);
-    return { status: 500, json: { success: false, message: "Server error", error: err.message } };
+    return {
+      status: 500,
+      json: { success: false, message: "Server error", error: err.message },
+    };
   }
 }

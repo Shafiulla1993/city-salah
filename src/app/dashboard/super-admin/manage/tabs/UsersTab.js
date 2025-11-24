@@ -1,102 +1,169 @@
 // src/app/dashboard/super-admin/manage/tabs/UsersTab.js
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import AdminButton from "@/components/admin/AdminButton";
+import { useEffect, useState, useRef } from "react";
+import { adminAPI } from "@/lib/api/sAdmin";
 import UsersTable from "../modules/users/UsersTable";
 import UsersSkeleton from "../modules/users/UsersSkeleton";
-import AddUserModal from "../modules/users/AddUserModal";
-import { useInfiniteUsers } from "../modules/users/useInfiniteUsers";
-import { notify } from "@/lib/toast";
 
 export default function UsersTab() {
-  const [createOpen, setCreateOpen] = useState(false);
-  const {
-    users,
-    loading,
-    hasMore,
-    loadNext,
-    loadFirst,
-    setObserverRef,
-    resetAndLoad,
-    sort,
-    setSort,
-  } = useInfiniteUsers({ initialSort: "-createdAt", limit: 10 });
+  const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState([]);
 
-  const sentinelRef = useRef(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
-  useEffect(() => {
-    // initial load
-    loadFirst();
-  }, []);
+  const [sort, setSort] = useState("-createdAt");
+  const [search, setSearch] = useState("");
 
-  useEffect(() => {
-    setObserverRef(sentinelRef.current);
-  }, [sentinelRef.current]);
+  const loaderRef = useRef();
 
-  function onUserCreated() {
-    notify.success("User created");
-    resetAndLoad(); // reload from page 1
+  async function loadUsers(pageToLoad = page) {
+    if (loading || !hasMore) return;
+    if (pageToLoad === 1 && users.length > 0) return; // 🚫 stop double load
+
+    setLoading(true);
+
+    try {
+      const res = await adminAPI.getUsers(
+        `?page=${pageToLoad}&limit=10&sort=${sort}&search=${search}`
+      );
+
+      const newData = res?.data ?? [];
+
+      if (newData.length < 10) setHasMore(false);
+
+      setUsers((prev) => {
+        const merged = [...prev, ...newData];
+        // remove duplicates
+        return Array.from(new Map(merged.map((u) => [u._id, u])).values());
+      });
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function onUserUpdated(updated) {
-    // optimistic: replace item in the list
-    // We simply reload from first page to be safe
-    resetAndLoad();
-    notify.success("User updated");
+  // reset when filters change
+  useEffect(() => {
+    setUsers([]);
+    setPage(1);
+    setHasMore(true);
+  }, [sort, search]);
+
+  // load when page changes
+  useEffect(() => {
+    loadUsers();
+  }, [page]);
+
+  async function loadUsers() {
+    if (loading || !hasMore) return;
+
+    setLoading(true);
+
+    try {
+      const res = await adminAPI.getUsers(
+        `?page=${page}&limit=10&sort=${sort}&search=${search}`
+      );
+
+      const newData = res?.data ?? [];
+
+      if (newData.length < 10) setHasMore(false);
+
+      setUsers((prev) => {
+        const merged = [...prev, ...newData];
+
+        // Remove duplicates by `_id`
+        return Array.from(new Map(merged.map((u) => [u._id, u])).values());
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function onUserDeleted(id) {
-    // reload to reflect deletion
-    resetAndLoad();
-    notify.success("User deleted");
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          setPage((p) => p + 1);
+        }
+      },
+      { threshold: 1 }
+    );
+
+    if (loaderRef.current) observer.observe(loaderRef.current);
+
+    return () => observer.disconnect();
+  }, [loaderRef, hasMore, loading]);
+
+  function handleSortChange(e) {
+    setSort(e.target.value);
+    setPage(1);
+    setUsers([]);
+    setHasMore(true);
+  }
+
+  function handleSearchChange(e) {
+    setSearch(e.target.value);
+    setPage(1);
+    setUsers([]);
+    setHasMore(true);
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-slate-800">Manage Users</h2>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <h2 className="text-xl font-semibold">Manage Users</h2>
 
-        <div className="flex items-center gap-3">
-          <select
-            value={sort}
-            onChange={(e) => {
-              setSort(e.target.value);
-              resetAndLoad(e.target.value);
-            }}
-            className="h-10 rounded-md border px-3 bg-slate-100/40"
-          >
-            <option value="name">Name A→Z</option>
-            <option value="-name">Name Z→A</option>
-            <option value="city">City</option>
-            <option value="area">Area</option>
-            <option value="-createdAt">Newest</option>
-            <option value="createdAt">Oldest</option>
-          </select>
-
-          <AdminButton onClick={() => setCreateOpen(true)}>+ Create User</AdminButton>
-        </div>
+        <button className="btn btn-primary btn-sm">+ Create User</button>
       </div>
 
-      {users.length === 0 && loading ? (
-        <UsersSkeleton />
-      ) : (
+      {/* Filters */}
+      <div className="flex gap-3">
+        <input
+          placeholder="Search by name"
+          value={search}
+          onChange={handleSearchChange}
+          className="border px-3 py-2 rounded-lg"
+        />
+
+        <select
+          value={sort}
+          onChange={handleSortChange}
+          className="border px-3 py-2 rounded-lg"
+        >
+          <option value="-createdAt">Newest</option>
+          <option value="createdAt">Oldest</option>
+          <option value="name">Name A→Z</option>
+          <option value="-name">Name Z→A</option>
+        </select>
+      </div>
+
+      <div className="bg-white rounded-xl shadow p-4">
         <UsersTable
           users={users}
-          onUserUpdated={onUserUpdated}
-          onUserDeleted={onUserDeleted}
+          onUserDeleted={(id) => {
+            setUsers((prev) => prev.filter((u) => u._id !== id));
+          }}
+          onUserUpdated={(updated) => {
+            setUsers((prev) =>
+              prev.map((u) => (u._id === updated._id ? updated : u))
+            );
+          }}
         />
-      )}
 
-      <div ref={sentinelRef} className="h-8" />
-
-      {loading && <div className="text-center py-4"><UsersSkeleton rows={3} /></div>}
-
-      {!hasMore && users.length > 0 && (
-        <p className="text-center text-gray-500">End of list</p>
-      )}
-
-      <AddUserModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={onUserCreated} />
+        {/* Infinite Scroll Loader */}
+        <div ref={loaderRef} className="py-6 text-center text-gray-400">
+          {loading
+            ? "Loading..."
+            : hasMore
+            ? "Scroll to load more"
+            : "No more users"}
+        </div>
+      </div>
     </div>
   );
 }

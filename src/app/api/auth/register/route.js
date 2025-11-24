@@ -1,3 +1,5 @@
+// src/app/api/auth/reisgter/route.js
+
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { registerUser } from "@/server/controllers/authController";

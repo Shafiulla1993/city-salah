@@ -10,8 +10,10 @@ import {
 } from "@/server/controllers/superadmin/users.controller";
 
 // GET /api/super-admin/users/:id
-export const GET = withAuth("super_admin", async (req, { params }) => {
+export const GET = withAuth("super_admin", async (req, ctx) => {
   await connectDB();
+
+  const params = await ctx.params;
 
   const result = await getUserController({ id: params.id });
 
@@ -19,8 +21,10 @@ export const GET = withAuth("super_admin", async (req, { params }) => {
 });
 
 // PUT /api/super-admin/users/:id
-export const PUT = withAuth("super_admin", async (req, { params }) => {
+export const PUT = withAuth("super_admin", async (req, ctx) => {
   await connectDB();
+
+  const params = await ctx.params;
 
   const body = await req.json().catch(() => ({}));
 
@@ -30,8 +34,10 @@ export const PUT = withAuth("super_admin", async (req, { params }) => {
 });
 
 // DELETE /api/super-admin/users/:id
-export const DELETE = withAuth("super_admin", async (req, { params }) => {
+export const DELETE = withAuth("super_admin", async (req, ctx) => {
   await connectDB();
+
+  const params = await ctx.params;
 
   const result = await deleteUserController({ id: params.id });
 
