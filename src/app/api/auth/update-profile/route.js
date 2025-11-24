@@ -16,13 +16,27 @@ export async function PATCH(req) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const { name, phone, city, area, password } = await req.json();
+  const { name, phone, city, area, email, password } = await req.json();
+
+  if (email) {
+    const emailExists = await User.findOne({
+      email,
+      _id: { $ne: decoded.userId },
+    });
+    if (emailExists) {
+      return NextResponse.json(
+        { message: "Email already in use" },
+        { status: 400 }
+      );
+    }
+  }
 
   const updateData = {
     name,
     phone,
     city,
     area,
+    email,
   };
 
   if (password && password.trim() !== "") {

@@ -5,6 +5,8 @@ import { useEffect, useState, useRef } from "react";
 import { adminAPI } from "@/lib/api/sAdmin";
 import UsersTable from "../modules/users/UsersTable";
 import UsersSkeleton from "../modules/users/UsersSkeleton";
+import AddUserModal from "../modules/users/AddUserModal";
+import EditUserModal from "../modules/users/EditUserModal";
 
 export default function UsersTab() {
   const [loading, setLoading] = useState(false);
@@ -18,42 +20,9 @@ export default function UsersTab() {
 
   const loaderRef = useRef();
 
-  async function loadUsers(pageToLoad = page) {
-    if (loading || !hasMore) return;
-    if (pageToLoad === 1 && users.length > 0) return; // 🚫 stop double load
-
-    setLoading(true);
-
-    try {
-      const res = await adminAPI.getUsers(
-        `?page=${pageToLoad}&limit=10&sort=${sort}&search=${search}`
-      );
-
-      const newData = res?.data ?? [];
-
-      if (newData.length < 10) setHasMore(false);
-
-      setUsers((prev) => {
-        const merged = [...prev, ...newData];
-        // remove duplicates
-        return Array.from(new Map(merged.map((u) => [u._id, u])).values());
-      });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // reset when filters change
-  useEffect(() => {
-    setUsers([]);
-    setPage(1);
-    setHasMore(true);
-  }, [sort, search]);
-
-  // load when page changes
-  useEffect(() => {
-    loadUsers();
-  }, [page]);
+  // 🚀 STATE for modals
+  const [addOpen, setAddOpen] = useState(false);
+  const [editId, setEditId] = useState(null);
 
   async function loadUsers() {
     if (loading || !hasMore) return;
@@ -71,8 +40,6 @@ export default function UsersTab() {
 
       setUsers((prev) => {
         const merged = [...prev, ...newData];
-
-        // Remove duplicates by `_id`
         return Array.from(new Map(merged.map((u) => [u._id, u])).values());
       });
     } catch (err) {
@@ -82,7 +49,19 @@ export default function UsersTab() {
     }
   }
 
-  // Intersection Observer for infinite scroll
+  // filters reset
+  useEffect(() => {
+    setUsers([]);
+    setPage(1);
+    setHasMore(true);
+  }, [sort, search]);
+
+  // load more when page changes
+  useEffect(() => {
+    loadUsers();
+  }, [page]);
+
+  // infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -98,41 +77,31 @@ export default function UsersTab() {
     return () => observer.disconnect();
   }, [loaderRef, hasMore, loading]);
 
-  function handleSortChange(e) {
-    setSort(e.target.value);
-    setPage(1);
-    setUsers([]);
-    setHasMore(true);
-  }
-
-  function handleSearchChange(e) {
-    setSearch(e.target.value);
-    setPage(1);
-    setUsers([]);
-    setHasMore(true);
-  }
-
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h2 className="text-xl font-semibold">Manage Users</h2>
 
-        <button className="btn btn-primary btn-sm">+ Create User</button>
+        {/* OPEN MODAL BUTTON */}
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={() => setAddOpen(true)}
+        >
+          + Create User
+        </button>
       </div>
 
       {/* Filters */}
       <div className="flex gap-3">
         <input
-          placeholder="Search by name"
+          placeholder="Search name"
           value={search}
-          onChange={handleSearchChange}
+          onChange={(e) => setSearch(e.target.value)}
           className="border px-3 py-2 rounded-lg"
         />
-
         <select
           value={sort}
-          onChange={handleSortChange}
+          onChange={(e) => setSort(e.target.value)}
           className="border px-3 py-2 rounded-lg"
         >
           <option value="-createdAt">Newest</option>
@@ -142,20 +111,21 @@ export default function UsersTab() {
         </select>
       </div>
 
+      {/* Table */}
       <div className="bg-white rounded-xl shadow p-4">
         <UsersTable
           users={users}
-          onUserDeleted={(id) => {
-            setUsers((prev) => prev.filter((u) => u._id !== id));
-          }}
-          onUserUpdated={(updated) => {
+          onEdit={(id) => setEditId(id)}
+          onUserDeleted={(id) =>
+            setUsers((prev) => prev.filter((u) => u._id !== id))
+          }
+          onUserUpdated={(updated) =>
             setUsers((prev) =>
               prev.map((u) => (u._id === updated._id ? updated : u))
-            );
-          }}
+            )
+          }
         />
 
-        {/* Infinite Scroll Loader */}
         <div ref={loaderRef} className="py-6 text-center text-gray-400">
           {loading
             ? "Loading..."
@@ -164,6 +134,29 @@ export default function UsersTab() {
             : "No more users"}
         </div>
       </div>
+
+      {/* ADD USER MODAL */}
+      <AddUserModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onCreated={() => {
+          setUsers([]);
+          setPage(1);
+          setHasMore(true);
+        }}
+      />
+
+      {/* EDIT USER MODAL */}
+      <EditUserModal
+        open={!!editId}
+        userId={editId}
+        onClose={() => setEditId(null)}
+        onUpdated={(updated) =>
+          setUsers((prev) =>
+            prev.map((u) => (u._id === updated._id ? updated : u))
+          )
+        }
+      />
     </div>
   );
 }

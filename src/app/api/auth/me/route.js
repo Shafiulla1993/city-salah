@@ -13,7 +13,11 @@ export async function GET(req) {
   const decoded = verifyToken(token);
   if (!decoded) return NextResponse.json({ loggedIn: false });
 
-  const user = await User.findById(decoded.userId).select("-password").lean();
+  const user = await User.findById(decoded.userId)
+    .select("-password")
+    .populate("city", "name")
+    .populate("area", "name")
+    .lean();
 
   return NextResponse.json({
     loggedIn: true,

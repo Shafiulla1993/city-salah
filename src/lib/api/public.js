@@ -1,3 +1,5 @@
+// src/lib/api/public.ja
+
 import { httpFetch } from "../http/fetchClient";
 
 const BASE = "/public";

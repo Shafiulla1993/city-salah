@@ -10,7 +10,7 @@ import {
 } from "@/server/controllers/superadmin/users.controller";
 
 // GET /api/super-admin/users/:id
-export const GET = withAuth("super_admin", async (req, ctx) => {
+export const GET = withAuth("super_admin", async ({ request }, ctx) => {
   await connectDB();
 
   const params = await ctx.params;
@@ -21,12 +21,12 @@ export const GET = withAuth("super_admin", async (req, ctx) => {
 });
 
 // PUT /api/super-admin/users/:id
-export const PUT = withAuth("super_admin", async (req, ctx) => {
+export const PUT = withAuth("super_admin", async ({ request }, ctx) => {
   await connectDB();
 
   const params = await ctx.params;
 
-  const body = await req.json().catch(() => ({}));
+  const body = await request.json().catch(() => ({}));
 
   const result = await updateUserController({ id: params.id, body });
 
@@ -34,7 +34,7 @@ export const PUT = withAuth("super_admin", async (req, ctx) => {
 });
 
 // DELETE /api/super-admin/users/:id
-export const DELETE = withAuth("super_admin", async (req, ctx) => {
+export const DELETE = withAuth("super_admin", async ({ request }, ctx) => {
   await connectDB();
 
   const params = await ctx.params;

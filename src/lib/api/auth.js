@@ -1,3 +1,5 @@
+// src/lib/api/auth.js
+
 import { httpFetch } from "../http/fetchClient";
 
 const BASE = "/auth";

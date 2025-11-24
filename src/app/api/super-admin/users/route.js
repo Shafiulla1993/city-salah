@@ -24,10 +24,10 @@ export const GET = withAuth("super_admin", async (req) => {
 });
 
 // POST /api/super-admin/users
-export const POST = withAuth("super_admin", async (req) => {
+export const POST = withAuth("super_admin", async ({ request }) => {
   await connectDB();
 
-  const body = await req.json().catch(() => ({}));
+  const body = await request.json().catch(() => ({}));
 
   const result = await createUserController({ body });
 

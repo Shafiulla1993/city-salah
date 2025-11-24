@@ -4,115 +4,211 @@
 
 import { useEffect, useState } from "react";
 import { authAPI } from "@/lib/api/auth";
+import { publicAPI } from "@/lib/api/public";
 import { Input } from "@/components/form/Input";
-import { Alert } from "@/components/alerts/Alert"; // your reusable alert
+import PasswordInput from "@/components/form/PasswordInput";
+import { Select } from "@/components/form/Select";
+import { Button } from "@/components/form/Button";
+import { notify } from "@/lib/toast";
 
 export default function ProfilePage() {
-  const [user, setUser] = useState(null);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [city, setCity] = useState("");
-  const [area, setArea] = useState("");
-  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const [alert, setAlert] = useState(null);
+  const [cities, setCities] = useState([]);
+  const [areas, setAreas] = useState([]);
 
+  const [citiesLoaded, setCitiesLoaded] = useState(false);
+  const [areasLoaded, setAreasLoaded] = useState(false);
+
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    city: "",
+    area: "",
+    password: "",
+  });
+
+  const update = (key, val) => setForm((prev) => ({ ...prev, [key]: val }));
+
+  /* -------------------------------------------------
+   * LOAD USER ONLY (NO CITIES, NO AREAS YET)
+   * ------------------------------------------------- */
   useEffect(() => {
-    async function fetchUser() {
+    async function loadUser() {
       try {
-        const res = await authAPI.me();
-        if (res.loggedIn) {
-          setUser(res.user);
-          setName(res.user.name);
-          setPhone(res.user.phone);
-          setCity(res.user.city);
-          setArea(res.user.area);
-        }
+        const me = await authAPI.me();
+
+        if (!me.loggedIn) return notify.error("Not logged in");
+
+        const user = me.user;
+
+        setForm({
+          name: user.name,
+          email: user.email || "",
+          phone: user.phone,
+          city: user.city?._id || "",
+          area: user.area?._id || "",
+          password: "",
+        });
       } catch (err) {
-        setAlert({ type: "error", message: err.message });
+        notify.error("Failed to load profile");
+      } finally {
+        setLoading(false);
       }
     }
-    fetchUser();
+
+    loadUser();
   }, []);
 
+  /* -------------------------------------------------
+   * LOAD CITIES ONLY WHEN USER CLICKS THE DROPDOWN
+   * ------------------------------------------------- */
+  async function loadCities() {
+    if (citiesLoaded) return; // avoid reloading
+
+    try {
+      const res = await publicAPI.getCities();
+      setCities(res.data || []);
+      setCitiesLoaded(true);
+    } catch {
+      notify.error("Failed to load cities");
+    }
+  }
+
+  /* -------------------------------------------------
+   * LOAD AREAS ONLY WHEN USER EXPANDS AREA DROPDOWN
+   * ------------------------------------------------- */
+  async function loadAreas(cityId) {
+    if (!cityId) return;
+
+    try {
+      const res = await publicAPI.getAreas(cityId);
+      setAreas(res.data || []);
+      setAreasLoaded(true);
+    } catch {
+      notify.error("Failed to load areas");
+    }
+  }
+
+  /* -------------------------------------------------
+   * WHEN CITY IS CHANGED, RESET AREA
+   * ------------------------------------------------- */
+  async function handleCityChange(cityId) {
+    update("city", cityId);
+    update("area", "");
+
+    setAreas([]);
+    setAreasLoaded(false);
+
+    await loadAreas(cityId);
+  }
+
+  /* -------------------------------------------------
+   * UPDATE PROFILE
+   * ------------------------------------------------- */
   async function handleUpdate(e) {
     e.preventDefault();
 
     const payload = {
-      name,
-      phone,
-      city,
-      area,
+      name: form.name,
+      email: form.email,
+      phone: form.phone,
+      city: form.city,
+      area: form.area,
     };
 
-    // only include password if user provided it
-    if (password.trim() !== "") {
-      payload.password = password;
+    if (form.password.trim() !== "") {
+      payload.password = form.password;
     }
 
     try {
-      const updated = await authAPI.updateProfile(payload);
+      const res = await authAPI.updateProfile(payload);
 
-      setAlert({
-        type: "success",
-        message: "Profile updated successfully.",
-      });
+      if (res?.user) notify.success("Profile updated successfully");
 
-      setPassword(""); // clear password field
-      setUser(updated.user);
+      update("password", "");
     } catch (err) {
-      setAlert({ type: "error", message: err.message });
+      notify.error(err.message || "Failed to update profile");
     }
   }
 
-  if (!user) return <p>Loading profile...</p>;
+  if (loading) {
+    return (
+      <div className="max-w-xl mx-auto py-10">
+        <p className="animate-pulse text-gray-500">Loading profile...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-xl mx-auto space-y-6">
+    <div className="max-w-xl mx-auto py-10 space-y-6">
       <h1 className="text-2xl font-semibold">Your Profile</h1>
 
-      {alert && <Alert type={alert.type} message={alert.message} />}
-
-      <form className="space-y-4" onSubmit={handleUpdate}>
+      <form
+        onSubmit={handleUpdate}
+        className="space-y-6 bg-white p-6 rounded-xl shadow"
+      >
+        {/* Name */}
         <Input
           label="Full Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          value={form.name}
+          onChange={(e) => update("name", e.target.value)}
         />
 
+        {/* Email */}
+        <Input
+          label="Email Address"
+          value={form.email}
+          onChange={(e) => update("email", e.target.value)}
+        />
+
+        {/* Phone */}
         <Input
           label="Phone Number"
-          type="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          value={form.phone}
+          onChange={(e) => update("phone", e.target.value)}
         />
 
-        <Input
+        {/* City */}
+        <Select
           label="City"
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
+          value={form.city}
+          options={cities.map((c) => ({
+            value: c._id,
+            label: c.name,
+          }))}
+          onChange={(e) => handleCityChange(e.target.value)}
+          onClick={loadCities} // 👈 Lazy load
+          placeholder="Select city"
         />
 
-        <Input
+        {/* Area */}
+        <Select
           label="Area"
-          value={area}
-          onChange={(e) => setArea(e.target.value)}
+          value={form.area}
+          options={areas.map((a) => ({
+            value: a._id,
+            label: a.name,
+          }))}
+          onChange={(e) => update("area", e.target.value)}
+          onClick={() => loadAreas(form.city)} // 👈 Lazy load
+          placeholder="Select area"
+          disabled={!form.city}
         />
 
-        <Input
+        {/* Password */}
+        <PasswordInput
           label="New Password"
-          type="password"
-          placeholder="Leave empty if you don't want to change"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          value={form.password}
+          onChange={(e) => update("password", e.target.value)}
+          placeholder="Leave empty if unchanged"
         />
 
-        <button
-          type="submit"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md"
-        >
+        {/* Save Button */}
+        <Button type="submit" className="w-full">
           Save Changes
-        </button>
+        </Button>
       </form>
     </div>
   );
