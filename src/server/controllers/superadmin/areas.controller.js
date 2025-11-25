@@ -84,8 +84,13 @@ export async function getAreasController({ query } = {}) {
   }
 
   if (cityId) {
-    if (mongoose.isValidObjectId(cityId)) filter.city = cityId;
-    else filter["city.name"] = { $regex: cityId, $options: "i" }; // fallback (rare)
+    if (mongoose.isValidObjectId(cityId)) {
+      filter.city = cityId;
+    } else if (/^[a-zA-Z0-9\- ]+$/.test(cityId)) {
+      filter["city.name"] = { $regex: cityId, $options: "i" };
+    } else {
+      // Ignore invalid regex string
+    }
   }
 
   // We will populate city so frontend can show city.name easily

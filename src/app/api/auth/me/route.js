@@ -19,6 +19,10 @@ export async function GET(req) {
     .populate("area", "name")
     .lean();
 
+  if (!user) {
+    return NextResponse.json({ loggedIn: false });
+  }
+
   return NextResponse.json({
     loggedIn: true,
     user,

@@ -169,9 +169,13 @@ export async function createUserController({ body = {} }) {
     }
 
     let masjidArray = [];
-    if (masjidId) {
+
+    // Only masjid_admin is allowed to assign masjids
+    if (role === "masjid_admin" && masjidId) {
       masjidArray = Array.isArray(masjidId) ? masjidId : [masjidId];
+
       const validMasjids = await Masjid.find({ _id: { $in: masjidArray } });
+
       if (validMasjids.length !== masjidArray.length) {
         return {
           status: 400,
@@ -320,7 +324,8 @@ export async function updateUserController({ id, body = {} }) {
       if (body[k] !== undefined) user[k] = body[k];
     });
 
-    if (body.role === "public") {
+    // Only masjid admin can have masjids
+    if (body.role !== "masjid_admin") {
       user.masjidId = [];
     } else if (masjidArray !== undefined) {
       user.masjidId = masjidArray;

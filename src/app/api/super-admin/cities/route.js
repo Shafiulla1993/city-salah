@@ -7,22 +7,18 @@ import {
 } from "@/server/controllers/superadmin/cities.controller";
 
 export const GET = withAuth("super_admin", async ({ request }) => {
-  await connectDB(); // ✅ REQUIRED
+  await connectDB();
 
   const searchParams = request.nextUrl.searchParams;
   const query = Object.fromEntries(searchParams.entries());
 
   const result = await getCitiesController({ query });
-
   return Response.json(result.json, { status: result.status });
 });
 
 export const POST = withAuth("super_admin", async ({ request }) => {
-  await connectDB(); // ✅ REQUIRED
-
+  await connectDB();
   const body = await request.json().catch(() => ({}));
-
   const result = await createCityController({ body });
-
   return Response.json(result.json, { status: result.status });
 });

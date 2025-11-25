@@ -9,37 +9,24 @@ import {
   deleteUserController,
 } from "@/server/controllers/superadmin/users.controller";
 
-// GET /api/super-admin/users/:id
 export const GET = withAuth("super_admin", async ({ request }, ctx) => {
   await connectDB();
-
-  const params = await ctx.params;
-
+  const params = ctx.params;
   const result = await getUserController({ id: params.id });
-
   return Response.json(result.json, { status: result.status });
 });
 
-// PUT /api/super-admin/users/:id
 export const PUT = withAuth("super_admin", async ({ request }, ctx) => {
   await connectDB();
-
-  const params = await ctx.params;
-
+  const params = ctx.params;
   const body = await request.json().catch(() => ({}));
-
   const result = await updateUserController({ id: params.id, body });
-
   return Response.json(result.json, { status: result.status });
 });
 
-// DELETE /api/super-admin/users/:id
 export const DELETE = withAuth("super_admin", async ({ request }, ctx) => {
   await connectDB();
-
-  const params = await ctx.params;
-
+  const params = ctx.params;
   const result = await deleteUserController({ id: params.id });
-
   return Response.json(result.json, { status: result.status });
 });

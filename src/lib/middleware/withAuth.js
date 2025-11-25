@@ -9,40 +9,20 @@ export function withAuth(roles, handler) {
   return async function (request, context) {
     await connectDB();
 
-    // 1. Authenticate user
+    // 1. Auth
     const auth = await protect(request);
-    if (auth.error) {
+    if (auth.error)
       return Response.json({ message: auth.error }, { status: auth.status });
-    }
 
-    // 2. Authorize role
-    const check = allowRoles(...roles)(auth.user);
-    if (check.error) {
+    // 2. Role check
+    const permission = allowRoles(...roles)(auth.user);
+    if (permission.error)
       return Response.json({ message: "Forbidden" }, { status: 403 });
-    }
 
-    // 3. Run actual route handler
-    const result = await handler(
-      {
-        request,
-        user: auth.user,
-        nextUrl: request.nextUrl,
-        params: context?.params,
-      },
-      context
-    );
-
-    // 4. If handler returned a real Response, return it directly
-    if (result instanceof Response) {
-      return result;
-    }
-
-    // 5. If handler returned { status, json }
-    if (result && typeof result === "object" && "status" in result && "json" in result) {
-      return Response.json(result.json, { status: result.status });
-    }
-
-    // 6. Anything else → wrap as JSON
-    return Response.json(result);
+    // 3. Call handler with Next.js signature
+    return handler(request, {
+      ...context,
+      user: auth.user,
+    });
   };
 }

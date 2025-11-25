@@ -90,8 +90,10 @@ export default function AddUserModal({ open, onClose, onCreated }) {
   const masjidOptions = (masjids || [])
     .filter((m) => {
       if (!form.city && !form.area) return true;
-      if (form.area) return m.area?._id === form.area || form.masjidId.includes(m._id);
-      if (form.city) return m.city?._id === form.city || form.masjidId.includes(m._id);
+      if (form.area)
+        return m.area?._id === form.area || form.masjidId.includes(m._id);
+      if (form.city)
+        return m.city?._id === form.city || form.masjidId.includes(m._id);
       return true;
     })
     .map((m) => ({ value: m._id, label: m.name }));
@@ -100,16 +102,39 @@ export default function AddUserModal({ open, onClose, onCreated }) {
     <Modal open={open} onClose={onClose} title="Create user" size="md">
       <form onSubmit={submit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Input label="Name" value={form.name} onChange={(e) => update("name", e.target.value)} />
-          <Input label="Phone" value={form.phone} onChange={(e) => update("phone", e.target.value)} />
-          <Input label="Email" value={form.email} onChange={(e) => update("email", e.target.value)} />
-          <Input label="Password" type="password" value={form.password} onChange={(e) => update("password", e.target.value)} />
+          <Input
+            label="Name"
+            value={form.name}
+            onChange={(e) => update("name", e.target.value)}
+          />
+          <Input
+            label="Phone"
+            value={form.phone}
+            onChange={(e) => update("phone", e.target.value)}
+          />
+          <Input
+            label="Email"
+            value={form.email}
+            onChange={(e) => update("email", e.target.value)}
+          />
+          <Input
+            label="Password"
+            type="password"
+            value={form.password}
+            onChange={(e) => update("password", e.target.value)}
+          />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Role</label>
-            <select value={form.role} onChange={(e) => update("role", e.target.value)} className="w-full h-10 rounded-md border px-3 bg-slate-100/40">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Role
+            </label>
+            <select
+              value={form.role}
+              onChange={(e) => update("role", e.target.value)}
+              className="w-full h-10 rounded-md border px-3 bg-slate-100/40"
+            >
               <option value="public">Public</option>
               <option value="masjid_admin">Masjid Admin</option>
               <option value="super_admin">Super Admin</option>
@@ -117,35 +142,71 @@ export default function AddUserModal({ open, onClose, onCreated }) {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">City</label>
-            <select value={form.city} onChange={(e) => update("city", e.target.value)} className="w-full h-10 rounded-md border px-3 bg-slate-100/40">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              City
+            </label>
+            <select
+              value={form.city}
+              onChange={(e) => update("city", e.target.value)}
+              className="w-full h-10 rounded-md border px-3 bg-slate-100/40"
+            >
               <option value="">Select city</option>
-              {cityOptions.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+              {cityOptions.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
             </select>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Area</label>
-            <select value={form.area} onChange={(e) => update("area", e.target.value)} className="w-full h-10 rounded-md border px-3 bg-slate-100/40">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Area
+            </label>
+            <select
+              value={form.area}
+              onChange={(e) => update("area", e.target.value)}
+              className="w-full h-10 rounded-md border px-3 bg-slate-100/40"
+            >
               <option value="">Select area</option>
-              {areaOptions.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
+              {areaOptions.map((a) => (
+                <option key={a.value} value={a.value}>
+                  {a.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Masjids</label>
-          <MultiSelect
-            options={masjidOptions}
-            value={form.masjidId}
-            onChange={(vals) => update("masjidId", vals)}
-            placeholder="Search & add masjids"
-          />
+          {form.role === "masjid_admin" && (
+            <>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Masjids
+              </label>
+              <MultiSelect
+                options={masjidOptions}
+                value={form.masjidId}
+                onChange={(vals) => update("masjidId", vals)}
+                placeholder="Search & add masjids"
+              />
+            </>
+          )}
         </div>
 
         <div className="flex justify-end gap-3">
-          <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg border">Cancel</button>
-          <button type="submit" disabled={loading} className="px-4 py-2 rounded-lg bg-slate-700 text-white">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg border"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-4 py-2 rounded-lg bg-slate-700 text-white"
+          >
             {loading ? "Saving..." : "Create"}
           </button>
         </div>

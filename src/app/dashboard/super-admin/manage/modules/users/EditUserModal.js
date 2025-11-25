@@ -35,20 +35,21 @@ export default function EditUserModal({ open, onClose, userId, onUpdated }) {
   async function loadAll() {
     setLoading(true);
     try {
-      const [cRes, aRes, mRes] = await Promise.all([
+      const [cRes, mRes] = await Promise.all([
         adminAPI.getCities(),
-        adminAPI.getAreas(),
         adminAPI.getMasjids(),
       ]);
+
       setCities(cRes?.data ?? []);
-      setAreas(aRes?.data ?? []);
       setMasjids(mRes?.data ?? []);
+
+      // initially empty, later loaded once city is known
+      setAreas([]);
 
       if (userId) {
         const ures = await adminAPI.getUserById(userId);
-        console.log("📌 Edit Modal: userId =", JSON.stringify(userId));
-
         const u = ures?.data;
+
         if (u) {
           setInitial(u);
           setForm({
@@ -63,6 +64,12 @@ export default function EditUserModal({ open, onClose, userId, onUpdated }) {
               ? u.masjidId.map((m) => (typeof m === "object" ? m._id : m))
               : [],
           });
+
+          // FIXED — use u.city, not user.city
+          if (u.city?._id) {
+            const areaRes = await adminAPI.getAreas(`?cityId=${u.city._id}`);
+            setAreas(areaRes?.data ?? []);
+          }
         }
       }
     } catch (err) {
@@ -146,7 +153,7 @@ export default function EditUserModal({ open, onClose, userId, onUpdated }) {
     .map((m) => ({ value: m._id, label: m.name }));
 
   return (
-    <Modal open={open} onClose={onClose} title="Edit user" size="md">
+    <Modal open={open} onClose={onClose} title="Edit user" size="lg">
       <form onSubmit={submit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Input
@@ -227,11 +234,8 @@ export default function EditUserModal({ open, onClose, userId, onUpdated }) {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">
-            Masjids
-          </label>
           {form.role === "masjid_admin" && (
-            <div>
+            <>
               <label className="mb-1 block text-sm font-medium text-gray-700">
                 Masjids
               </label>
@@ -241,7 +245,7 @@ export default function EditUserModal({ open, onClose, userId, onUpdated }) {
                 onChange={(vals) => update("masjidId", vals)}
                 placeholder="Search & add masjids"
               />
-            </div>
+            </>
           )}
         </div>
 

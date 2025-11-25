@@ -1,88 +1,63 @@
 // src/app/dashboard/super-admin/manage/tabs/AreasTab.js
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { adminAPI } from "@/lib/api/sAdmin/index";
+import { adminAPI } from "@/lib/api/sAdmin";
+
 import AreasTable from "../modules/areas/AreasTable";
 import AddAreaModal from "../modules/areas/AddAreaModal";
 import AreasSkeleton from "../modules/areas/AreasSkeleton";
 
-export default function AreasTab() {
-  const [areas, setAreas] = useState([]);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [sort, setSort] = useState("-createdAt");
-  const [search, setSearch] = useState("");
-  const [selectedCity, setSelectedCity] = useState("");
+import { useInfiniteAreas } from "../modules/areas/useInfiniteAreas";
 
+export default function AreasTab() {
+  const {
+    areas,
+    loading,
+    hasMore,
+    loadFirst,
+    setObserver,
+    sort,
+    setSort,
+    search,
+    setSearch,
+    cityId,
+    setCityId,
+  } = useInfiniteAreas({ initialSort: "-createdAt", limit: 10 });
+
+  const [cities, setCities] = useState([]);
   const [addModalOpen, setAddModalOpen] = useState(false);
 
   const loaderRef = useRef(null);
 
+  /* -------------------------------------------------
+   * Load Cities Dropdown (once)
+   * ------------------------------------------------- */
   useEffect(() => {
-    loadAreas();
-  }, [page, sort, search, selectedCity]);
+    (async () => {
+      try {
+        const cRes = await adminAPI.getCities();
+        setCities(cRes?.data ?? []);
+      } catch (err) {
+        console.error("Failed to load cities:", err);
+      }
+    })();
+  }, []);
 
-  const loadingRef = useRef(false); // prevents double fetch in Strict Mode
-
-  async function loadAreas() {
-    if (loadingRef.current) return; // Strict mode guard
-    if (loading || !hasMore) return;
-
-    loadingRef.current = true;
-    setLoading(true);
-
-    try {
-      const res = await adminAPI.getAreas(
-        `?page=${page}&limit=10&sort=${sort}&search=${search}&cityId=${selectedCity}`
-      );
-
-      const data = res?.data ?? [];
-
-      setAreas((prev) => {
-        const map = new Map();
-
-        [...prev, ...data].forEach((a) => map.set(a._id, a));
-
-        return Array.from(map.values());
-      });
-
-      if (data.length < 10) setHasMore(false);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-      loadingRef.current = false;
-    }
-  }
-
+  /* -------------------------------------------------
+   * FIRST PAGE LOAD
+   * ------------------------------------------------- */
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loading) {
-          setPage((p) => p + 1);
-        }
-      },
-      { threshold: 1 }
-    );
+    loadFirst();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    if (loaderRef.current) observer.observe(loaderRef.current);
-
-    return () => observer.disconnect();
-  }, [loaderRef, hasMore, loading]);
-
-  function resetAndRefresh() {
-    setAreas([]);
-    setPage(1);
-    setHasMore(true);
-  }
-
-  console.log(
-    "AREAS:",
-    areas.map((a) => a._id)
-  );
+  /* -------------------------------------------------
+   * Attach IntersectionObserver
+   * ------------------------------------------------- */
+  const attachLoader = (el) => {
+    loaderRef.current = el;
+    setObserver(el); // hook's intersection observer
+  };
 
   return (
     <div className="space-y-6">
@@ -99,23 +74,19 @@ export default function AreasTab() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 flex-wrap">
+        {/* Search */}
         <input
           placeholder="Search area"
           value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            resetAndRefresh();
-          }}
+          onChange={(e) => setSearch(e.target.value)}
           className="border px-3 py-2 rounded-lg"
         />
 
+        {/* Sort */}
         <select
           value={sort}
-          onChange={(e) => {
-            setSort(e.target.value);
-            resetAndRefresh();
-          }}
+          onChange={(e) => setSort(e.target.value)}
           className="border px-3 py-2 rounded-lg"
         >
           <option value="-createdAt">Newest</option>
@@ -123,25 +94,36 @@ export default function AreasTab() {
           <option value="name">Name A→Z</option>
           <option value="-name">Name Z→A</option>
         </select>
+
+        {/* City Filter */}
+        <select
+          value={cityId}
+          onChange={(e) => setCityId(e.target.value)}
+          className="border px-3 py-2 rounded-lg"
+        >
+          <option value="">All cities</option>
+          {cities.map((c) => (
+            <option key={c._id} value={c._id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
       </div>
 
+      {/* Table Container */}
       <div className="bg-white rounded-xl shadow p-4">
         {!areas.length && loading ? (
           <AreasSkeleton />
         ) : (
           <AreasTable
             areas={areas}
-            onAreaDeleted={(id) =>
-              setAreas((prev) => prev.filter((a) => a._id !== id))
-            }
-            onAreaUpdated={(obj) =>
-              setAreas((prev) => prev.map((a) => (a._id === obj._id ? obj : a)))
-            }
+            onAreaDeleted={() => loadFirst()}
+            onAreaUpdated={() => loadFirst()}
           />
         )}
 
         {/* Infinite Scroll Loader */}
-        <div ref={loaderRef} className="py-6 text-center text-gray-400">
+        <div ref={attachLoader} className="py-6 mt-8 text-center text-gray-400">
           {loading
             ? "Loading..."
             : hasMore
@@ -150,18 +132,11 @@ export default function AreasTab() {
         </div>
       </div>
 
+      {/* Add Area Modal */}
       <AddAreaModal
         open={addModalOpen}
         onClose={() => setAddModalOpen(false)}
-        onCreated={(newArea) => {
-          setAreas((prev) => {
-            const map = new Map();
-
-            [...prev, ...data].forEach((a) => map.set(a._id, a));
-
-            return Array.from(map.values());
-          });
-        }}
+        onCreated={() => loadFirst()}
       />
     </div>
   );
