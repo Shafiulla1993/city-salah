@@ -29,7 +29,7 @@ export const adminAPI = {
     httpFetch(`/super-admin/users/${id}`, { method: "DELETE" }),
 
   /** ------------------- CITIES ------------------- **/
-  getCities: () => httpFetch(`/super-admin/cities`),
+  getCities: (query = "") => httpFetch(`/super-admin/cities${query}`),
   getCityById: (id) => httpFetch(`/super-admin/cities/${id}`),
   createCity: (data) => send(`/super-admin/cities`, "POST", data),
   updateCity: (id, data) => send(`/super-admin/cities/${id}`, "PUT", data),
@@ -40,6 +40,7 @@ export const adminAPI = {
 
   /** ------------------- AREAS ------------------- **/
   getAreas: (query = "") => httpFetch(`/super-admin/areas${query}`),
+
   getAreaById: (id) => httpFetch(`/super-admin/areas/${id}`),
   createArea: (data) => send(`/super-admin/areas`, "POST", data),
   updateArea: (id, data) => send(`/super-admin/areas/${id}`, "PUT", data),
