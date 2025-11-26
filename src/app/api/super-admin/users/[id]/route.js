@@ -26,7 +26,7 @@ export const PUT = withAuth("super_admin", async (request, ctx) => {
 
 export const DELETE = withAuth("super_admin", async (request, ctx) => {
   await connectDB();
-  const params = ctx.params;
+  const params = await ctx.params;
   const result = await deleteUserController({ id: params.id });
   return Response.json(result.json, { status: result.status });
 });
