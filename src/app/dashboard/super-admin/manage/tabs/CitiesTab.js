@@ -6,6 +6,8 @@ import { adminAPI } from "@/lib/api/sAdmin";
 import CitiesTable from "../modules/cities/CitiesTable";
 import CitiesSkeleton from "../modules/cities/CitiesSkeleton";
 import AddCityModal from "../modules/cities/AddCityModal";
+import EditCityModal from "../modules/cities/EditCityModal";
+import DeleteCityModal from "../modules/cities/DeleteCityModal";
 
 export default function CitiesTab() {
   const [loading, setLoading] = useState(false);
@@ -18,6 +20,9 @@ export default function CitiesTab() {
   const [search, setSearch] = useState("");
 
   const [openAdd, setOpenAdd] = useState(false);
+  const [editId, setEditId] = useState(null);
+
+  const [delId, setDelId] = useState(null);
 
   const loaderRef = useRef();
 
@@ -27,28 +32,22 @@ export default function CitiesTab() {
   }, [sort, search]);
 
   useEffect(() => {
-    // load when page increments
-    if (page === 1) return; // page 1 already fetched above
+    if (page === 1) return;
     loadCities(page);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   async function loadCities(pageToLoad = 1, reset = false) {
     if (loading || (!hasMore && !reset)) return;
-
-    // Prevent duplicate page=1 fetches when already have data
     if (pageToLoad === 1 && cities.length > 0 && !reset) return;
 
     setLoading(true);
 
     try {
-      const res = await adminAPI.getCities();
-      // Note: we call getCities with query string for pagination
       const query = `?page=${pageToLoad}&limit=10&sort=${sort}&search=${encodeURIComponent(
         search
       )}`;
       const payload = await adminAPI.getCities(query);
-
       const newData = payload?.data ?? [];
 
       if (pageToLoad === 1) {
@@ -60,8 +59,7 @@ export default function CitiesTab() {
         });
       }
 
-      if (newData.length < 10) setHasMore(false);
-      else setHasMore(true);
+      setHasMore(newData.length >= 10);
     } catch (err) {
       console.error("loadCities error:", err);
     } finally {
@@ -69,7 +67,6 @@ export default function CitiesTab() {
     }
   }
 
-  // intersection observer for infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -95,8 +92,6 @@ export default function CitiesTab() {
     setSearch(e.target.value);
     setPage(1);
     setHasMore(true);
-    // debounce-like quick effect: we'll call loadCities after small delay
-    // simple approach: call directly (ok for admin tools). If too chatty, wrap with debounce.
     loadCities(1, true);
   }
 
@@ -105,14 +100,12 @@ export default function CitiesTab() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h2 className="text-xl font-semibold">Manage Cities</h2>
 
-        <div className="flex gap-2">
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={() => setOpenAdd(true)}
-          >
-            + Create City
-          </button>
-        </div>
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={() => setOpenAdd(true)}
+        >
+          + Create City
+        </button>
       </div>
 
       <div className="flex gap-3">
@@ -141,14 +134,8 @@ export default function CitiesTab() {
         ) : (
           <CitiesTable
             cities={cities}
-            onCityDeleted={(id) => {
-              setCities((prev) => prev.filter((c) => c._id !== id));
-            }}
-            onCityUpdated={(updated) => {
-              setCities((prev) =>
-                prev.map((c) => (c._id === updated._id ? updated : c))
-              );
-            }}
+            onEdit={(id) => setEditId(id)}
+            onDelete={(id) => setDelId(id)}
           />
         )}
 
@@ -164,13 +151,33 @@ export default function CitiesTab() {
       <AddCityModal
         open={openAdd}
         onClose={() => setOpenAdd(false)}
-        onCreated={(c) => {
-          // prepend newest
+        onCreated={(c) =>
           setCities((prev) =>
             Array.from(
               new Map([[c._id, c], ...prev.map((p) => [p._id, p])]).values()
             )
-          );
+          )
+        }
+      />
+
+      <EditCityModal
+        open={!!editId}
+        cityId={editId}
+        onClose={() => setEditId(null)}
+        onUpdated={(updated) =>
+          setCities((prev) =>
+            prev.map((c) => (c._id === updated._id ? updated : c))
+          )
+        }
+      />
+
+      <DeleteCityModal
+        open={!!delId}
+        cityId={delId}
+        onClose={() => setDelId(null)}
+        onDeleted={(id) => {
+          setCities((prev) => prev.filter((c) => c._id !== id));
+          setDelId(null);
         }}
       />
     </div>

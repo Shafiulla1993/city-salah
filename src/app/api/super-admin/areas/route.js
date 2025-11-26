@@ -6,7 +6,7 @@ import {
 
 import { withAuth } from "@/lib/middleware/withAuth";
 
-export const GET = withAuth("super_admin", async ({ request }) => {
+export const GET = withAuth("super_admin", async (request) => {
   // convert URL search params to object and pass to controller
   const url = new URL(request.url);
   const query = Object.fromEntries(url.searchParams.entries());
@@ -14,7 +14,7 @@ export const GET = withAuth("super_admin", async ({ request }) => {
   return res;
 });
 
-export const POST = withAuth("super_admin", async ({ request }) => {
+export const POST = withAuth("super_admin", async (request) => {
   const body = await request.json();
   const res = await createAreaController({ body });
   return res;

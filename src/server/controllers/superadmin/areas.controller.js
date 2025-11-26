@@ -4,6 +4,8 @@ import Area from "@/models/Area";
 import City from "@/models/City";
 import { generateSlug } from "@/lib/helpers/slugHelper";
 import { paginate } from "@/server/utils/paginate";
+import Masjid from "@/models/Masjid";
+import User from "@/models/User";
 
 export async function createAreaController({ body }) {
   const { name, city, center } = body;

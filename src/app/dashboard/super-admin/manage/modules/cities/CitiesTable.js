@@ -1,14 +1,7 @@
 // File: src/app/dashboard/super-admin/manage/modules/cities/CitiesTable.js
 "use client";
 
-import React, { useState } from "react";
-import EditCityModal from "./EditCityModal";
-import DeleteCityModal from "./DeleteCityModal";
-
-export default function CitiesTable({ cities = [] }) {
-  const [editId, setEditId] = useState(null);
-  const [delId, setDelId] = useState(null);
-
+export default function CitiesTable({ cities = [], onEdit, onDelete }) {
   if (!cities.length) {
     return (
       <p className="text-gray-500 text-sm text-center py-6">No cities found.</p>
@@ -37,13 +30,13 @@ export default function CitiesTable({ cities = [] }) {
                 <td className="px-4 py-3 text-right space-x-2">
                   <button
                     className="px-3 py-1 rounded bg-slate-700 text-white text-xs hover:bg-slate-800"
-                    onClick={() => setEditId(c._id)}
+                    onClick={() => onEdit?.(c._id)} // 🔥 callback to CitiesTab
                   >
                     Edit
                   </button>
                   <button
                     className="px-3 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700"
-                    onClick={() => setDelId(c._id)}
+                    onClick={() => onDelete?.(c._id)} // 🔥 callback to CitiesTab
                   >
                     Delete
                   </button>
@@ -53,19 +46,6 @@ export default function CitiesTable({ cities = [] }) {
           </tbody>
         </table>
       </div>
-
-      <EditCityModal
-        open={!!editId}
-        onClose={() => setEditId(null)}
-        cityId={editId}
-        onUpdated={() => setEditId(null)}
-      />
-      <DeleteCityModal
-        open={!!delId}
-        onClose={() => setDelId(null)}
-        cityId={delId}
-        onDeleted={() => setDelId(null)}
-      />
     </div>
   );
 }

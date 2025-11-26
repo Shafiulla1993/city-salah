@@ -8,7 +8,7 @@ import {
 } from "@/server/controllers/superadmin/users.controller";
 import User from "@/models/User";
 
-export const GET = withAuth("super_admin", async ({ request }) => {
+export const GET = withAuth("super_admin", async (request) => {
   await connectDB();
 
   const searchParams = request.nextUrl.searchParams;
@@ -18,7 +18,7 @@ export const GET = withAuth("super_admin", async ({ request }) => {
   return Response.json(result.json, { status: result.status });
 });
 
-export const POST = withAuth("super_admin", async ({ request }) => {
+export const POST = withAuth("super_admin", async (request) => {
   await connectDB();
   const body = await request.json().catch(() => ({}));
   const result = await createUserController({ body });

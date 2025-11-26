@@ -6,7 +6,7 @@ import {
   getCitiesController,
 } from "@/server/controllers/superadmin/cities.controller";
 
-export const GET = withAuth("super_admin", async ({ request }) => {
+export const GET = withAuth("super_admin", async (request) => {
   await connectDB();
 
   const searchParams = request.nextUrl.searchParams;
@@ -16,7 +16,7 @@ export const GET = withAuth("super_admin", async ({ request }) => {
   return Response.json(result.json, { status: result.status });
 });
 
-export const POST = withAuth("super_admin", async ({ request }) => {
+export const POST = withAuth("super_admin", async (request) => {
   await connectDB();
   const body = await request.json().catch(() => ({}));
   const result = await createCityController({ body });

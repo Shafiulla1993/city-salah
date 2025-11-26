@@ -40,7 +40,6 @@ export const adminAPI = {
 
   /** ------------------- AREAS ------------------- **/
   getAreas: (query = "") => httpFetch(`/super-admin/areas${query}`),
-
   getAreaById: (id) => httpFetch(`/super-admin/areas/${id}`),
   createArea: (data) => send(`/super-admin/areas`, "POST", data),
   updateArea: (id, data) => send(`/super-admin/areas/${id}`, "PUT", data),
