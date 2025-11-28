@@ -20,7 +20,7 @@ export const GET = withAuth("super_admin", async (req, ctx) => {
 
 export const PUT = withAuth("super_admin", async (req, ctx) => {
   const params = await ctx.params;
-  const id = params.id;
+  const id = await params.id;
 
   const { fields, files } = await parseMultipart(req).catch(() => ({
     fields: {},
