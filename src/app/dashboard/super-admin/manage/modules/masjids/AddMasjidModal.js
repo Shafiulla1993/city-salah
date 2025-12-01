@@ -60,8 +60,6 @@ export default function AddMasjidModal({ open, onClose, onAdded }) {
     if (!form.area) return notify.error("Area is required");
     if (!form.locationLat || !form.locationLng)
       return notify.error("Masjid location is required");
-    if (!form.contacts?.imam?.name?.trim())
-      return notify.error("Imam name is required");
 
     setLoading(true);
     try {
