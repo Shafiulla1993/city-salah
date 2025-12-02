@@ -1,5 +1,4 @@
 // src/app/dashboard/super-admin/manage/modules/masjids/PrayerTimingsForm.js
-
 "use client";
 
 export default function PrayerTimingsForm({ value = {}, onChange }) {
@@ -16,6 +15,17 @@ export default function PrayerTimingsForm({ value = {}, onChange }) {
     onChange(updated);
   }
 
+  // Validate AM/PM time format
+  const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM)$/i;
+
+  function formatTime(input) {
+    // allow empty input while typing
+    if (!input.trim()) return input;
+    // only auto-format if valid AM/PM
+    if (timeRegex.test(input)) return input.toUpperCase().replace(/\s+/g, " ");
+    return input; // let user continue typing freely
+  }
+
   return (
     <div className="space-y-3 border rounded-lg p-4 bg-slate-50">
       <h3 className="text-sm font-semibold text-slate-700">Prayer Timings</h3>
@@ -28,19 +38,23 @@ export default function PrayerTimingsForm({ value = {}, onChange }) {
           <div className="capitalize font-medium">{p}</div>
 
           <input
-            type="time"
+            type="text"
             value={value[p]?.azan || ""}
-            onChange={(e) => updatePrayer(p, "azan", e.target.value)}
+            placeholder="e.g. 5:45 AM"
             className="border px-3 py-2 rounded-lg"
-            placeholder="Azan"
+            onChange={(e) =>
+              updatePrayer(p, "azan", formatTime(e.target.value))
+            }
           />
 
           <input
-            type="time"
+            type="text"
             value={value[p]?.iqaamat || ""}
-            onChange={(e) => updatePrayer(p, "iqaamat", e.target.value)}
+            placeholder="e.g. 6:00 AM"
             className="border px-3 py-2 rounded-lg"
-            placeholder="Iqaamat"
+            onChange={(e) =>
+              updatePrayer(p, "iqaamat", formatTime(e.target.value))
+            }
           />
         </div>
       ))}

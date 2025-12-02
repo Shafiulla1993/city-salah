@@ -1,13 +1,32 @@
+// src/components/RightPanel/PrayerTimingsTable.js
+
 "use client";
 import React from "react";
 import { Slab } from "react-loading-indicators"; // loader
+
+// Convert 24-hour time → AM/PM
+function to12Hour(time) {
+  if (!time) return "-";
+
+  // If already AM/PM → keep as is
+  if (/am|pm/i.test(time)) return time.toUpperCase();
+
+  // If no ":" or invalid → return as typed
+  if (!time.includes(":")) return time;
+
+  // 24h → 12h convert
+  const [h, m] = time.split(":");
+  let hour = parseInt(h, 10);
+  const ampm = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12 || 12;
+  return `${hour}:${m} ${ampm}`;
+}
 
 export default function PrayerTimingsTable({
   prayerTimings,
   loading,
   masjidSelected,
 }) {
-  // 1️⃣ SHOW LOADING
   if (loading) {
     return (
       <div className="flex justify-center items-center py-10">
@@ -16,12 +35,8 @@ export default function PrayerTimingsTable({
     );
   }
 
-  // 2️⃣ NO MASJID SELECTED → SHOW NOTHING
-  if (!masjidSelected) {
-    return null;
-  }
+  if (!masjidSelected) return null;
 
-  // 3️⃣ MASJID SELECTED BUT NO PRAYER TIMINGS
   if (masjidSelected && (!prayerTimings || prayerTimings.length === 0)) {
     return (
       <div className="bg-white shadow rounded p-4 text-center text-gray-500">
@@ -30,7 +45,6 @@ export default function PrayerTimingsTable({
     );
   }
 
-  // 4️⃣ SHOW PRAYER TIMINGS TABLE
   const timing = prayerTimings[0];
 
   const timingsArray = [
@@ -62,8 +76,8 @@ export default function PrayerTimingsTable({
           {timingsArray.map((p, idx) => (
             <tr key={idx} className="border-b">
               <td className="p-2">{p.name}</td>
-              <td className="p-2">{p.azan || "-"}</td>
-              <td className="p-2">{p.iqaamat || "-"}</td>
+              <td className="p-2">{to12Hour(p.azan)}</td>
+              <td className="p-2">{to12Hour(p.iqaamat)}</td>
             </tr>
           ))}
         </tbody>
