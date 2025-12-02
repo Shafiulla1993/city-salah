@@ -1,5 +1,4 @@
 // src/app/dashboard/super-admin/manage/modules/masjids/EditMasjidModal.js
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -18,12 +17,11 @@ export default function EditMasjidModal({
   onUpdated,
 }) {
   const [loading, setLoading] = useState(false);
-  const [initial, setInitial] = useState(null);
   const [cities, setCities] = useState([]);
   const [areas, setAreas] = useState([]);
   const [mapOpen, setMapOpen] = useState(false);
 
-  const [form, setForm] = useState({
+  const initialFormState = {
     name: "",
     address: "",
     city: "",
@@ -36,7 +34,9 @@ export default function EditMasjidModal({
     prayerTimings: {},
     description: "",
     timezone: "",
-  });
+  };
+
+  const [form, setForm] = useState(initialFormState);
 
   function update(key, value) {
     setForm((s) => ({ ...s, [key]: value }));
@@ -58,7 +58,6 @@ export default function EditMasjidModal({
       const m = res?.data;
       if (!m) return;
 
-      setInitial(m);
       setForm({
         name: m.name,
         address: m.address || "",
@@ -95,17 +94,22 @@ export default function EditMasjidModal({
     (a) => !form.city || a.city?._id === form.city
   );
 
+  function resetForm() {
+    setForm(initialFormState);
+    setMapOpen(false);
+  }
+
   async function submit(e) {
     e.preventDefault();
 
-    // REQUIRED VALIDATIONS
+    // Required validations
     if (!form.name.trim()) return notify.error("Masjid name is required");
     if (!form.city) return notify.error("City is required");
     if (!form.area) return notify.error("Area is required");
     if (!form.locationLat || !form.locationLng)
       return notify.error("Masjid location is required");
-    if (!form.contacts?.imam?.name?.trim())
-      return notify.error("Imam name is required");
+
+    // Contacts are optional → no Imam required check
 
     setLoading(true);
     try {
@@ -139,15 +143,17 @@ export default function EditMasjidModal({
 
       let res;
       if (form.image) {
+        // hybrid request (FormData only when image exists)
         const fd = new FormData();
-        Object.keys(payload).forEach((k) =>
-          fd.append(
-            k,
-            typeof payload[k] === "object"
-              ? JSON.stringify(payload[k])
-              : payload[k]
-          )
-        );
+        fd.append("name", payload.name);
+        fd.append("address", payload.address);
+        fd.append("city", payload.city);
+        fd.append("area", payload.area);
+        fd.append("description", payload.description);
+        fd.append("timezone", payload.timezone);
+        fd.append("location", JSON.stringify(payload.location));
+        fd.append("contacts", JSON.stringify(payload.contacts));
+        fd.append("prayerTimings", JSON.stringify(payload.prayerTimings));
         fd.append("image", form.image);
         res = await adminAPI.updateMasjid(masjidId, fd);
       } else {
@@ -157,6 +163,7 @@ export default function EditMasjidModal({
       if (res?.success) {
         notify.success("Masjid updated");
         onUpdated?.(res.data);
+        resetForm();
         onClose();
       } else notify.error(res?.message || "Update failed");
     } catch {
@@ -168,8 +175,16 @@ export default function EditMasjidModal({
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="Edit Masjid" size="2xl">
-        {!initial ? (
+      <Modal
+        open={open}
+        onClose={() => {
+          resetForm();
+          onClose();
+        }}
+        title="Edit Masjid"
+        size="2xl"
+      >
+        {!masjidId || loading ? (
           <p className="text-center py-10">Loading...</p>
         ) : (
           <form onSubmit={submit} className="space-y-6">
@@ -279,7 +294,10 @@ export default function EditMasjidModal({
             <div className="flex justify-end gap-3">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={() => {
+                  resetForm();
+                  onClose();
+                }}
                 className="border px-4 py-2 rounded-lg"
               >
                 Cancel

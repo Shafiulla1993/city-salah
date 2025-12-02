@@ -10,13 +10,13 @@ import ContactPersonsForm from "./ContactPersonsForm";
 import { notify } from "@/lib/toast";
 import MasjidLocationPicker from "./MasjidLocationPicker";
 
-export default function AddMasjidModal({ open, onClose, onAdded }) {
+export default function AddMasjidModal({ open, onClose, onCreated }) {
   const [loading, setLoading] = useState(false);
   const [cities, setCities] = useState([]);
   const [areas, setAreas] = useState([]);
   const [mapOpen, setMapOpen] = useState(false);
 
-  const [form, setForm] = useState({
+  const initialFormState = {
     name: "",
     address: "",
     city: "",
@@ -28,11 +28,11 @@ export default function AddMasjidModal({ open, onClose, onAdded }) {
     prayerTimings: {},
     description: "",
     timezone: "",
-  });
+  };
 
-  function update(key, value) {
-    setForm((s) => ({ ...s, [key]: value }));
-  }
+  const [form, setForm] = useState(initialFormState);
+
+  const update = (key, value) => setForm((s) => ({ ...s, [key]: value }));
 
   async function loadLists() {
     const [c, a] = await Promise.all([
@@ -51,10 +51,15 @@ export default function AddMasjidModal({ open, onClose, onAdded }) {
     (a) => !form.city || a.city?._id === form.city
   );
 
+  function resetForm() {
+    setForm(initialFormState);
+    setMapOpen(false);
+  }
+
   async function submit(e) {
     e.preventDefault();
 
-    // REQUIRED VALIDATIONS
+    // VALIDATION
     if (!form.name.trim()) return notify.error("Masjid name is required");
     if (!form.city) return notify.error("City is required");
     if (!form.area) return notify.error("Area is required");
@@ -68,11 +73,13 @@ export default function AddMasjidModal({ open, onClose, onAdded }) {
         address: form.address,
         city: form.city,
         area: form.area,
+        description: form.description || "",
+        timezone: form.timezone || "",
         location: {
           type: "Point",
           coordinates: [
-            parseFloat(form.locationLng),
-            parseFloat(form.locationLat),
+            parseFloat(form.locationLng), // lng
+            parseFloat(form.locationLat), // lat
           ],
         },
         contacts: [
@@ -87,27 +94,36 @@ export default function AddMasjidModal({ open, onClose, onAdded }) {
             : []),
         ],
         prayerTimings: [form.prayerTimings],
-        description: form.description || "",
-        timezone: form.timezone || "",
       };
 
-      const fd = new FormData();
-      Object.keys(payload).forEach((k) =>
-        fd.append(
-          k,
-          typeof payload[k] === "object"
-            ? JSON.stringify(payload[k])
-            : payload[k]
-        )
-      );
-      if (form.image) fd.append("image", form.image);
+      let res;
 
-      const res = await adminAPI.addMasjid(fd);
+      if (form.image) {
+        // FormData only when image selected
+        const fd = new FormData();
+        fd.append("name", payload.name);
+        fd.append("address", payload.address);
+        fd.append("city", payload.city);
+        fd.append("area", payload.area);
+        fd.append("description", payload.description);
+        fd.append("timezone", payload.timezone);
+        fd.append("location", JSON.stringify(payload.location));
+        fd.append("contacts", JSON.stringify(payload.contacts));
+        fd.append("prayerTimings", JSON.stringify(payload.prayerTimings));
+        fd.append("image", form.image);
+        res = await adminAPI.createMasjid(fd);
+      } else {
+        res = await adminAPI.createMasjid(payload); // JSON
+      }
+
       if (res?.success) {
         notify.success("Masjid added successfully");
-        onAdded?.(res.data);
+        onCreated?.(res.data);
+        resetForm();
         onClose();
-      } else notify.error(res?.message || "Failed");
+      } else {
+        notify.error(res?.message || "Failed");
+      }
     } catch {
       notify.error("Failed to add masjid");
     } finally {
@@ -117,7 +133,15 @@ export default function AddMasjidModal({ open, onClose, onAdded }) {
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title="Add Masjid" size="2xl">
+      <Modal
+        open={open}
+        onClose={() => {
+          resetForm();
+          onClose();
+        }}
+        title="Add Masjid"
+        size="2xl"
+      >
         <form onSubmit={submit} className="space-y-6">
           {/* BASIC INFO */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -174,6 +198,7 @@ export default function AddMasjidModal({ open, onClose, onAdded }) {
               value={form.locationLng}
               onChange={(e) => update("locationLng", e.target.value)}
             />
+
             <button
               type="button"
               onClick={() => setMapOpen(true)}
@@ -220,12 +245,16 @@ export default function AddMasjidModal({ open, onClose, onAdded }) {
           <div className="flex justify-end gap-3">
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => {
+                resetForm();
+                onClose();
+              }}
               className="border px-4 py-2 rounded-lg"
             >
               Cancel
             </button>
             <button
+              type="submit"
               disabled={loading}
               className="bg-slate-700 text-white px-4 py-2 rounded-lg"
             >

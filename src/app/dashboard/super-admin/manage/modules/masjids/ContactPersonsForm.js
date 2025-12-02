@@ -19,7 +19,7 @@ export default function ContactPersonsForm({ contacts, onChange }) {
           {title} {required && <span className="text-red-600">*</span>}
         </p>
         <Input
-          label={`Name ${required ? "*" : ""}`}
+          label={`Name ${required ? "" : ""}`}
           value={data.name || ""}
           onChange={(e) => update(role, "name", e.target.value)}
         />
