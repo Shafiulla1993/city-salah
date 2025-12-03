@@ -1,5 +1,5 @@
 // src/server/controllers/superadmin/masjids.controller.js
-// src/server/controllers/superadmin/masjids.controller.js
+
 import mongoose from "mongoose";
 import Masjid from "@/models/Masjid";
 import City from "@/models/City";

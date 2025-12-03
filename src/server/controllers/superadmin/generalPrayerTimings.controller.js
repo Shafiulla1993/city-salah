@@ -1,304 +1,393 @@
 // src/server/controllers/superadmin/generalPrayerTimings.controller.js
 
-
-// -------------------------------------
-// GENERAL PRAYER TIMINGS CONTROLLER
-// -------------------------------------
-
-import moment from "moment-timezone";
+import mongoose from "mongoose";
+import GeneralPrayerTiming from "@/models/GeneralPrayerTiming";
+import GeneralTimingTemplate from "@/models/GeneralTimingTemplate";
 import City from "@/models/City";
 import Area from "@/models/Area";
-import GeneralPrayerTiming from "@/models/GeneralPrayerTiming";
-import { generateBothMadhabs, generatePrayerTimes } from "@/lib/helpers/prayerTimeHelper";
-
-const TZ = "Asia/Kolkata";
+import { paginate } from "@/server/utils/paginate";
+import { parseCsvFile } from "@/server/utils/parseCsvFile"; // you'll add parser here
 
 /**
- * Helper: Format date to YYYY-MM-DD
+ * Convert slot object with HH:MM AM/PM → minutes from midnight
  */
-function fmt(date) {
-  return moment(date).tz(TZ).format("YYYY-MM-DD");
+function parseTimeToMinutes(str) {
+  if (!str || typeof str !== "string") return null;
+  const match = str.trim().match(/(\d{1,2}):(\d{2})\s?(AM|PM)/i);
+  if (!match) return null;
+  let [_, h, m, period] = match;
+  h = parseInt(h, 10);
+  m = parseInt(m, 10);
+  if (period.toUpperCase() === "PM" && h !== 12) h += 12;
+  if (period.toUpperCase() === "AM" && h === 12) h = 0;
+  return h * 60 + m;
 }
 
-/**
- * Helper: Loop dates (from → to)
- */
-function* dateRange(start, end) {
-  let current = moment(start).tz(TZ);
-  let last = moment(end).tz(TZ);
-  while (current <= last) {
-    yield current.format("YYYY-MM-DD");
-    current.add(1, "day");
-  }
+function normalizeSlots(slotsObj = {}) {
+  return Object.keys(slotsObj).map((name) => ({
+    name,
+    time: parseTimeToMinutes(slotsObj[name]) ?? null,
+  }));
 }
 
-/**
- * -------------------------------
- * GENERATE TIMINGS FOR A DATE RANGE
- * -------------------------------
- *
- * Accepts:
- * - cityId? (optional)
- * - areaIds? (optional)
- * - fromDate (required)
- * - toDate (required)
- * - madhabs = ["shafi","hanafi"] (optional)
- * - offsets = {} (optional)
- */
-export async function generateTimingsForRange({
-  cityId,
-  areaIds = [],
-  fromDate,
-  toDate,
-  madhabs = ["shafi", "hanafi"],
-  offsets = {},
-}) {
-  if (!fromDate || !toDate) {
-    return { status: 400, json: { message: "fromDate and toDate are required" } };
-  }
-
-  // Fetch areas
-  const filter = {};
-  if (cityId) filter.city = cityId;
-  if (areaIds.length) filter._id = { $in: areaIds };
-
-  const areas = await Area.find(filter).populate("city");
-  if (!areas.length) {
-    return { status: 404, json: { message: "No matching areas found" } };
-  }
-
-  const created = [];
-
-  for (const area of areas) {
-    const { center, city } = area;
-
-    if (!center?.coordinates) {
-      console.warn("Missing coordinates for area:", area.name);
-      continue;
+/* --------------------------------------------------------------------------
+ * GET all templates (paginated)
+ * -------------------------------------------------------------------------- */
+export async function getAllTemplatesController({ query } = {}) {
+  try {
+    const { page, limit, search } = query || {};
+    const filter = {};
+    if (search) {
+      filter.name = { $regex: search, $options: "i" };
     }
 
-    for (const date of dateRange(fromDate, toDate)) {
-      for (const madhab of madhabs) {
-        const existing = await GeneralPrayerTiming.findOne({
-          area: area._id,
-          date,
-          madhab,
-        });
+    const result = await paginate(GeneralTimingTemplate, {
+      page,
+      limit,
+      filter,
+      sort: { createdAt: -1 },
+    });
 
-        // Skip existing
-        if (existing) continue;
-
-        // Generate timings
-        const coords = {
-          latitude: center.coordinates[1],
-          longitude: center.coordinates[0],
-          timezone: city.timezone || TZ,
-          offsets,
-          madhab,
-        };
-
-        const result = generatePrayerTimes(coords);
-
-        const newRecord = await GeneralPrayerTiming.create({
-          area: area._id,
-          city: city._id,
-          date,
-          prayers: result.prayers,
-          madhab,
-          type: "date",
-        });
-
-        created.push(newRecord);
-      }
-    }
+    return result;
+  } catch (err) {
+    console.error("getAllTemplatesController error:", err);
+    return { status: 500, json: { success: false, message: err.message } };
   }
-
-  return {
-    status: 200,
-    json: {
-      message: "Prayer timings generated",
-      createdCount: created.length,
-      data: created,
-    },
-  };
 }
 
-/**
- * -----------------------------------
- * GET ALL TIMINGS (WITH FILTERS)
- * -----------------------------------
- *
- * Supports query:
- * - cityId
- * - areaId
- * - date
- * - fromDate
- * - toDate
- * - madhab
- * - page
- * - limit
- */
-export async function getAllTimingsController({ query }) {
-  const {
-    cityId,
-    areaId,
-    date,
-    fromDate,
-    toDate,
-    madhab,
-    page = 1,
-    limit = 50,
-  } = query;
+/* --------------------------------------------------------------------------
+ * GET single template
+ * -------------------------------------------------------------------------- */
+export async function getTemplateController({ id }) {
+  try {
+    if (!mongoose.isValidObjectId(id))
+      return { status: 400, json: { success: false, message: "Invalid ID" } };
 
-  const filter = {};
+    const tpl = await GeneralTimingTemplate.findById(id);
+    if (!tpl)
+      return {
+        status: 404,
+        json: { success: false, message: "Template not found" },
+      };
 
-  if (cityId) filter.city = cityId;
-  if (areaId) filter.area = areaId;
-  if (madhab) filter.madhab = madhab;
-
-  if (date) {
-    filter.date = date;
-  } else if (fromDate && toDate) {
-    filter.date = { $gte: fromDate, $lte: toDate };
+    return { status: 200, json: { success: true, data: tpl } };
+  } catch (err) {
+    console.error("getTemplateController error:", err);
+    return { status: 500, json: { success: false, message: err.message } };
   }
-
-  const skip = (page - 1) * limit;
-
-  const results = await GeneralPrayerTiming.find(filter)
-    .populate("city", "name")
-    .populate("area", "name")
-    .sort({ date: -1, madhab: 1 })
-    .skip(skip)
-    .limit(Number(limit));
-
-  return {
-    status: 200,
-    json: {
-      page: Number(page),
-      limit: Number(limit),
-      count: results.length,
-      data: results,
-    },
-  };
 }
 
-/**
- * -----------------------------------
- * GET SINGLE TIMING BY ID
- * -----------------------------------
- */
-export async function getTimingByIdController({ id }) {
-  const timing = await GeneralPrayerTiming.findById(id)
-    .populate("city", "name")
-    .populate("area", "name");
+/* --------------------------------------------------------------------------
+ * CREATE template
+ * -------------------------------------------------------------------------- */
+export async function createTemplateController({ body = {}, user }) {
+  try {
+    if (!body.name)
+      return {
+        status: 400,
+        json: { success: false, message: "Name required" },
+      };
 
-  if (!timing) {
-    return { status: 404, json: { message: "Timing not found" } };
-  }
+    const exists = await GeneralTimingTemplate.findOne({ name: body.name });
+    if (exists)
+      return {
+        status: 400,
+        json: { success: false, message: "Template name already exists" },
+      };
 
-  return { status: 200, json: timing };
-}
+    const tpl = await GeneralTimingTemplate.create({
+      ...body,
+      createdBy: user?._id,
+    });
 
-/**
- * -----------------------------------
- * UPDATE OFFSETS FOR A DAY + MADHAB
- * -----------------------------------
- *
- * Recalculates all prayers for that day.
- */
-export async function updateOffsetsController({
-  areaId,
-  date,
-  madhab,
-  offsets = {},
-  user,
-}) {
-  if (!areaId || !date || !madhab) {
     return {
-      status: 400,
-      json: { message: "areaId, date and madhab are required" },
+      status: 201,
+      json: { success: true, message: "Template created", data: tpl },
     };
+  } catch (err) {
+    console.error("createTemplateController error:", err);
+    return { status: 500, json: { success: false, message: err.message } };
   }
-
-  const area = await Area.findById(areaId).populate("city");
-  if (!area) {
-    return { status: 404, json: { message: "Area not found" } };
-  }
-
-  const timing = await GeneralPrayerTiming.findOne({
-    area: areaId,
-    date,
-    madhab,
-  });
-
-  if (!timing) {
-    return { status: 404, json: { message: "Timing not found for day" } };
-  }
-
-  const coords = {
-    latitude: area.center.coordinates[1],
-    longitude: area.center.coordinates[0],
-    timezone: area.city.timezone || TZ,
-    offsets,
-    madhab,
-  };
-
-  const updated = generatePrayerTimes(coords);
-
-  timing.prayers = updated.prayers;
-  timing.updatedAt = new Date();
-  timing.updatedBy = user?._id;
-
-  await timing.save();
-
-  return {
-    status: 200,
-    json: { message: "Offsets updated", data: timing },
-  };
 }
 
-/**
- * -----------------------------------
- * UPDATE A SPECIFIC PRAYER SLOT
- * -----------------------------------
- */
-export async function updateSinglePrayerSlotController({
-  id,
-  slotName,
-  startHHMM,
-  endHHMM,
+/* --------------------------------------------------------------------------
+ * UPDATE template
+ * -------------------------------------------------------------------------- */
+export async function updateTemplateController({ id, body = {} }) {
+  try {
+    if (!mongoose.isValidObjectId(id))
+      return { status: 400, json: { success: false, message: "Invalid ID" } };
+
+    const tpl = await GeneralTimingTemplate.findById(id);
+    if (!tpl)
+      return {
+        status: 404,
+        json: { success: false, message: "Template not found" },
+      };
+
+    if (body.name && body.name !== tpl.name) {
+      const exists = await GeneralTimingTemplate.findOne({
+        name: body.name,
+        _id: { $ne: id },
+      });
+      if (exists)
+        return {
+          status: 400,
+          json: { success: false, message: "Name already taken" },
+        };
+    }
+
+    Object.assign(tpl, body, { updatedAt: new Date() });
+    await tpl.save();
+
+    return {
+      status: 200,
+      json: { success: true, message: "Template updated", data: tpl },
+    };
+  } catch (err) {
+    console.error("updateTemplateController error:", err);
+    return { status: 500, json: { success: false, message: err.message } };
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * DELETE template
+ * -------------------------------------------------------------------------- */
+export async function deleteTemplateController({ id }) {
+  try {
+    if (!mongoose.isValidObjectId(id))
+      return { status: 400, json: { success: false, message: "Invalid ID" } };
+
+    await GeneralTimingTemplate.findByIdAndDelete(id);
+    return {
+      status: 200,
+      json: { success: true, message: "Template deleted" },
+    };
+  } catch (err) {
+    console.error("deleteTemplateController error:", err);
+    return { status: 500, json: { success: false, message: err.message } };
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * CSV upload → merge into template
+ * -------------------------------------------------------------------------- */
+export async function uploadCsvToTemplateController({
+  filepath,
+  fields,
   user,
 }) {
-  const timing = await GeneralPrayerTiming.findById(id);
-  if (!timing) {
-    return { status: 404, json: { message: "Timing not found" } };
+  try {
+    if (!fields.name)
+      return {
+        status: 400,
+        json: { success: false, message: "Template name missing" },
+      };
+
+    let tpl = await GeneralTimingTemplate.findOne({ name: fields.name });
+
+    const rows = await parseCsvFile(filepath);
+    if (!rows?.length)
+      return { status: 400, json: { success: false, message: "CSV is empty" } };
+
+    const dates = {};
+    rows.forEach((r) => {
+      const date = r.date;
+      delete r.date;
+      dates[date] = normalizeSlots(r);
+    });
+
+    if (!tpl) {
+      tpl = await GeneralTimingTemplate.create({
+        name: fields.name,
+        dates,
+        createdBy: user?._id,
+      });
+    } else {
+      tpl.dates = { ...tpl.dates, ...dates };
+      tpl.updatedAt = new Date();
+      tpl.updatedBy = user?._id;
+      await tpl.save();
+    }
+
+    return {
+      status: 200,
+      json: { success: true, message: "CSV imported", data: tpl },
+    };
+  } catch (err) {
+    console.error("uploadCsvToTemplateController error:", err);
+    return { status: 500, json: { success: false, message: err.message } };
   }
+}
 
-  const slot = timing.prayers.find((p) => p.name === slotName);
-  if (!slot) {
-    return { status: 404, json: { message: "Prayer slot not found" } };
+/* --------------------------------------------------------------------------
+ * GET general timing by date (for auto copy yesterday)
+ * query: cityId, areaId, date
+ * -------------------------------------------------------------------------- */
+export async function getTimingByDateController({ query }) {
+  try {
+    const { cityId, areaId, date } = query || {};
+    if (!cityId || !date)
+      return {
+        status: 400,
+        json: { success: false, message: "cityId & date required" },
+      };
+
+    const filter = { city: cityId, date };
+    if (areaId) filter.area = areaId;
+
+    const timing = await GeneralPrayerTiming.findOne(filter);
+    return { status: 200, json: { success: true, data: timing || null } };
+  } catch (err) {
+    console.error("getTimingByDateController error:", err);
+    return { status: 500, json: { success: false, message: err.message } };
   }
+}
 
-  if (startHHMM) slot.startTime = startHHMM;
-  if (endHHMM) slot.endTime = endHHMM;
+/* --------------------------------------------------------------------------
+ * CREATE manual general timing entry
+ * -------------------------------------------------------------------------- */
+export async function createManualTimingController({ body = {}, user }) {
+  try {
+    const { city, area, date, slots } = body;
 
-  timing.updatedAt = new Date();
-  timing.updatedBy = user?._id;
+    if (!city || !area || !date)
+      return {
+        status: 400,
+        json: { success: false, message: "city, area, date are required" },
+      };
 
-  await timing.save();
+    const formatted = normalizeSlots(slots || {});
+    if (!formatted.length)
+      return {
+        status: 400,
+        json: { success: false, message: "No timings provided" },
+      };
 
-  return {
-    status: 200,
-    json: { message: "Prayer slot updated", data: timing },
-  };
+    let timing = await GeneralPrayerTiming.findOne({ city, area, date });
+
+    if (!timing) {
+      timing = await GeneralPrayerTiming.create({
+        city,
+        area,
+        date,
+        source: "manual",
+        slots: formatted,
+        createdBy: user?._id,
+      });
+    } else {
+      timing.slots = formatted;
+      timing.source = "manual";
+      timing.updatedBy = user?._id;
+      timing.updatedAt = new Date();
+      await timing.save();
+    }
+
+    return {
+      status: 200,
+      json: { success: true, message: "Timing saved", data: timing },
+    };
+  } catch (err) {
+    console.error("createManualTimingController error:", err);
+    return { status: 500, json: { success: false, message: err.message } };
+  }
+}
+
+/* --------------------------------------------------------------------------
+ *  MAPPINGS — template assigned to city/area
+ * -------------------------------------------------------------------------- */
+import GeneralTimingMapping from "@/models/GeneralTimingMapping";
+
+/**
+ * GET all mappings
+ */
+export async function getMappingsController() {
+  try {
+    const mappings = await GeneralTimingMapping.find()
+      .populate("template", "name")
+      .populate("city", "name")
+      .populate("area", "name")
+      .sort({ createdAt: -1 });
+
+    return { status: 200, json: { success: true, data: mappings } };
+  } catch (err) {
+    console.error("getMappingsController error:", err);
+    return { status: 500, json: { success: false, message: err.message } };
+  }
 }
 
 /**
- * -----------------------------------
- * DELETE TIMING RECORD
- * -----------------------------------
+ * CREATE mapping
+ * body: { template, city?, area? }
+ * rules:
+ *   - area mapping overrides city mapping
+ *   - one city can have only 1 mapping (unless area-specific exists)
  */
-export async function deleteTimingController({ id }) {
-  await GeneralPrayerTiming.findByIdAndDelete(id);
-  return { status: 200, json: { message: "Timing deleted" } };
+export async function createMappingController({ body = {}, user }) {
+  try {
+    const { template, city, area } = body;
+
+    if (!template)
+      return {
+        status: 400,
+        json: { success: false, message: "Template required" },
+      };
+
+    if (!city && !area)
+      return {
+        status: 400,
+        json: { success: false, message: "Provide city or area" },
+      };
+
+    // area mapping uniqueness
+    if (area) {
+      const exists = await GeneralTimingMapping.findOne({ area });
+      if (exists)
+        return {
+          status: 400,
+          json: { success: false, message: "Area already mapped" },
+        };
+    }
+
+    // city mapping uniqueness
+    if (city && !area) {
+      const exists = await GeneralTimingMapping.findOne({
+        city,
+        area: { $exists: false },
+      });
+      if (exists)
+        return {
+          status: 400,
+          json: { success: false, message: "City already mapped" },
+        };
+    }
+
+    const map = await GeneralTimingMapping.create({
+      template,
+      city,
+      area,
+      createdBy: user?._id,
+    });
+
+    return {
+      status: 201,
+      json: { success: true, message: "Mapping created", data: map },
+    };
+  } catch (err) {
+    console.error("createMappingController error:", err);
+    return { status: 500, json: { success: false, message: err.message } };
+  }
+}
+
+/**
+ * DELETE mapping
+ */
+export async function deleteMappingController({ id }) {
+  try {
+    await GeneralTimingMapping.findByIdAndDelete(id);
+    return { status: 200, json: { success: true, message: "Mapping deleted" } };
+  } catch (err) {
+    console.error("deleteMappingController error:", err);
+    return { status: 500, json: { success: false, message: err.message } };
+  }
 }

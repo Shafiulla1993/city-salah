@@ -81,17 +81,43 @@ export const adminAPI = {
   deleteThought: (id) =>
     httpFetch(`/super-admin/thoughts/${id}`, { method: "DELETE" }),
 
-  /** ------------------- PRAYER TIMINGS ------------------- **/
-  getTimings: (query = "") => httpFetch(`/super-admin/prayer-timings${query}`),
+  /** ------------------- GENERAL PRAYER TIMINGS (TEMPLATES) ------------------- **/
+  getTimingTemplates: () =>
+    httpFetch(`/super-admin/general-prayer-timings/templates`),
 
-  getTimingById: (id) => httpFetch(`/super-admin/prayer-timings/${id}`),
+  createTimingTemplate: (data) =>
+    send(`/super-admin/general-prayer-timings/templates`, "POST", data),
 
-  updateTimingOffset: (data) =>
-    send(`/super-admin/prayer-timings/update-offsets`, "POST", data),
+  updateTimingTemplate: (id, data) =>
+    send(`/super-admin/general-prayer-timings/templates/${id}`, "PUT", data),
 
-  updateTimingSlot: (id, data) =>
-    send(`/super-admin/prayer-timings/${id}/slot`, "PUT", data),
+  deleteTimingTemplate: (id) =>
+    httpFetch(`/super-admin/general-prayer-timings/templates/${id}`, {
+      method: "DELETE",
+    }),
 
-  generateTimingsRange: (data) =>
-    send(`/super-admin/prayer-timings/generate`, "POST", data),
+  /** Upload CSV (full year import) */
+  uploadTimingTemplateCSV: (data) =>
+    send(`/super-admin/general-prayer-timings/templates`, "POST", data), // same route as createTemplate — backend auto detects CSV
+
+  /** ------------------- GENERAL PRAYER TIMINGS (MAPPINGS) ------------------- **/
+  getTimingMappings: () =>
+    httpFetch(`/super-admin/general-prayer-timings/mappings`),
+
+  createTimingMapping: (data) =>
+    send(`/super-admin/general-prayer-timings/mappings`, "POST", data),
+
+  deleteTimingMapping: (id) =>
+    httpFetch(`/super-admin/general-prayer-timings/mappings/${id}`, {
+      method: "DELETE",
+    }),
+
+  /** ------------------- GENERAL PRAYER TIMINGS (MANUAL) ------------------- **/
+  createManualGeneralTiming: (data) =>
+    send(`/super-admin/general-prayer-timings/manual`, "POST", data),
+
+  getGeneralTimingByDate: ({ cityId, areaId, date }) =>
+    httpFetch(
+      `/super-admin/general-prayer-timings/by-date?city=${cityId}&area=${areaId}&date=${date}`
+    ),
 };

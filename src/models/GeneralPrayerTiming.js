@@ -1,34 +1,37 @@
 // src/models/GeneralPrayerTiming.js
+
 import mongoose, { Schema, models, model } from "mongoose";
+import { SlotSchema } from "./common/Slot";
 import auditPlugin from "@/lib/utils/auditPlugin";
 
-const PrayerSlot = new Schema(
-  {
-    name: { type: String, required: true }, // 'Fajr' etc
-    start: { type: Number, required: true }, // minutes from midnight
-    end: { type: Number, required: true },
-  },
-  { _id: false }
-);
-
+/**
+ * Cached / resolved timings for specific day
+ * Created automatically from template + mapping
+ * or can be edited manually by super-admin if needed later.
+ */
 const GeneralPrayerTimingSchema = new Schema({
   city: { type: Schema.Types.ObjectId, ref: "City", required: true },
   area: { type: Schema.Types.ObjectId, ref: "Area", required: true },
-  madhab: { type: String, enum: ["shafi", "hanafi"], default: "shafi" },
-  type: { type: String, enum: ["date", "weekly"], default: "date" },
-  date: { type: String }, // YYYY-MM-DD when type === "date"
-  dayOfWeek: { type: Number, min: 0, max: 6 }, // when type === "weekly"
-  prayers: [PrayerSlot], // explicit prayers for this doc (optional if using templateId)
-  templateId: { type: Schema.Types.ObjectId, ref: "TimingTemplate" }, // optional reference
+
+  date: { type: String, required: true }, // YYYY-MM-DD
+
+  /**
+   * If super-admin edits this later, we set source="manual".
+   * Until then, values generated from template have source="template".
+   */
+  source: { type: String, enum: ["template", "manual"], default: "template" },
+
+  slots: [SlotSchema], // [{ name, time }]
+
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date },
-  editedBy: { type: Schema.Types.ObjectId, ref: "User" },
+  updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
 });
 
-// unique per area+date+madhab
-GeneralPrayerTimingSchema.index({ area: 1, date: 1, madhab: 1 }, { unique: true, sparse: true });
-GeneralPrayerTimingSchema.index({ area: 1, type: 1, dayOfWeek: 1 });
+// Unique per day per area
+GeneralPrayerTimingSchema.index({ area: 1, date: 1 }, { unique: true });
 
 GeneralPrayerTimingSchema.plugin(auditPlugin);
 
-export default models.GeneralPrayerTiming || model("GeneralPrayerTiming", GeneralPrayerTimingSchema);
+export default models.GeneralPrayerTiming ||
+  model("GeneralPrayerTiming", GeneralPrayerTimingSchema);
