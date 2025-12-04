@@ -20,7 +20,7 @@ const ContactPersonSchema = new Schema(
 const MasjidPrayerTimingSchema = new Schema(
   {
     fajr: { azan: String, iqaamat: String },
-    dhuhr: { azan: String, iqaamat: String },
+    Zohar: { azan: String, iqaamat: String },
     asr: { azan: String, iqaamat: String },
     maghrib: { azan: String, iqaamat: String },
     isha: { azan: String, iqaamat: String },

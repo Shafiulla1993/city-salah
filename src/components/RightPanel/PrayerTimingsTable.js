@@ -49,7 +49,7 @@ export default function PrayerTimingsTable({
 
   const timingsArray = [
     { name: "Fajr", azan: timing.fajr?.azan, iqaamat: timing.fajr?.iqaamat },
-    { name: "Dhuhr", azan: timing.dhuhr?.azan, iqaamat: timing.dhuhr?.iqaamat },
+    { name: "Zohar", azan: timing.Zohar?.azan, iqaamat: timing.Zohar?.iqaamat },
     { name: "Asr", azan: timing.asr?.azan, iqaamat: timing.asr?.iqaamat },
     {
       name: "Maghrib",

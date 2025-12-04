@@ -16,6 +16,8 @@ export default async function connectDB() {
 
     isConnected = conn.connections[0].readyState === 1;
     console.log("✅ MongoDB Connected");
+
+    await import("@/models/City");
   } catch (error) {
     console.error("❌ MongoDB connection error:", error);
   }

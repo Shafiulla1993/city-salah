@@ -1,11 +1,6 @@
 // src/lib/prayer/generatePrayerTimes.js
 
-import {
-  PrayerTimes,
-  CalculationMethod,
-  Coordinates,
-  Madhab,
-} from "adhan";
+import { PrayerTimes, CalculationMethod, Coordinates, Madhab } from "adhan";
 
 import moment from "moment-timezone";
 
@@ -34,7 +29,7 @@ export function generatePrayerTimes({
   const base = {
     fajr: applyOffset(times.fajr, offsets.fajr || 0),
     sunrise: applyOffset(times.sunrise, offsets.sunrise || 0),
-    dhuhr: applyOffset(times.dhuhr, offsets.dhuhr || 0),
+    Zohar: applyOffset(times.Zohar, offsets.Zohar || 0),
     asr: applyOffset(times.asr, offsets.asr || 0),
     maghrib: applyOffset(times.maghrib, offsets.maghrib || 0),
     isha: applyOffset(times.isha, offsets.isha || 0),
@@ -60,8 +55,8 @@ export function generatePrayerTimes({
     { name: "Sehri", startTime: "00:00", endTime: sehri },
     { name: "Fajr", startTime: base.fajr, endTime: base.sunrise },
     { name: "Sunrise", startTime: base.sunrise, endTime: ishraq },
-    { name: "Ishraq", startTime: ishraq, endTime: base.dhuhr },
-    { name: "Dhuhr", startTime: base.dhuhr, endTime: base.asr },
+    { name: "Ishraq", startTime: ishraq, endTime: base.Zohar },
+    { name: "Zohar", startTime: base.Zohar, endTime: base.asr },
     { name: "Asr", startTime: base.asr, endTime: makrooh },
     { name: "Makrooh", startTime: makrooh, endTime: base.maghrib },
     { name: "Maghrib", startTime: base.maghrib, endTime: base.isha },

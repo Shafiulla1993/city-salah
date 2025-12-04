@@ -36,6 +36,42 @@ async function resolveCityAreaIds({ city, area }) {
 }
 
 /**
+ * Normalize time (e.g. "5:20" → "05:20 AM/PM")
+ * - Fajr  => AM
+ * - Zohar, asr, maghrib, isha => PM
+ */
+function normalizeTime(raw, prayer) {
+  if (!raw) return "";
+
+  let str = raw.toString().toUpperCase().trim();
+  str = str.replace(/\./g, ":"); // allow 5.30 → 5:30
+  str = str.replace(/AM|PM/g, "").trim(); // strip user AM/PM, we enforce
+
+  let [hh, mm] = str.split(":");
+
+  // hour only → assume :00
+  if (!mm) mm = "00";
+
+  hh = hh.replace(/\D/g, "");
+  mm = mm.replace(/\D/g, "");
+
+  // convert to valid 12-hour
+  let h = parseInt(hh, 10) || 0;
+  let m = parseInt(mm, 10) || 0;
+
+  if (h <= 0) h = 12;
+  if (h > 12) h = h % 12 || 12;
+  if (m < 0 || Number.isNaN(m)) m = 0;
+  if (m > 59) m = m % 60;
+
+  const hhFmt = String(h).padStart(2, "0");
+  const mmFmt = String(m).padStart(2, "0");
+
+  const suffix = prayer === "fajr" ? "AM" : "PM";
+  return `${hhFmt}:${mmFmt} ${suffix}`;
+}
+
+/**
  * Create Masjid (JSON)
  * Expects JSON body with fields matching Masjid model.
  * imageUrl should be a string (Cloudinary or remote URL) if provided.
@@ -97,6 +133,18 @@ export async function createMasjidController({ body = {}, user }) {
         status: 400,
         json: { success: false, message: "Another masjid exists in this area" },
       };
+    }
+
+    // 🔹 Normalize prayer timings BEFORE building masjidData
+    if (b.prayerTimings && Array.isArray(b.prayerTimings)) {
+      const p = b.prayerTimings[0]; // your schema uses a single object in array
+      const keys = ["fajr", "Zohar", "asr", "maghrib", "isha"];
+      for (const k of keys) {
+        if (p && p[k]) {
+          p[k].azan = normalizeTime(p[k].azan, k);
+          p[k].iqaamat = normalizeTime(p[k].iqaamat, k);
+        }
+      }
     }
 
     const masjidData = {
@@ -264,7 +312,7 @@ export async function updateMasjidController({ id, body = {}, user }) {
       masjid.slug = newSlug;
     }
 
-    // Update allowed fields (merge)
+    // list of allowed fields
     const updatable = [
       "name",
       "address",
@@ -277,9 +325,23 @@ export async function updateMasjidController({ id, body = {}, user }) {
       "timezone",
       "description",
     ];
+
+    // assign raw values first
     updatable.forEach((k) => {
       if (b[k] !== undefined) masjid[k] = b[k];
     });
+
+    // normalize timings after assignment
+    if (masjid.prayerTimings && Array.isArray(masjid.prayerTimings)) {
+      const p = masjid.prayerTimings[0];
+      const keys = ["fajr", "Zohar", "asr", "maghrib", "isha"];
+      for (const k of keys) {
+        if (p && p[k]) {
+          p[k].azan = normalizeTime(p[k].azan, k);
+          p[k].iqaamat = normalizeTime(p[k].iqaamat, k);
+        }
+      }
+    }
 
     masjid.updatedAt = new Date();
     await masjid.save();
