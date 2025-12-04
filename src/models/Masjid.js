@@ -39,6 +39,7 @@ const MasjidSchema = new Schema({
     coordinates: { type: [Number], required: true }, // [lng, lat]
   },
   imageUrl: { type: String }, // Cloudinary URL
+  imagePublicId: { type: String }, // Cloudinary public_id for cleanup
   contacts: [ContactPersonSchema],
   prayerTimings: [MasjidPrayerTimingSchema],
   timezone: { type: String },

@@ -20,6 +20,7 @@ export const POST = withAuth("super_admin", async (request, user) => {
     fields: {},
     files: {},
   }));
+
   const body = { ...fields };
 
   // parse JSON-encoded fields if needed (contacts, prayerTimings, location)
@@ -27,20 +28,26 @@ export const POST = withAuth("super_admin", async (request, user) => {
     if (typeof body[k] === "string") {
       try {
         body[k] = JSON.parse(body[k]);
-      } catch {}
+      } catch {
+        // ignore parse errors, leave as string
+      }
     }
   });
 
   if (files?.file || files?.image) {
     const file = files.file || files.image;
+
     try {
       const uploadRes = await uploadFileToCloudinary(
         file.filepath || file.path,
         "masjids"
       );
+
       body.imageUrl = uploadRes.secure_url || uploadRes.url;
+      body.imagePublicId = uploadRes.public_id;
     } catch (err) {
       console.error("Masjid image upload failed:", err);
+      // (assuming withAuth wrapper understands this shape)
       return {
         status: 500,
         json: { success: false, message: "Image upload failed" },
@@ -49,7 +56,9 @@ export const POST = withAuth("super_admin", async (request, user) => {
       try {
         const p = file.filepath || file.path;
         if (p) await fs.unlink(p).catch(() => {});
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
   }
 

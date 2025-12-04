@@ -1,33 +1,43 @@
-// src/server/controllers/superadmin/generalPrayerTimings.controller.js
-
 import mongoose from "mongoose";
 import GeneralPrayerTiming from "@/models/GeneralPrayerTiming";
 import GeneralTimingTemplate from "@/models/GeneralTimingTemplate";
 import City from "@/models/City";
 import Area from "@/models/Area";
 import { paginate } from "@/server/utils/paginate";
-import { parseCsvFile } from "@/server/utils/parseCsvFile"; // you'll add parser here
+import { parseCsvFile } from "@/server/utils/parseCsvFile";
+import GeneralTimingMapping from "@/models/GeneralTimingMapping";
 
 /**
- * Convert slot object with HH:MM AM/PM → minutes from midnight
+ * Convert time string with HH:MM AM/PM → minutes from midnight
  */
-function parseTimeToMinutes(str) {
-  if (!str || typeof str !== "string") return null;
-  const match = str.trim().match(/(\d{1,2}):(\d{2})\s?(AM|PM)/i);
+export function parseTimeToMinutes(timeStr) {
+  if (typeof timeStr === "number") return timeStr; // Already minutes, return as is
+  if (!timeStr || typeof timeStr !== "string") return null;
+
+  const match = timeStr.trim().match(/(\d{1,2}):(\d{2})\s?(AM|PM)/i);
   if (!match) return null;
+
   let [_, h, m, period] = match;
   h = parseInt(h, 10);
   m = parseInt(m, 10);
+
   if (period.toUpperCase() === "PM" && h !== 12) h += 12;
   if (period.toUpperCase() === "AM" && h === 12) h = 0;
+
   return h * 60 + m;
 }
 
-function normalizeSlots(slotsObj = {}) {
-  return Object.keys(slotsObj).map((name) => ({
-    name,
-    time: parseTimeToMinutes(slotsObj[name]) ?? null,
-  }));
+/**
+ * Normalize slots object into array with { name, time (minutes) }
+ */
+function normalizeSlots(slotsArray = []) {
+  return slotsArray
+    .map(({ name, time }) => {
+      const minutes = parseTimeToMinutes(time);
+      if (minutes === null || isNaN(minutes)) return null;
+      return { name, time: minutes };
+    })
+    .filter(Boolean);
 }
 
 /* --------------------------------------------------------------------------
@@ -151,6 +161,48 @@ export async function updateTemplateController({ id, body = {} }) {
 }
 
 /* --------------------------------------------------------------------------
+ * LIST general timings by date range
+ * query: cityId (required), areaId?, start?, end?
+ * If no start/end → default to current month
+ * -------------------------------------------------------------------------- */
+export async function listGeneralTimingsController({ query }) {
+  try {
+    const { cityId, areaId, start, end } = query || {};
+
+    if (!cityId) {
+      return {
+        status: 400,
+        json: { success: false, message: "cityId is required" },
+      };
+    }
+
+    const filter = { city: cityId };
+
+    if (areaId) {
+      filter.area = areaId;
+    }
+
+    // If start & end provided, filter by date range
+    if (start && end) {
+      filter.date = { $gte: start, $lte: end };
+    }
+
+    const timings = await GeneralPrayerTiming.find(filter)
+      .populate("city", "name")
+      .populate("area", "name")
+      .sort({ date: 1 });
+
+    return {
+      status: 200,
+      json: { success: true, data: timings },
+    };
+  } catch (err) {
+    console.error("listGeneralTimingsController error:", err);
+    return { status: 500, json: { success: false, message: err.message } };
+  }
+}
+
+/* --------------------------------------------------------------------------
  * DELETE template
  * -------------------------------------------------------------------------- */
 export async function deleteTemplateController({ id }) {
@@ -234,7 +286,7 @@ export async function getTimingByDateController({ query }) {
       };
 
     const filter = { city: cityId, date };
-    if (areaId) filter.area = areaId;
+    if (areaId && areaId !== "") filter.area = areaId;
 
     const timing = await GeneralPrayerTiming.findOne(filter);
     return { status: 200, json: { success: true, data: timing || null } };
@@ -251,25 +303,30 @@ export async function createManualTimingController({ body = {}, user }) {
   try {
     const { city, area, date, slots } = body;
 
-    if (!city || !area || !date)
+    if (!city || !date) {
       return {
         status: 400,
-        json: { success: false, message: "city, area, date are required" },
+        json: { success: false, message: "city & date required" },
       };
+    }
 
-    const formatted = normalizeSlots(slots || {});
-    if (!formatted.length)
+    const formatted = normalizeSlots(slots || []);
+    if (!formatted.length) {
       return {
         status: 400,
         json: { success: false, message: "No timings provided" },
       };
+    }
 
-    let timing = await GeneralPrayerTiming.findOne({ city, area, date });
+    const query = { city, date };
+    if (area) query.area = area;
+
+    let timing = await GeneralPrayerTiming.findOne(query);
 
     if (!timing) {
       timing = await GeneralPrayerTiming.create({
         city,
-        area,
+        area: area || null,
         date,
         source: "manual",
         slots: formatted,
@@ -296,7 +353,6 @@ export async function createManualTimingController({ body = {}, user }) {
 /* --------------------------------------------------------------------------
  *  MAPPINGS — template assigned to city/area
  * -------------------------------------------------------------------------- */
-import GeneralTimingMapping from "@/models/GeneralTimingMapping";
 
 /**
  * GET all mappings
@@ -333,39 +389,53 @@ export async function createMappingController({ body = {}, user }) {
         json: { success: false, message: "Template required" },
       };
 
-    if (!city && !area)
+    if (!city)
       return {
         status: 400,
-        json: { success: false, message: "Provide city or area" },
+        json: { success: false, message: "City is required" },
       };
 
-    // area mapping uniqueness
-    if (area) {
-      const exists = await GeneralTimingMapping.findOne({ area });
+    const scope = area ? "area" : "city";
+
+    /**
+     * RULES:
+     * - If area is selected → unique per area
+     * - If area is not selected → unique per city (city-level)
+     */
+
+    if (scope === "area") {
+      const exists = await GeneralTimingMapping.findOne({
+        area,
+      });
+
       if (exists)
         return {
           status: 400,
-          json: { success: false, message: "Area already mapped" },
+          json: { success: false, message: "This area already has a mapping" },
         };
     }
 
-    // city mapping uniqueness
-    if (city && !area) {
+    if (scope === "city") {
       const exists = await GeneralTimingMapping.findOne({
         city,
-        area: { $exists: false },
+        area: null, // important fix
       });
+
       if (exists)
         return {
           status: 400,
-          json: { success: false, message: "City already mapped" },
+          json: {
+            success: false,
+            message: "This city already has a city-level mapping",
+          },
         };
     }
 
     const map = await GeneralTimingMapping.create({
       template,
       city,
-      area,
+      area: area || null,
+      scope,
       createdBy: user?._id,
     });
 

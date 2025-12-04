@@ -47,14 +47,10 @@ export default function EditTemplateModal({
   }
 
   async function handleSave() {
-    if (!name.trim()) {
-      notify.error("Template name is required");
-      return;
-    }
+    if (!name.trim()) return notify.error("Template name required");
 
     setLoading(true);
     try {
-      // you need adminAPI.updateTimingTemplate on frontend + PUT route on backend
       const payload = {
         name,
         timezone,
@@ -73,7 +69,7 @@ export default function EditTemplateModal({
       }
     } catch (err) {
       console.error(err);
-      notify.error("Failed to update template");
+      notify.error("Error while updating template");
     } finally {
       setLoading(false);
     }

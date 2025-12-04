@@ -13,6 +13,7 @@ import DeleteTemplateModal from "../modules/timings/DeleteTemplateModal";
 import AddMappingModal from "../modules/timings/AddMappingModal";
 import DeleteMappingModal from "../modules/timings/DeleteMappingModal";
 import AddManualTimingModal from "../modules/timings/AddManualTimingModal";
+import GeneralTimingsList from "../modules/timings/GeneralTimingsList";
 
 export default function TimingsTab() {
   const [activeInnerTab, setActiveInnerTab] = useState("templates");
@@ -221,6 +222,15 @@ export default function TimingsTab() {
           loadAll();
         }}
       />
+
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold">Saved General Timings</h2>
+        <p className="text-xs text-gray-500">
+          View all general prayer timings saved for a city/area for a given
+          month.
+        </p>
+        <GeneralTimingsList cities={cities} areas={areas} />
+      </section>
     </div>
   );
 }

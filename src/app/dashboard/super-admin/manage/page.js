@@ -39,6 +39,7 @@ export default function ManageMain() {
 
         <AdminCard>
           {tab === "users" && <UsersTab />}
+
           {tab === "cities" && <CitiesTab />}
 
           {tab === "areas" && <AreasTab />}

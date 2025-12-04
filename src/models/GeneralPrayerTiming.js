@@ -10,8 +10,16 @@ import auditPlugin from "@/lib/utils/auditPlugin";
  * or can be edited manually by super-admin if needed later.
  */
 const GeneralPrayerTimingSchema = new Schema({
-  city: { type: Schema.Types.ObjectId, ref: "City", required: true },
-  area: { type: Schema.Types.ObjectId, ref: "Area", required: true },
+  // either area OR city is required
+  area: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Area",
+  },
+  city: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "City",
+    required: true,
+  },
 
   date: { type: String, required: true }, // YYYY-MM-DD
 
@@ -29,7 +37,10 @@ const GeneralPrayerTimingSchema = new Schema({
 });
 
 // Unique per day per area
-GeneralPrayerTimingSchema.index({ area: 1, date: 1 }, { unique: true });
+GeneralPrayerTimingSchema.index(
+  { city: 1, area: 1, date: 1 },
+  { unique: true }
+);
 
 GeneralPrayerTimingSchema.plugin(auditPlugin);
 

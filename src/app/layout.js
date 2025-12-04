@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
 import ToastProviderClient from "@/components/ui/ToastProviderClient";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata = {
   title: "City Salah",
@@ -36,6 +37,7 @@ export default function RootLayout({ children }) {
           {/* Main content */}
           <main className="max-w-7xl mx-auto p-6 md:p-10 min-h-screen">
             {children}
+            <SpeedInsights />
           </main>
         </AuthProvider>
       </body>

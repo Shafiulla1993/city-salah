@@ -1,4 +1,3 @@
-
 // src/app/dashboard/super-admin/components/QuickActions.js
 
 "use client";
@@ -10,9 +9,16 @@ export default function QuickActions() {
   const router = useRouter();
 
   const actions = [
-    { key: "manage", label: "Manage Data", path: "/dashboard/super-admin/manage" },
-    { key: "generate", label: "Generate Today Timings", path: "/dashboard/super-admin/prayer-timings" },
-    { key: "create-ann", label: "New Announcement", path: "/dashboard/super-admin/announcements/create" },
+    {
+      key: "manage",
+      label: "Manage Data",
+      path: "/dashboard/super-admin/manage",
+    },
+    {
+      key: "create-ann",
+      label: "New Announcement",
+      path: "/dashboard/super-admin/announcements/create",
+    },
   ];
 
   return (

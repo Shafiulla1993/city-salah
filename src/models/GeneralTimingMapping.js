@@ -13,7 +13,7 @@ const OffsetsSchema = new Schema(
 
 const GeneralTimingMappingSchema = new Schema({
   scope: { type: String, enum: ["city", "area"], required: true },
-  city: { type: Schema.Types.ObjectId, ref: "City" },
+  city: { type: Schema.Types.ObjectId, ref: "City", required: true },
   area: { type: Schema.Types.ObjectId, ref: "Area" },
   template: {
     type: Schema.Types.ObjectId,
@@ -30,7 +30,7 @@ const GeneralTimingMappingSchema = new Schema({
 
 GeneralTimingMappingSchema.index(
   { scope: 1, city: 1, area: 1 },
-  { unique: true, sparse: true }
+  { unique: true }
 );
 
 GeneralTimingMappingSchema.plugin(auditPlugin);

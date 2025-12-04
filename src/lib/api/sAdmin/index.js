@@ -96,6 +96,14 @@ export const adminAPI = {
       method: "DELETE",
     }),
 
+  /** ------------------- GENERAL PRAYER TIMINGS (LIST) ------------------- **/
+  getGeneralTimingsRange: ({ cityId, areaId, start, end }) =>
+    httpFetch(
+      `/super-admin/general-prayer-timings/list?cityId=${cityId}&areaId=${
+        areaId || ""
+      }&start=${start}&end=${end}`
+    ),
+
   /** Upload CSV (full year import) */
   uploadTimingTemplateCSV: (data) =>
     send(`/super-admin/general-prayer-timings/templates`, "POST", data), // same route as createTemplate — backend auto detects CSV
@@ -118,6 +126,6 @@ export const adminAPI = {
 
   getGeneralTimingByDate: ({ cityId, areaId, date }) =>
     httpFetch(
-      `/super-admin/general-prayer-timings/by-date?city=${cityId}&area=${areaId}&date=${date}`
+      `/super-admin/general-prayer-timings/by-date?cityId=${cityId}&areaId=${areaId}&date=${date}`
     ),
 };

@@ -49,7 +49,7 @@ export default function AddManualTimingModal({
         // 1) Try existing record for SAME day
         const resToday = await adminAPI.getGeneralTimingByDate({
           cityId,
-          areaId,
+          areaId: areaId || undefined,
           date,
         });
 
@@ -85,19 +85,24 @@ export default function AddManualTimingModal({
 
   async function handleSave() {
     if (!cityId) return notify.error("City is required");
-    if (!areaId) return notify.error("Area is required");
     if (!date) return notify.error("Date is required");
 
     setLoading(true);
     try {
+      // Convert timings object like { sehri_end: "05:03" } → [{name, time}]
+      const formattedSlots = Object.entries(timings).map(([key, value]) => ({
+        name: key,
+        time: value,
+      }));
+
       const payload = {
         city: cityId,
-        area: areaId,
+        area: areaId || null,
         date,
-        slots: timings, // { sehri_end: "5:21 AM", fajr_start: "5:30 AM", ... }
+        slots: formattedSlots,
       };
 
-      const res = await adminAPI.createManualTiming(payload);
+      const res = await adminAPI.createManualGeneralTiming(payload);
 
       if (res?.success) {
         notify.success("Day timings saved");
