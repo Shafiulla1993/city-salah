@@ -22,43 +22,42 @@ export const POST = withAuth("super_admin", async (request, user) => {
   }));
 
   const body = { ...fields };
+  // Normalize all single-value fields (convert ["name"] → "name")
+  Object.keys(body).forEach((key) => {
+    if (Array.isArray(body[key])) {
+      body[key] = body[key][0];
+    }
+  });
 
-  // parse JSON-encoded fields if needed (contacts, prayerTimings, location)
+  // Convert JSON-encoded fields
   ["contacts", "prayerTimings", "location"].forEach((k) => {
     if (typeof body[k] === "string") {
       try {
         body[k] = JSON.parse(body[k]);
-      } catch {
-        // ignore parse errors, leave as string
-      }
+      } catch {}
     }
   });
 
-  if (files?.file || files?.image) {
-    const file = files.file || files.image;
+  // IMAGE UPLOAD
+  if (files?.image) {
+    const fileArray = files.image;
+    const file = Array.isArray(fileArray) ? fileArray[0] : fileArray;
+    const tempFilePath = file.filepath;
 
-    try {
-      const uploadRes = await uploadFileToCloudinary(
-        file.filepath || file.path,
-        "masjids"
-      );
-
-      body.imageUrl = uploadRes.secure_url || uploadRes.url;
-      body.imagePublicId = uploadRes.public_id;
-    } catch (err) {
-      console.error("Masjid image upload failed:", err);
-      // (assuming withAuth wrapper understands this shape)
+    if (!tempFilePath) {
+      console.error("❌ Missing file path for Cloudinary upload");
       return {
         status: 500,
-        json: { success: false, message: "Image upload failed" },
+        json: { success: false, message: "Image upload failed (no filepath)" },
       };
+    }
+
+    try {
+      const uploadRes = await uploadFileToCloudinary(tempFilePath, "masjids");
+      body.imageUrl = uploadRes.secure_url || uploadRes.url;
+      body.imagePublicId = uploadRes.public_id;
     } finally {
-      try {
-        const p = file.filepath || file.path;
-        if (p) await fs.unlink(p).catch(() => {});
-      } catch {
-        // ignore
-      }
+      await fs.unlink(tempFilePath).catch(() => {});
     }
   }
 
