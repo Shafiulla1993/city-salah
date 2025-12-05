@@ -1,21 +1,12 @@
-// src/app/auqatus-salah/page
+// src/app/auqatus-salah/page.js
 
 "use client";
 
 import { useEffect, useState } from "react";
-import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { publicAPI } from "@/lib/api/public";
 import { toast } from "react-toastify";
-
-function minutesToTimeString(min) {
-  if (min === null || min === undefined) return "-";
-  const m = min % 60;
-  let h = Math.floor(min / 60);
-  const period = h >= 12 ? "PM" : "AM";
-  h = h % 12;
-  if (h === 0) h = 12;
-  return `${h}:${m.toString().padStart(2, "0")} ${period}`;
-}
+import PrayerTimingsTable from "@/components/RightPanel/PrayerTimingsTable";
+import AuqatusTimingsLoader from "@/components/RightPanel/loaders";
 
 export default function AuqatusSalahPage() {
   const [cities, setCities] = useState([]);
@@ -23,111 +14,140 @@ export default function AuqatusSalahPage() {
   const [cityId, setCityId] = useState("");
   const [areaId, setAreaId] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+
   const [timings, setTimings] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const loadCities = async () => {
-    const res = await publicAPI.getCities();
-    setCities(res);
-  };
-
-  const loadAreas = async (c) => {
-    const res = await publicAPI.getAreas(c);
-    setAreas(res);
-  };
-
-  const loadTimings = async () => {
-    if (!cityId) return toast.error("Select city");
-    const res = await publicAPI.getGeneralTimings({ cityId, areaId, date });
-    if (res?.success) setTimings(res.data);
-    else toast.error(res?.message || "No timings found");
-  };
-
+  // Load cities
   useEffect(() => {
-    loadCities();
+    publicAPI.getCities().then(setCities);
   }, []);
+
+  // Load areas when city changes
   useEffect(() => {
     if (!cityId) {
       setAreas([]);
       setAreaId("");
       return;
     }
-    loadAreas(cityId);
+    publicAPI.getAreas(cityId).then(setAreas);
   }, [cityId]);
 
+  // Load timings
+  const loadTimings = async () => {
+    if (!cityId) return;
+    setLoading(true);
+    try {
+      const res = await publicAPI.getGeneralTimings({ cityId, areaId, date });
+      if (res?.success) setTimings(res.data);
+      else setTimings(null);
+    } catch {
+      toast.error("Failed to load timings");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    loadTimings();
-  }, [date, cityId, areaId]);
+    if (cityId) loadTimings();
+  }, [cityId, areaId, date]);
 
-  const slotCols = timings?.slots || [];
+  /* Ordered slot mapping for Auqatus Salah */
+  function transformSlots(slots = []) {
+    const map = Object.fromEntries(slots.map((s) => [s.name, s]));
 
-  const left = null;
-  const right = (
-    <div className="p-4 space-y-6">
-      <h1 className="text-2xl font-bold text-slate-800">Auqatus Salah</h1>
+    const ordering = [
+      ["Sehri", "sehri_start", "sehri_end"],
+      ["Fajr", "fajr_start", "fajr_end"],
+      ["Ishraq", "ishraq_start", "ishraq_end"],
+      ["Chasht", "chasht_start", "chasht_end"],
+      ["Zawaal", "zawaal_start", "zawaal_end"],
+      ["Zohar", "zohar_start", "zohar_end"],
+      ["Asar (Shafi)", "asar_shafi_start", "asar_shafi_end"],
+      ["Asar (Hanafi)", "asar_hanafi_start", "asar_hanafi_end"],
+      ["Maghrib", "maghrib_start", "maghrib_end"],
+      ["Isha", "isha_start", "isha_end"],
+    ];
 
-      {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <select
-          className="border px-3 py-2 rounded"
-          value={cityId}
-          onChange={(e) => setCityId(e.target.value)}
+    return ordering
+      .map(([label, startKey, endKey]) => ({
+        name: label,
+        start: map[startKey]?.time ?? null,
+        end: map[endKey]?.time ?? null,
+      }))
+      .filter((row) => row.start !== null || row.end !== null);
+  }
+
+  return (
+    <div className="space-y-8">
+      <h1 className="text-3xl font-bold text-center text-slate-900">
+        Auqatus Salah
+      </h1>
+
+      {/* FILTER BAR */}
+      <div className="bg-white shadow rounded-lg p-4 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* CITY */}
+          <select
+            className="border px-3 py-2 rounded"
+            value={cityId}
+            onChange={(e) => setCityId(e.target.value)}
+          >
+            <option value="">Select City</option>
+            {cities.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+
+          {/* AREA */}
+          <select
+            className="border px-3 py-2 rounded"
+            value={areaId}
+            onChange={(e) => setAreaId(e.target.value)}
+          >
+            <option value="">All Areas</option>
+            {areas.map((a) => (
+              <option key={a._id} value={a._id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+
+          {/* DATE */}
+          <input
+            type="date"
+            className="border px-3 py-2 rounded"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </div>
+
+        <button
+          onClick={loadTimings}
+          className="w-full md:w-auto bg-slate-800 text-white px-6 py-2 rounded hover:bg-slate-900 transition"
         >
-          <option value="">Select City</option>
-          {cities.map((c) => (
-            <option key={c._id} value={c._id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-
-        <select
-          className="border px-3 py-2 rounded"
-          value={areaId}
-          onChange={(e) => setAreaId(e.target.value)}
-        >
-          <option value="">All Areas</option>
-          {areas.map((a) => (
-            <option key={a._id} value={a._id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
-
-        <input
-          type="date"
-          className="border px-3 py-2 rounded"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
+          Refresh Timings
+        </button>
       </div>
 
-      {/* Table */}
-      {timings && (
-        <div className="overflow-x-auto">
-          <table className="w-full border rounded text-sm">
-            <thead className="bg-slate-200">
-              <tr>
-                <th className="px-3 py-2 text-left">Name</th>
-                <th className="px-3 py-2 text-left">Start</th>
-                <th className="px-3 py-2 text-left">End</th>
-              </tr>
-            </thead>
-            <tbody>
-              {timings.slots?.map((s) => (
-                <tr key={s.name} className="border-t">
-                  <td className="px-3 py-2 capitalize">
-                    {s.name.replace(/_/g, " ")}
-                  </td>
-                  <td className="px-3 py-2">{minutesToTimeString(s.start)}</td>
-                  <td className="px-3 py-2">{minutesToTimeString(s.end)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* TABLE */}
+      {loading ? (
+        <AuqatusTimingsLoader />
+      ) : timings ? (
+        <PrayerTimingsTable
+          prayerTimings={[{ slots: transformSlots(timings.slots) }]}
+          masjidSelected={true}
+          mode="auqatus"
+        />
+      ) : (
+        <div className="text-center text-gray-600">
+          {cityId
+            ? "No timings found for this selection"
+            : "Select city to view timings"}
         </div>
       )}
     </div>
   );
-
-  return <DashboardLayout left={left} right={right} />;
 }

@@ -63,3 +63,26 @@ export function PrayerTimingsLoader() {
     </div>
   );
 }
+
+//🔹 AuqatusTimingsLoader
+
+export default function AuqatusTimingsLoader() {
+  return (
+    <div className="bg-white shadow rounded-lg p-4 animate-pulse">
+      <Skeleton className="h-7 w-56 mx-auto mb-6" />
+
+      <div className="space-y-4">
+        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+          <div
+            key={i}
+            className="grid grid-cols-3 gap-4 py-2 border-b last:border-none"
+          >
+            <Skeleton className="h-5 w-24 mx-auto" />
+            <Skeleton className="h-5 w-20 mx-auto" />
+            <Skeleton className="h-5 w-20 mx-auto" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
