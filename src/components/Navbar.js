@@ -69,12 +69,21 @@ export default function ModernNavbar() {
               )}
 
               {/* Logo */}
-              <Link
-                href="/"
-                className="text-2xl font-bold text-gray-900 hover:text-white"
-              >
-                City Salah
-              </Link>
+              <div className="flex items-center gap-4">
+                <Link
+                  href="/"
+                  className="text-2xl font-bold text-gray-900 hover:text-white"
+                >
+                  City Salah
+                </Link>
+
+                <Link
+                  href="/auqatus-salah"
+                  className="text-lg font-semibold text-gray-900 hover:text-white whitespace-nowrap"
+                >
+                  Auqatus Salah
+                </Link>
+              </div>
             </div>
 
             {/* Desktop menu */}
@@ -157,6 +166,13 @@ export default function ModernNavbar() {
         {menuOpen && (
           <div className="md:hidden bg-white shadow-md">
             <nav className="flex flex-col space-y-2 p-4">
+              <Link
+                href="/auqatus-salah"
+                onClick={() => setMenuOpen(false)}
+                className="text-gray-700 hover:text-blue-600"
+              >
+                Auqatus Salah
+              </Link>
               <Link
                 href="/contact"
                 onClick={() => setMenuOpen(false)}

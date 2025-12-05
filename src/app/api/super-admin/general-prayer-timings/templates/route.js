@@ -22,22 +22,26 @@ export const POST = withAuth("super_admin", async (request, user) => {
     files: {},
   }));
 
-  // If CSV present → upload handler
-  if (files?.file || files?.csv) {
-    const file = files.file || files.csv;
-    const filepath = file.filepath || file.path;
+  // If CSV present (multipart or JSON) -> upload handler
+  if (files?.file || files?.csv || fields?.csv) {
+    const csvText = fields?.csv;
+    const filenameTemp = null;
 
-    const res = await uploadCsvToTemplateController({
-      filepath,
+    if (files?.file || files?.csv) {
+      const file = files.file || files.csv;
+      const filepath = file.filepath || file.path;
+      return uploadCsvToTemplateController({ filepath, fields, user }).finally(
+        async () => filepath && fs.unlink(filepath).catch(() => {})
+      );
+    }
+
+    // JSON upload case -> no file, parse text directly
+    return uploadCsvToTemplateController({
+      filepath: null,
       fields,
       user,
-    }).finally(async () => {
-      try {
-        if (filepath) await fs.unlink(filepath).catch(() => {});
-      } catch {}
+      csvText,
     });
-
-    return res;
   }
 
   // Otherwise → normal JSON create

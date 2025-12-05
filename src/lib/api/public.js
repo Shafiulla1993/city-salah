@@ -47,4 +47,13 @@ export const publicAPI = {
 
   /** ---------------- THOUGHT OF DAY ---------------- **/
   getThoughtOfDay: () => httpFetch(`${BASE}/thought-of-day`).catch(() => []),
+
+  /** ---------------- General Prayer Timings ---------------- **/
+  getGeneralTimings: ({ cityId, areaId, date }) => {
+    const params = new URLSearchParams();
+    if (cityId) params.append("cityId", cityId);
+    if (areaId) params.append("areaId", areaId);
+    if (date) params.append("date", date);
+    return httpFetch(`/public/general-timings?${params.toString()}`);
+  },
 };

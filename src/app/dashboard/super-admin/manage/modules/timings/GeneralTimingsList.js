@@ -165,14 +165,26 @@ export default function GeneralTimingsList({ cities = [], areas = [] }) {
         <table className="w-full text-xs md:text-sm">
           <thead className="bg-slate-200 text-slate-800">
             <tr>
-              <th className="px-3 py-2 text-left">Date</th>
-              <th className="px-3 py-2 text-left">City</th>
-              <th className="px-3 py-2 text-left">Area</th>
-              <th className="px-3 py-2 text-left">Source</th>
-              <th className="px-3 py-2 text-left">Slots</th>
+              <th className="px-3 py-2">Date</th>
+              <th className="px-3 py-2">City</th>
+              <th className="px-3 py-2">Area</th>
+              <th className="px-3 py-2">Source</th>
+
+              {/* Dynamic Slot Columns */}
+              {Array.from(
+                new Set(
+                  timings.flatMap((t) => t.slots?.map((s) => s.name) || [])
+                )
+              ).map((slot) => (
+                <th key={slot} className="px-3 py-2 text-left capitalize">
+                  {slot.replace(/_/g, " ")}
+                </th>
+              ))}
+
               <th className="px-3 py-2 text-right">Actions</th>
             </tr>
           </thead>
+
           <tbody className="divide-y">
             {timings.map((t) => (
               <tr key={t._id} className="hover:bg-slate-50">
@@ -181,20 +193,19 @@ export default function GeneralTimingsList({ cities = [], areas = [] }) {
                 <td className="px-3 py-2">{t.area?.name || "-"}</td>
                 <td className="px-3 py-2 capitalize">{t.source || "-"}</td>
 
-                <td className="px-3 py-2">
-                  {t.slots?.length ? (
-                    <div className="flex flex-wrap gap-x-4 gap-y-1">
-                      {t.slots.map((s) => (
-                        <div key={s.name} className="whitespace-nowrap">
-                          <span className="font-medium">{s.name}:</span>{" "}
-                          {minutesToTimeString(s.time)}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-gray-400">No slots</span>
-                  )}
-                </td>
+                {/* Dynamic slot cells */}
+                {Array.from(
+                  new Set(
+                    timings.flatMap((ti) => ti.slots?.map((s) => s.name) || [])
+                  )
+                ).map((slot) => {
+                  const value = t.slots?.find((s) => s.name === slot)?.time;
+                  return (
+                    <td key={slot} className="px-3 py-2 whitespace-nowrap">
+                      {minutesToTimeString(value)}
+                    </td>
+                  );
+                })}
 
                 <td className="px-3 py-2 text-right">
                   <button
@@ -217,7 +228,7 @@ export default function GeneralTimingsList({ cities = [], areas = [] }) {
             {!timings.length && !loading && (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={100}
                   className="px-4 py-6 text-center text-gray-500 text-sm"
                 >
                   No timings found. Select filters and click <b>Load Timings</b>
