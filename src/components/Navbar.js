@@ -15,79 +15,136 @@ export default function ModernNavbar() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // For hiding on scroll down, showing on scroll up
+  // hide on scroll down
   useEffect(() => {
     const handleScroll = () => {
       const current = window.scrollY;
-
-      if (current > lastScroll && current > 70) {
-        // scrolling down
-        setHidden(true);
-      } else {
-        // scrolling up
-        setHidden(false);
-      }
-
+      if (current > lastScroll && current > 70) setHidden(true);
+      else setHidden(false);
       setLastScroll(current);
     };
-
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScroll]);
 
-  // Go to dashboard based on role
   const goToDashboard = () => {
     if (!user) return;
-
-    if (user.role === "super_admin") {
-      router.push("/dashboard/super-admin");
-    } else if (user.role === "masjid_admin") {
+    if (user.role === "super_admin") router.push("/dashboard/super-admin");
+    else if (user.role === "masjid_admin")
       router.push("/dashboard/masjid-admin");
-    } else {
-      router.push("/");
-    }
+    else router.push("/");
   };
+
+  const isActive = (path) =>
+    pathname === path ? "text-white underline font-semibold" : "text-stone-900";
 
   return (
     <div className="group fixed top-0 left-0 right-0 z-50">
       <header
-        className={`bg-slate-400 shadow-lg transition-transform duration-500
-        ${hidden ? "-translate-y-full" : "translate-y-0"}
-      `}
+        className={`bg-slate-400 shadow-lg transition-transform duration-500 ${
+          hidden ? "-translate-y-full" : "translate-y-0"
+        }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            {/* Back Button (hide on root) */}
-            <div className="flex items-center">
+            {/* Back + Logo */}
+            <div className="flex items-center gap-3">
               {pathname !== "/" && (
                 <button
                   onClick={() => router.back()}
-                  className="mr-3 text-white bg-gray-700 px-3 py-1 rounded-lg hover:bg-gray-900 transition"
+                  className="text-white bg-gray-700 px-3 py-1 rounded-lg hover:bg-gray-900 transition"
                 >
                   ←
                 </button>
               )}
 
-              {/* Logo */}
-              <div className="flex items-center gap-4">
-                <Link
-                  href="/"
-                  className="text-2xl font-bold text-gray-900 hover:text-white"
-                >
+              <div
+                className="cursor-pointer flex items-center"
+                onClick={() => router.push("/")}
+              >
+                <span className="text-2xl font-extrabold tracking-wide text-white drop-shadow">
                   City Salah
-                </Link>
-
-                <Link
-                  href="/auqatus-salah"
-                  className="text-lg font-semibold text-gray-900 hover:text-white whitespace-nowrap"
-                >
-                  Auqatus Salah
-                </Link>
+                </span>
               </div>
             </div>
 
-            {/* Desktop menu */}
+            {/* ⭐ Mobile — show main 3 links outside hamburger */}
+            <div className="flex md:hidden items-center gap-4">
+              <Link href="/" className={`${isActive("/")} text-sm`}>
+                Home
+              </Link>
+
+              <Link
+                href="/updates"
+                className={`${isActive("/updates")} text-sm`}
+              >
+                Updates
+              </Link>
+
+              <Link
+                href="/auqatus-salah"
+                className={`${isActive(
+                  "/auqatus-salah"
+                )} text-sm whitespace-nowrap`}
+              >
+                Auqaatus Salah
+              </Link>
+
+              {/* Hamburger for remaining items */}
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="text-white hover:text-gray-200"
+              >
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  {menuOpen ? (
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  ) : (
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M4 6h16M4 12h16M4 18h16"
+                    />
+                  )}
+                </svg>
+              </button>
+            </div>
+
+            {/* Desktop Menu — unchanged */}
             <nav className="hidden md:flex space-x-6 items-center">
+              <Link
+                href="/"
+                className={`${isActive("/")} hover:text-white transition`}
+              >
+                Home
+              </Link>
+              <Link
+                href="/updates"
+                className={`${isActive(
+                  "/updates"
+                )} hover:text-white transition`}
+              >
+                Updates
+              </Link>
+              <Link
+                href="/auqatus-salah"
+                className={`${isActive(
+                  "/auqatus-salah"
+                )} hover:text-white transition`}
+              >
+                Auqatus Salah
+              </Link>
+
               <Link
                 href="/contact"
                 className="text-gray-900 hover:text-white transition"
@@ -128,51 +185,13 @@ export default function ModernNavbar() {
                 </Link>
               )}
             </nav>
-
-            {/* Mobile menu button */}
-            <div className="md:hidden flex items-center">
-              <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="text-gray-900 hover:text-white"
-              >
-                <svg
-                  className="h-6 w-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  {menuOpen ? (
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  ) : (
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M4 6h16M4 12h16M4 18h16"
-                    />
-                  )}
-                </svg>
-              </button>
-            </div>
           </div>
         </div>
 
-        {/* Mobile menu */}
+        {/* Mobile Hamburger Dropdown */}
         {menuOpen && (
           <div className="md:hidden bg-white shadow-md">
             <nav className="flex flex-col space-y-2 p-4">
-              <Link
-                href="/auqatus-salah"
-                onClick={() => setMenuOpen(false)}
-                className="text-gray-700 hover:text-blue-600"
-              >
-                Auqatus Salah
-              </Link>
               <Link
                 href="/contact"
                 onClick={() => setMenuOpen(false)}
@@ -202,7 +221,6 @@ export default function ModernNavbar() {
                   >
                     Profile
                   </Link>
-
                   <Link
                     href="/logout"
                     onClick={() => setMenuOpen(false)}

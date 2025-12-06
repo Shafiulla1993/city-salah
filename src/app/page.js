@@ -4,11 +4,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "react-toastify";
 
-import DashboardLayout from "@/components/layouts/DashboardLayout";
-import MasjidAnnouncements from "@/components/LeftPanel/MasjidAnnouncements";
-import GeneralAnnouncements from "@/components/LeftPanel/GeneralAnnouncements";
-import ThoughtOfDay from "@/components/LeftPanel/ThoughtOfDay";
-
 import MasjidSelector from "@/components/RightPanel/MasjidSelector";
 import MasjidInfo from "@/components/RightPanel/MasjidInfo";
 import PrayerTimingsTable from "@/components/RightPanel/PrayerTimingsTable";
@@ -17,12 +12,10 @@ import ContactInfo from "@/components/RightPanel/ContactInfo";
 import { publicAPI } from "@/lib/api/public";
 import { useAuth } from "@/context/AuthContext";
 
-// loaders / skeletons
 import {
   MasjidInfoLoader,
   PrayerTimingsLoader,
   ContactInfoLoader,
-  AnnouncementBoxSkeleton,
 } from "@/components/RightPanel/loaders";
 
 export default function ClientHome() {
@@ -45,27 +38,38 @@ export default function ClientHome() {
   const [loadingMasjidDetails, setLoadingMasjidDetails] = useState(false);
   const [loadingLocation, setLoadingLocation] = useState(false);
 
-  // ---------- AUTH ----------
-  const { user, fetchLoginState } = useAuth();
+  const { user } = useAuth();
 
-  // ---------- Helpers ----------
+  // ---------- Toast ----------
   const showToast = useCallback((type, msg) => {
     if (type === "success") toast.success(msg);
     else if (type === "error") toast.error(msg);
     else toast.info(msg);
   }, []);
 
-  // ---------- 1. Load cities on mount ----------
+  // ---------- Load previously selected masjid from localStorage ----------
+  useEffect(() => {
+    const savedMasjidId = localStorage.getItem("selectedMasjidId");
+    const savedCity = localStorage.getItem("selectedCityId");
+    const savedArea = localStorage.getItem("selectedAreaId");
+
+    if (savedCity) setSelectedCity(savedCity);
+    if (savedArea) setSelectedArea(savedArea);
+
+    // Masjid will be fetched later once masjid list loads
+    if (savedMasjidId) {
+      setSelectedMasjid({ _id: savedMasjidId });
+    }
+  }, []);
+
+  // ---------- 1. Load Cities ----------
   useEffect(() => {
     let mounted = true;
     (async () => {
-      setLoadingCities(true);
       try {
         const res = await publicAPI.getCities();
-        if (!mounted) return;
-        setCities(res || []);
-      } catch (err) {
-        console.error("Failed to fetch cities", err);
+        if (mounted) setCities(res || []);
+      } catch {
         showToast("error", "Failed to load cities");
       } finally {
         if (mounted) setLoadingCities(false);
@@ -74,7 +78,7 @@ export default function ClientHome() {
     return () => (mounted = false);
   }, [showToast]);
 
-  // ---------- 2. Areas when city changes ----------
+  // ---------- 2. Load Areas ----------
   useEffect(() => {
     if (!selectedCity) {
       setAreas([]);
@@ -86,10 +90,8 @@ export default function ClientHome() {
       setLoadingAreas(true);
       try {
         const res = await publicAPI.getAreas(selectedCity);
-        if (!mounted) return;
-        setAreas(res || []);
-      } catch (err) {
-        console.error("Failed to fetch areas", err);
+        if (mounted) setAreas(res || []);
+      } catch {
         showToast("error", "Failed to load areas");
       } finally {
         if (mounted) setLoadingAreas(false);
@@ -98,7 +100,7 @@ export default function ClientHome() {
     return () => (mounted = false);
   }, [selectedCity, showToast]);
 
-  // ---------- 3. Masjids when area changes ----------
+  // ---------- 3. Load Masjids ----------
   useEffect(() => {
     if (!selectedArea) {
       setMasjids([]);
@@ -110,13 +112,16 @@ export default function ClientHome() {
       setLoadingMasjids(true);
       try {
         const res = await publicAPI.getMasjids({ areaId: selectedArea });
-        if (!mounted) return;
-        setMasjids(res || []);
-        // if only one masjid, optionally auto-select it (commented)
-        // if (res?.length === 1) setSelectedMasjid(res[0]);
-      } catch (err) {
-        console.error("Failed to fetch masjids", err);
-        showToast("error", "Failed to load masjids for selected area");
+        if (mounted) setMasjids(res || []);
+
+        // auto-select saved masjid once list loads
+        const savedMasjidId = localStorage.getItem("selectedMasjidId");
+        if (savedMasjidId && res?.length) {
+          const found = res.find((m) => m._id === savedMasjidId);
+          if (found) setSelectedMasjid(found);
+        }
+      } catch {
+        showToast("error", "Failed to load masjids");
       } finally {
         if (mounted) setLoadingMasjids(false);
       }
@@ -124,14 +129,13 @@ export default function ClientHome() {
     return () => (mounted = false);
   }, [selectedArea, showToast]);
 
-  // ---------- 4. Load masjid details when selected (or when selected changes) ----------
+  // ---------- 4. Load Masjid Details ----------
   useEffect(() => {
     if (!selectedMasjid?._id) {
       setPrayerTimings([]);
       setContacts([]);
       return;
     }
-
     let mounted = true;
     (async () => {
       setLoadingMasjidDetails(true);
@@ -140,9 +144,8 @@ export default function ClientHome() {
         if (!mounted) return;
         setPrayerTimings(data.prayerTimings || []);
         setContacts(data.contacts || []);
-        setSelectedMasjid(data); // ensure full object is set
-      } catch (err) {
-        console.error("Failed to fetch masjid details", err);
+        setSelectedMasjid(data);
+      } catch {
         showToast("error", "Could not load masjid details");
       } finally {
         if (mounted) setLoadingMasjidDetails(false);
@@ -151,267 +154,129 @@ export default function ClientHome() {
     return () => (mounted = false);
   }, [selectedMasjid?._id, showToast]);
 
-  // ---------- 5. LOCATION FETCH: try to get nearest masjid from geolocation ----------
-  // fallback sequence:
-  // 1) location -> nearest masjid
-  // 2) if fail and user logged in -> use user's city/area to load center masjid (first masjid in area)
-  // 3) otherwise ask user to manually select
+  // ---------- Save selection to localStorage whenever user picks a masjid ----------
+  useEffect(() => {
+    if (selectedMasjid?._id) {
+      localStorage.setItem("selectedMasjidId", selectedMasjid._id);
+    }
+  }, [selectedMasjid]);
+
+  useEffect(() => {
+    if (selectedCity) localStorage.setItem("selectedCityId", selectedCity);
+  }, [selectedCity]);
+
+  useEffect(() => {
+    if (selectedArea) localStorage.setItem("selectedAreaId", selectedArea);
+  }, [selectedArea]);
+
+  // ---------- 5. Auto Location ----------
   useEffect(() => {
     let mounted = true;
-    const tryLocationBased = async () => {
+    const detectLocation = async () => {
       if (!navigator.geolocation) return;
       setLoadingLocation(true);
 
-      const success = async (pos) => {
-        try {
-          const nearest = await publicAPI.getNearestMasjids({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            limit: 1,
-          });
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            const nearest = await publicAPI.getNearestMasjids({
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+              limit: 1,
+            });
 
-          if (!mounted) return;
+            if (!nearest?.length) {
+              showToast(
+                "info",
+                "Couldn't detect nearest masjid — select manually."
+              );
+              setLoadingLocation(false);
+              return;
+            }
 
-          if (nearest?.length) {
             const m = nearest[0];
-            // m may include only minimal fields (id, coords) depending on endpoint
-            // set selected city/area and then fetch full details
-            // ensure ID only
-            const cityId =
-            typeof m.cityId === "string"
-            ? m.cityId
-            : typeof m.city === "object"
-            ? m.city._id
-            : m.city || "";
-
-            const areaId =
-            typeof m.areaId === "string"
-            ? m.areaId
-            : typeof m.area === "object"
-            ? m.area._id
-            : m.area || "";
+            const cityId = m.city?._id || m.city || "";
+            const areaId = m.area?._id || m.area || "";
 
             setSelectedCity(cityId);
             setSelectedArea(areaId);
 
+            const full = await publicAPI.getMasjidById(m._id);
+            if (mounted) setSelectedMasjid(full);
+          } catch {
+            showToast("error", "Location lookup failed — select manually.");
+          } finally {
             setLoadingLocation(false);
-
-            try {
-              const full = await publicAPI.getMasjidById(m._id);
-              if (!mounted) return;
-              setSelectedMasjid(full);
-              showToast("success", "Nearest masjid loaded from your location.");
-            } catch (err) {
-              // If getMasjidById fail — still set the minimal object (if available)
-              console.warn("Failed to fetch full masjid after nearest:", err);
-            }
-            return;
-          } else {
-            // no nearest found
-            setLoadingLocation(false);
-            // fallback to user-saved area if available
-            if (user?.area && (await tryUserAreaFallback())) return;
-            // else show alert (UI will show a larger friendly message)
-            showToast(
-              "info",
-              "Couldn't find nearest masjid — please select it manually."
-            );
           }
-        } catch (err) {
-          console.error("Nearest masjid error", err);
-          setLoadingLocation(false);
-          // fallback to user area
-          if (user?.area && (await tryUserAreaFallback())) return;
-          showToast(
-            "error",
-            "Location lookup failed — please select masjid manually."
-          );
-        }
-      };
-
-      const error = async (err) => {
-        console.warn("Geolocation error:", err);
-        setLoadingLocation(false);
-        // fallback to user area if logged in
-        if (user?.area && (await tryUserAreaFallback())) return;
-        // else show no-location alert (UI will display a big Daisy alert with instructions)
-        showToast(
-          "info",
-          "Location access not allowed. Select masjid manually."
-        );
-      };
-
-      navigator.geolocation.getCurrentPosition(success, error, {
-        enableHighAccuracy: true,
-        timeout: 5000,
-      });
+        },
+        () => setLoadingLocation(false)
+      );
     };
 
-    const tryUserAreaFallback = async () => {
-      // If user is logged in, try to load city/area from user profile
-      try {
-        if (!user) return false;
-        if (!user.city || !user.area) return false;
+    detectLocation();
+    return () => (mounted = false);
+  }, [showToast, user]);
 
-        // set selected city/area and load masjids in that area
-        setSelectedCity(user.city);
-        setSelectedArea(user.area);
-
-        setLoadingMasjids(true);
-        const res = await publicAPI.getMasjids({ areaId: user.area });
-        setLoadingMasjids(false);
-
-        if (res?.length) {
-          // choose center/first masjid as fallback
-          const first = await publicAPI.getMasjidById(res[0]._id);
-          setSelectedMasjid(first);
-          showToast("success", "Loaded masjid from your account area.");
-          return true;
-        }
-        return false;
-      } catch (err) {
-        console.error("User area fallback failed", err);
-        return false;
-      }
-    };
-
-    // run once on mount
-    tryLocationBased();
-
-    return () => {
-      mounted = false;
-    };
-  }, [user, showToast]);
-
-  // ---------- UI blocks ----------
-  const left = (
-    <>
-      <GeneralAnnouncements />
-      <ThoughtOfDay />
-      <MasjidAnnouncements masjidId={selectedMasjid?._id} />
-    </>
-  );
-
-  // If location failed and no masjid selected — show a large DaisyUI warning block
-  const locationWarning = (
-    <div className="mt-4">
-      <div className="alert alert-warning shadow-lg">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="stroke-current shrink-0 h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M12 9v2m0 4h.01m-6.938 
-              4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 
-              4c-.77-1.333-2.694-1.333-3.464 
-              0L3.34 16c-.77 1.333.192 3 1.732 3z"
-          />
-        </svg>
-        <div>
-          <h3 className="font-bold text-lg">Couldn't detect nearest masjid</h3>
-          <div className="text-sm">
-            We couldn't fetch the nearest masjid from your location.{" "}
-            {user
-              ? "We'll try to load a masjid from your saved city/area. If that doesn't work, please select your masjid from the dropdowns on the right."
-              : "Please select your City → Area → Masjid from the dropdowns to continue."}
+  // ---------- UI ----------
+  return (
+    <div className="min-h-screen w-full bg-slate-300/40 px-3 py-5">
+      <div className="max-w-3xl mx-auto space-y-6">
+        {/* Selector */}
+        {loadingCities ? (
+          <div className="flex gap-2 justify-center">
+            <div className="h-12 w-32 animate-pulse rounded bg-slate-200" />
+            <div className="h-12 w-32 animate-pulse rounded bg-slate-200" />
+            <div className="h-12 w-32 animate-pulse rounded bg-slate-200" />
           </div>
+        ) : (
+          <MasjidSelector
+            cities={cities}
+            areas={areas}
+            masjids={masjids}
+            selectedCity={selectedCity}
+            selectedArea={selectedArea}
+            selectedMasjid={selectedMasjid}
+            setSelectedCity={(c) => {
+              setSelectedCity(c);
+              setSelectedArea("");
+              setMasjids([]);
+              setSelectedMasjid(null);
+            }}
+            setSelectedArea={(a) => {
+              setSelectedArea(a);
+              setSelectedMasjid(null);
+            }}
+            setSelectedMasjid={setSelectedMasjid}
+          />
+        )}
+
+        {/* Main Masjid View */}
+        <div className="space-y-6">
+          {loadingMasjidDetails ? (
+            <>
+              <MasjidInfoLoader />
+              <PrayerTimingsLoader />
+              <ContactInfoLoader />
+            </>
+          ) : selectedMasjid ? (
+            <>
+              <MasjidInfo masjid={selectedMasjid} />
+              <PrayerTimingsTable
+                prayerTimings={prayerTimings}
+                loading={loadingMasjidDetails}
+                masjidSelected={!!selectedMasjid}
+              />
+              <ContactInfo contacts={contacts} />
+            </>
+          ) : (
+            !loadingLocation && (
+              <p className="text-center text-lg font-semibold text-slate-700 py-6">
+                Please select your City → Area → Masjid to view Salah timings.
+              </p>
+            )
+          )}
         </div>
       </div>
     </div>
   );
-
-  const right = (
-    <>
-      {/* Masjid selector + skeletons */}
-      {loadingCities ? (
-        <div className="p-2">
-          <div className="flex gap-2">
-            <div className="h-12 w-44 rounded bg-slate-200 animate-pulse" />
-            <div className="h-12 w-44 rounded bg-slate-200 animate-pulse" />
-            <div className="h-12 w-44 rounded bg-slate-200 animate-pulse" />
-          </div>
-        </div>
-      ) : (
-        <MasjidSelector
-          cities={cities}
-          areas={areas}
-          masjids={masjids}
-          selectedCity={selectedCity}
-          selectedArea={selectedArea}
-          selectedMasjid={selectedMasjid}
-          setSelectedCity={(c) => {
-            const id = typeof c === "object" ? c._id : c; 
-            setSelectedCity(c);
-            setSelectedArea("");
-            setMasjids([]);
-            setSelectedMasjid(null);
-          }}
-          setSelectedArea={(a) => {
-            const id = typeof a === "object" ? a._id : a;
-            setSelectedArea(a);
-            setSelectedMasjid(null);
-          }}
-          setSelectedMasjid={setSelectedMasjid}
-        />
-      )}
-
-      {/* helpful instructions when nothing selected */}
-      {!selectedMasjid && !loadingLocation && (
-        <div className="mt-4 p-4 text-center">
-          <p className="text-lg font-medium text-slate-800">
-            Please select your City → Area → Masjid to view details.
-          </p>
-        </div>
-      )}
-
-      {/* Masjid details area */}
-      <div className="mt-4 space-y-4">
-        {loadingMasjidDetails ? (
-          <>
-            <MasjidInfoLoader />
-            <PrayerTimingsLoader />
-            <ContactInfoLoader />
-          </>
-        ) : selectedMasjid ? (
-          <>
-            <MasjidInfo masjid={selectedMasjid} />
-            <PrayerTimingsTable
-              prayerTimings={prayerTimings}
-              loading={loadingMasjidDetails}
-              masjidSelected={!!selectedMasjid}
-            />
-
-            <ContactInfo contacts={contacts} />
-          </>
-        ) : (
-          // If no masjid found/selected: show warning box (bigger text as requested)
-          <div className="mt-4">
-            {loadingLocation ? (
-              <div className="text-center py-6">
-                <div className="loading loading-dots loading-lg" />
-                <p className="mt-3 text-slate-700">Detecting location...</p>
-              </div>
-            ) : (
-              <div className="p-6 bg-slate-50 rounded-lg border border-slate-200">
-                <h3 className="text-xl font-semibold mb-2 text-slate-800">
-                  No Masjid Loaded
-                </h3>
-                <p className="text-slate-700">
-                  Could not fetch the nearest masjid. Please select a City, then
-                  an Area, and then choose a Masjid from the dropdowns above.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </>
-  );
-
-  return <DashboardLayout left={left} right={right} />;
 }

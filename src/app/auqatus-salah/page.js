@@ -18,6 +18,15 @@ export default function AuqatusSalahPage() {
   const [timings, setTimings] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Load saved city & area from localStorage
+  useEffect(() => {
+    const savedCity = localStorage.getItem("selectedCityId");
+    const savedArea = localStorage.getItem("selectedAreaId");
+
+    if (savedCity) setCityId(savedCity);
+    if (savedArea) setAreaId(savedArea);
+  }, []);
+
   // Load cities
   useEffect(() => {
     publicAPI.getCities().then(setCities);
@@ -48,6 +57,7 @@ export default function AuqatusSalahPage() {
     }
   };
 
+  // Auto load timings when city/area/date changes
   useEffect(() => {
     if (cityId) loadTimings();
   }, [cityId, areaId, date]);
