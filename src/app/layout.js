@@ -4,6 +4,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
 import ToastProviderClient from "@/components/ui/ToastProviderClient";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata = {
   title: "City Salah",
@@ -23,8 +24,8 @@ export default function RootLayout({ children }) {
         <meta property="og:description" content={metadata.description} />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="/og-image.png" />
-        <meta property="og:url" content="https://yourdomain.com" />
-        <link rel="icon" href="/favicon.ico" />
+        <meta property="og:url" content="https://citysalah.in" />
+        <link rel="icon" href="/logo.png" />
         <title>{metadata.title}</title>
       </head>
 
@@ -38,6 +39,7 @@ export default function RootLayout({ children }) {
           <main className="max-w-7xl mx-auto p-6 md:p-10 min-h-screen">
             {children}
             <SpeedInsights />
+            <Analytics />
           </main>
         </AuthProvider>
       </body>
