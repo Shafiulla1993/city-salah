@@ -11,7 +11,6 @@ import ContactInfo from "@/components/RightPanel/ContactInfo";
 
 import { publicAPI } from "@/lib/api/public";
 import { useAuth } from "@/context/AuthContext";
-import { useMasjid } from "@/context/MasjidContext";
 
 import {
   MasjidInfoLoader,
@@ -20,28 +19,20 @@ import {
 } from "@/components/RightPanel/loaders";
 
 export default function ClientHome() {
-  const {
-    cities,
-    areas,
-    masjids,
-    selectedCity,
-    selectedArea,
-    selectedMasjid,
-    prayerTimings,
-    contacts,
-    hasAutoLocated,
-    setCities,
-    setAreas,
-    setMasjids,
-    setSelectedCity,
-    setSelectedArea,
-    setSelectedMasjid,
-    setPrayerTimings,
-    setContacts,
-    setHasAutoLocated,
-  } = useMasjid();
+  // ---------- DATA ----------
+  const [cities, setCities] = useState([]);
+  const [areas, setAreas] = useState([]);
+  const [masjids, setMasjids] = useState([]);
 
-  const [loadingCities, setLoadingCities] = useState(cities.length === 0);
+  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedArea, setSelectedArea] = useState("");
+  const [selectedMasjid, setSelectedMasjid] = useState(null);
+
+  const [prayerTimings, setPrayerTimings] = useState([]);
+  const [contacts, setContacts] = useState([]);
+
+  // ---------- LOADING ----------
+  const [loadingCities, setLoadingCities] = useState(true);
   const [loadingAreas, setLoadingAreas] = useState(false);
   const [loadingMasjids, setLoadingMasjids] = useState(false);
   const [loadingMasjidDetails, setLoadingMasjidDetails] = useState(false);
@@ -49,118 +40,140 @@ export default function ClientHome() {
 
   const { user } = useAuth();
 
+  // ---------- Toast ----------
   const showToast = useCallback((type, msg) => {
     if (type === "success") toast.success(msg);
     else if (type === "error") toast.error(msg);
     else toast.info(msg);
   }, []);
 
+  // ---------- Load previously selected masjid from localStorage ----------
+  useEffect(() => {
+    const savedMasjidId = localStorage.getItem("selectedMasjidId");
+    const savedCity = localStorage.getItem("selectedCityId");
+    const savedArea = localStorage.getItem("selectedAreaId");
+
+    if (savedCity) setSelectedCity(savedCity);
+    if (savedArea) setSelectedArea(savedArea);
+
+    // Masjid will be fetched later once masjid list loads
+    if (savedMasjidId) {
+      setSelectedMasjid({ _id: savedMasjidId });
+    }
+  }, []);
+
   // ---------- 1. Load Cities ----------
   useEffect(() => {
-    if (cities.length > 0) {
-      setLoadingCities(false);
-      return;
-    }
-    let cancelled = false;
+    let mounted = true;
     (async () => {
       try {
         const res = await publicAPI.getCities();
-        if (!cancelled) setCities(res || []);
+        if (mounted) setCities(res || []);
       } catch {
         showToast("error", "Failed to load cities");
       } finally {
-        if (!cancelled) setLoadingCities(false);
+        if (mounted) setLoadingCities(false);
       }
     })();
-    return () => (cancelled = true);
-  }, [cities.length, setCities, showToast]);
+    return () => (mounted = false);
+  }, [showToast]);
 
   // ---------- 2. Load Areas ----------
   useEffect(() => {
     if (!selectedCity) {
       setAreas([]);
+      setSelectedArea("");
       return;
     }
-    let cancelled = false;
-    setLoadingAreas(true);
+    let mounted = true;
     (async () => {
+      setLoadingAreas(true);
       try {
         const res = await publicAPI.getAreas(selectedCity);
-        if (!cancelled) setAreas(res || []);
+        if (mounted) setAreas(res || []);
       } catch {
         showToast("error", "Failed to load areas");
       } finally {
-        if (!cancelled) setLoadingAreas(false);
+        if (mounted) setLoadingAreas(false);
       }
     })();
-    return () => (cancelled = true);
-  }, [selectedCity, setAreas, showToast]);
+    return () => (mounted = false);
+  }, [selectedCity, showToast]);
 
   // ---------- 3. Load Masjids ----------
   useEffect(() => {
     if (!selectedArea) {
       setMasjids([]);
+      setSelectedMasjid(null);
       return;
     }
-    let cancelled = false;
-    setLoadingMasjids(true);
+    let mounted = true;
     (async () => {
+      setLoadingMasjids(true);
       try {
         const res = await publicAPI.getMasjids({ areaId: selectedArea });
-        if (!cancelled) setMasjids(res || []);
+        if (mounted) setMasjids(res || []);
+
+        // auto-select saved masjid once list loads
+        const savedMasjidId = localStorage.getItem("selectedMasjidId");
+        if (savedMasjidId && res?.length) {
+          const found = res.find((m) => m._id === savedMasjidId);
+          if (found) setSelectedMasjid(found);
+        }
       } catch {
         showToast("error", "Failed to load masjids");
       } finally {
-        if (!cancelled) setLoadingMasjids(false);
+        if (mounted) setLoadingMasjids(false);
       }
     })();
-    return () => (cancelled = true);
-  }, [selectedArea, setMasjids, showToast]);
+    return () => (mounted = false);
+  }, [selectedArea, showToast]);
 
   // ---------- 4. Load Masjid Details ----------
   useEffect(() => {
-    const id = selectedMasjid?._id;
-    if (!id) {
+    if (!selectedMasjid?._id) {
       setPrayerTimings([]);
       setContacts([]);
       return;
     }
-    let cancelled = false;
-    setLoadingMasjidDetails(true);
+    let mounted = true;
     (async () => {
+      setLoadingMasjidDetails(true);
       try {
-        const data = await publicAPI.getMasjidById(id);
-        if (cancelled) return;
+        const data = await publicAPI.getMasjidById(selectedMasjid._id);
+        if (!mounted) return;
         setPrayerTimings(data.prayerTimings || []);
         setContacts(data.contacts || []);
         setSelectedMasjid(data);
       } catch {
         showToast("error", "Could not load masjid details");
       } finally {
-        if (!cancelled) setLoadingMasjidDetails(false);
+        if (mounted) setLoadingMasjidDetails(false);
       }
     })();
-    return () => (cancelled = true);
-  }, [
-    selectedMasjid?._id,
-    setPrayerTimings,
-    setContacts,
-    setSelectedMasjid,
-    showToast,
-  ]);
+    return () => (mounted = false);
+  }, [selectedMasjid?._id, showToast]);
 
-  // ---------- 5. Auto detect nearest masjid on manual refresh only ----------
+  // ---------- Save selection to localStorage whenever user picks a masjid ----------
   useEffect(() => {
-    if (hasAutoLocated) return; // ALWAYS run on first mount after refresh
+    if (selectedMasjid?._id) {
+      localStorage.setItem("selectedMasjidId", selectedMasjid._id);
+    }
+  }, [selectedMasjid]);
 
-    let cancelled = false;
+  useEffect(() => {
+    if (selectedCity) localStorage.setItem("selectedCityId", selectedCity);
+  }, [selectedCity]);
 
-    const detectNearest = async () => {
-      if (!navigator.geolocation) {
-        setHasAutoLocated(true);
-        return;
-      }
+  useEffect(() => {
+    if (selectedArea) localStorage.setItem("selectedAreaId", selectedArea);
+  }, [selectedArea]);
 
+  // ---------- 5. Auto Location ----------
+  useEffect(() => {
+    let mounted = true;
+    const detectLocation = async () => {
+      if (!navigator.geolocation) return;
       setLoadingLocation(true);
 
       navigator.geolocation.getCurrentPosition(
@@ -172,58 +185,37 @@ export default function ClientHome() {
               limit: 1,
             });
 
-            if (cancelled || !nearest?.length) {
-              setHasAutoLocated(true);
+            if (!nearest?.length) {
+              showToast(
+                "info",
+                "Couldn't detect nearest masjid — select manually."
+              );
               setLoadingLocation(false);
               return;
             }
 
             const m = nearest[0];
-            const cityId = m.city?._id || m.city;
-            const areaId = m.area?._id || m.area;
+            const cityId = m.city?._id || m.city || "";
+            const areaId = m.area?._id || m.area || "";
 
-            // FORCE override selection on page reload
             setSelectedCity(cityId);
-            setAreas([]); // important to trigger fresh area load
             setSelectedArea(areaId);
-            setMasjids([]); // important to trigger fresh masjid load
 
             const full = await publicAPI.getMasjidById(m._id);
-            if (!cancelled) {
-              setSelectedMasjid(full);
-              setPrayerTimings(full.prayerTimings || []);
-              setContacts(full.contacts || []);
-            }
+            if (mounted) setSelectedMasjid(full);
           } catch {
             showToast("error", "Location lookup failed — select manually.");
           } finally {
-            if (!cancelled) {
-              setHasAutoLocated(true);
-              setLoadingLocation(false);
-            }
+            setLoadingLocation(false);
           }
         },
-        () => {
-          setHasAutoLocated(true);
-          setLoadingLocation(false);
-        }
+        () => setLoadingLocation(false)
       );
     };
 
-    detectNearest();
-    return () => (cancelled = true);
-  }, [
-    hasAutoLocated,
-    setHasAutoLocated,
-    setSelectedCity,
-    setSelectedArea,
-    setSelectedMasjid,
-    setPrayerTimings,
-    setContacts,
-    setAreas,
-    setMasjids,
-    showToast,
-  ]);
+    detectLocation();
+    return () => (mounted = false);
+  }, [showToast, user]);
 
   // ---------- UI ----------
   return (
@@ -246,29 +238,19 @@ export default function ClientHome() {
             selectedMasjid={selectedMasjid}
             setSelectedCity={(c) => {
               setSelectedCity(c);
-              setAreas([]); // 🔥 FIX: force refetch areas
               setSelectedArea("");
-              setMasjids([]); // 🔥 FIX: force refetch masjids
+              setMasjids([]);
               setSelectedMasjid(null);
-              setPrayerTimings([]);
-              setContacts([]);
             }}
             setSelectedArea={(a) => {
               setSelectedArea(a);
-              setMasjids([]); // 🔥 FIX
               setSelectedMasjid(null);
-              setPrayerTimings([]);
-              setContacts([]);
             }}
-            setSelectedMasjid={(m) => {
-              setSelectedMasjid(m);
-              setPrayerTimings([]);
-              setContacts([]);
-            }}
+            setSelectedMasjid={setSelectedMasjid}
           />
         )}
 
-        {/* Masjid Details */}
+        {/* Main Masjid View */}
         <div className="space-y-6">
           {loadingMasjidDetails ? (
             <>

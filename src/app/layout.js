@@ -2,7 +2,6 @@
 import "./globals.css";
 
 import { AuthProvider } from "@/context/AuthContext";
-import { MasjidProvider } from "@/context/MasjidContext";
 import Navbar from "@/components/Navbar";
 import ToastProviderClient from "@/components/ui/ToastProviderClient";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -33,16 +32,14 @@ export default function RootLayout({ children }) {
 
       <body className="bg-gradient-to-r from-slate-300 to-slate-500 pt-12">
         <AuthProvider>
-          <MasjidProvider>
-            <Navbar />
+          <Navbar />
 
-            <ToastProviderClient />
-            <main className="max-w-7xl mx-auto p-6 md:p-10 min-h-screen">
-              {children}
-              <SpeedInsights />
-              <Analytics />
-            </main>
-          </MasjidProvider>
+          <ToastProviderClient />
+          <main className="max-w-7xl mx-auto p-6 md:p-10 min-h-screen">
+            {children}
+            <SpeedInsights />
+            <Analytics />
+          </main>
         </AuthProvider>
       </body>
     </html>

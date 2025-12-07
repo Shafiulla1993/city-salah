@@ -1,3 +1,5 @@
+// src/app/api/public/masjids/nearest/route.js
+
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Masjid from "@/models/Masjid";
