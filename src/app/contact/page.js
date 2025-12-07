@@ -27,7 +27,7 @@ export default function ContactPage() {
             📱 <strong>+91 97387 22032</strong>
           </p>
           <p className="text-slate-800 text-lg mt-1">
-            📱 <strong>+91 89107 72902</strong>
+            📱 <strong>+91 83107 72902</strong>
           </p>
 
           <p className="text-slate-600 text-sm mt-4">

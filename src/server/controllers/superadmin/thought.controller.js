@@ -1,3 +1,5 @@
+// src/server/controllers/superadmin/thought.controller.js
+
 import mongoose from "mongoose";
 import ThoughtOfDay from "@/models/ThoughtOfDay";
 import { paginate } from "@/server/utils/paginate";
@@ -22,19 +24,15 @@ export async function getThoughtsController({ query = {} }) {
       filter.text = { $regex: search, $options: "i" };
     }
 
-    // date-range filter for admin
     if (startDate || endDate) {
       const s = startDate ? new Date(startDate) : null;
       const e = endDate ? new Date(endDate) : null;
-
       filter.$and = [];
       if (s) filter.$and.push({ endDate: { $gte: s } });
       if (e) filter.$and.push({ startDate: { $lte: e } });
-
-      if (filter.$and.length === 0) delete filter.$and;
+      if (!filter.$and.length) delete filter.$and;
     }
 
-    // Only active thoughts (optional for admin)
     if (activeOnly === "true") {
       const now = new Date();
       filter.startDate = { $lte: now };
@@ -45,7 +43,7 @@ export async function getThoughtsController({ query = {} }) {
       page,
       limit,
       filter,
-      sort: { createdAt: -1, _id: -1 },
+      sort: { createdAt: -1 },
       populate: { path: "createdBy", select: "name email" },
     });
 
@@ -57,76 +55,50 @@ export async function getThoughtsController({ query = {} }) {
 }
 
 /**
- * PUBLIC — Return single active thought
- */
-export async function getActiveThoughtController() {
-  try {
-    const now = new Date();
-
-    const thought = await ThoughtOfDay.findOne({
-      startDate: { $lte: now },
-      endDate: { $gte: now },
-    })
-      .sort({ startDate: -1 }) // latest starting wins
-      .lean();
-
-    return {
-      status: 200,
-      json: { success: true, data: thought || null },
-    };
-  } catch (err) {
-    console.error("getActiveThoughtController:", err);
-    return { status: 500, json: { success: false, message: "Server error" } };
-  }
-}
-
-/**
- * GET one thought
- */
-export async function getThoughtController({ id }) {
-  try {
-    if (!mongoose.isValidObjectId(id))
-      return { status: 400, json: { success: false, message: "Invalid ID" } };
-
-    const thought = await ThoughtOfDay.findById(id);
-    if (!thought)
-      return { status: 404, json: { success: false, message: "Not found" } };
-
-    return { status: 200, json: { success: true, data: thought } };
-  } catch {
-    return { status: 500, json: { success: false, message: "Server error" } };
-  }
-}
-
-/**
  * CREATE
  */
 export async function createThoughtController({ body, user }) {
   try {
-    const { text, startDate, endDate, images } = body;
+    let { text, startDate, endDate, images } = body;
 
-    if (!text)
+    // convert to string safely
+    if (Array.isArray(text)) text = text.join(" ");
+    if (typeof text !== "string") text = String(text);
+
+    if (!text.trim())
       return {
         status: 400,
         json: { success: false, message: "Text required" },
       };
-    if (!startDate)
+
+    if (!startDate || !endDate)
       return {
         status: 400,
-        json: { success: false, message: "startDate required" },
-      };
-    if (!endDate)
-      return {
-        status: 400,
-        json: { success: false, message: "endDate required" },
+        json: { success: false, message: "Date range required" },
       };
 
     const s = new Date(startDate);
     const e = new Date(endDate);
-    if (s > e) {
+
+    if (s > e)
       return {
         status: 400,
-        json: { success: false, message: "startDate must be <= endDate" },
+        json: { success: false, message: "startDate must be ≤ endDate" },
+      };
+
+    // Prevent overlapping thoughts
+    const clash = await ThoughtOfDay.findOne({
+      startDate: { $lte: e },
+      endDate: { $gte: s },
+    });
+
+    if (clash) {
+      return {
+        status: 400,
+        json: {
+          success: false,
+          message: "A thought already exists for this date range",
+        },
       };
     }
 
@@ -149,44 +121,76 @@ export async function createThoughtController({ body, user }) {
 }
 
 /**
+ * GET ONE THOUGHT
+ */
+export async function getThoughtController({ id }) {
+  try {
+    if (!mongoose.isValidObjectId(id)) {
+      return { status: 400, json: { success: false, message: "Invalid ID" } };
+    }
+
+    const thought = await ThoughtOfDay.findById(id);
+    if (!thought) {
+      return { status: 404, json: { success: false, message: "Not found" } };
+    }
+
+    return { status: 200, json: { success: true, data: thought } };
+  } catch (err) {
+    console.error("getThoughtController:", err);
+    return { status: 500, json: { success: false, message: "Server error" } };
+  }
+}
+
+/**
  * UPDATE
  */
 export async function updateThoughtController({ id, body, user }) {
   try {
+    if (!mongoose.isValidObjectId(id))
+      return { status: 400, json: { success: false, message: "Invalid ID" } };
+
     const thought = await ThoughtOfDay.findById(id);
     if (!thought)
       return { status: 404, json: { success: false, message: "Not found" } };
 
-    const { text, startDate, endDate, images } = body;
+    let { text, startDate, endDate, images } = body;
 
-    if (text !== undefined) thought.text = text;
-
-    if (startDate) {
-      const s = new Date(startDate);
-      if (isNaN(s))
-        return {
-          status: 400,
-          json: { success: false, message: "Invalid startDate" },
-        };
-      thought.startDate = s;
+    // Update text if provided
+    if (text !== undefined) {
+      if (Array.isArray(text)) text = text.join(" ");
+      if (typeof text !== "string") text = String(text);
+      thought.text = text;
     }
 
-    if (endDate) {
-      const e = new Date(endDate);
-      if (isNaN(e))
-        return {
-          status: 400,
-          json: { success: false, message: "Invalid endDate" },
-        };
-      thought.endDate = e;
-    }
+    // Determine final dates (provided or existing)
+    const s = startDate ? new Date(startDate) : thought.startDate;
+    const e = endDate ? new Date(endDate) : thought.endDate;
 
-    if (thought.startDate > thought.endDate) {
+    if (s > e)
       return {
         status: 400,
-        json: { success: false, message: "startDate must be <= endDate" },
+        json: { success: false, message: "startDate must be ≤ endDate" },
+      };
+
+    // Prevent overlapping with other thoughts (exclude itself)
+    const clash = await ThoughtOfDay.findOne({
+      _id: { $ne: id },
+      startDate: { $lte: e },
+      endDate: { $gte: s },
+    });
+
+    if (clash) {
+      return {
+        status: 400,
+        json: {
+          success: false,
+          message: "A thought already exists for this date range",
+        },
       };
     }
+
+    thought.startDate = s;
+    thought.endDate = e;
 
     if (images !== undefined) {
       thought.images = Array.isArray(images) ? images : [images];

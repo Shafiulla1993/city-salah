@@ -11,6 +11,8 @@ import CitiesTab from "./tabs/CitiesTab";
 import AreasTab from "./tabs/AreasTab";
 import MasjidsTab from "./tabs/MasjidsTab";
 import TimingsTab from "./tabs/TimingsTab";
+import ThoughtsTab from "./modules/thoughts/ThoughtsTab";
+import AnnouncementsTab from "./modules/annoucements/AnnouncementsTab";
 
 export default function ManageMain() {
   const [tab, setTab] = useState("users");
@@ -48,17 +50,9 @@ export default function ManageMain() {
 
           {tab === "timings" && <TimingsTab />}
 
-          {tab === "announcements" && (
-            <div className="text-gray-600">
-              <p>Announcements module coming soon.</p>
-            </div>
-          )}
+          {tab === "announcements" && <AnnouncementsTab />}
 
-          {tab === "thoughts" && (
-            <div className="text-gray-600">
-              <p>Thoughts module coming soon.</p>
-            </div>
-          )}
+          {tab === "thoughts" && <ThoughtsTab />}
         </AdminCard>
       </div>
     </ProtectedRoute>

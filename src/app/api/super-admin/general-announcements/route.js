@@ -8,44 +8,63 @@ import {
   createGeneralAnnouncementController,
 } from "@/server/controllers/superadmin/generalAnnouncements.controller";
 
-export const GET = withAuth("super_admin", async ({ request }) => {
-  const url = new URL(request.url);
+// Convert incoming values into an array safely
+const fixList = (raw) => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed;
+  } catch {}
+  return String(raw)
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+};
+
+export const GET = withAuth("super_admin", async (request) => {
+  const url = request.nextUrl;
   const query = Object.fromEntries(url.searchParams.entries());
-  const res = await getGeneralAnnouncementsController({ query });
-  return res;
+  return await getGeneralAnnouncementsController({ query });
 });
 
-export const POST = withAuth("super_admin", async ({ request, user }) => {
-  const { fields, files } = await parseMultipart(request).catch(() => ({ fields: {}, files: {} }));
+export const POST = withAuth("super_admin", async (request, ctx) => {
+  const user = ctx.user;
+
+  const { fields, files } = await parseMultipart(request).catch(() => ({
+    fields: {},
+    files: {},
+  }));
+
   const body = { ...fields };
 
-  // Parse arrays that might arrive as JSON strings
-  ["cities", "areas", "masjids", "images"].forEach((k) => {
-    if (typeof body[k] === "string") {
-      try { body[k] = JSON.parse(body[k]); } catch { body[k] = body[k].split(",").map(s => s.trim()).filter(Boolean); }
-    }
-  });
+  if (Array.isArray(body.title)) body.title = body.title[0];
+  if (Array.isArray(body.body)) body.body = body.body[0];
 
-  // handle file uploads (images) - files may be single or array
+  // Multi-select IDs
+  body.cities = fixList(fields["cities[]"] || fields["cities"]);
+  body.areas = fixList(fields["areas[]"] || fields["areas"]);
+  body.masjids = fixList(fields["masjids[]"] || fields["masjids"]);
+
+  // Upload images
   const uploaded = [];
-  const fileInputs = files?.images || files?.files || files?.file;
-  const fileArray = Array.isArray(fileInputs) ? fileInputs : fileInputs ? [fileInputs] : [];
+  const fileInputs = files?.images || files?.file;
+  const fileArray = Array.isArray(fileInputs)
+    ? fileInputs
+    : fileInputs
+    ? [fileInputs]
+    : [];
 
   for (const f of fileArray) {
-    try {
-      const up = await uploadFileToCloudinary(f.filepath || f.path, "announcements");
-      uploaded.push(up.secure_url || up.url);
-    } catch (err) {
-      console.error("Announcement image upload failed:", err);
-      try { await fs.unlink(f.filepath || f.path).catch(()=>{}); } catch {}
-      return { status: 500, json: { success: false, message: "Image upload failed" } };
-    } finally {
-      try { await fs.unlink(f.filepath || f.path).catch(()=>{}); } catch {}
-    }
+    const up = await uploadFileToCloudinary(
+      f.filepath || f.path,
+      "announcements"
+    );
+    uploaded.push(up.secure_url || up.url);
+    await fs.unlink(f.filepath || f.path).catch(() => {});
   }
 
-  if (uploaded.length) body.images = [...(body.images || []), ...uploaded];
+  body.images = uploaded;
 
-  const res = await createGeneralAnnouncementController({ body, user });
-  return res;
+  return await createGeneralAnnouncementController({ body, user });
 });

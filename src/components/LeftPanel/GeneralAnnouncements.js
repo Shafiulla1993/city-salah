@@ -1,23 +1,24 @@
 // src/components/LeftPanel/GeneralAnnouncements.js
 "use client";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { publicAPI } from "@/lib/api/public";
 
 export default function GeneralAnnouncements() {
   const [announcements, setAnnouncements] = useState([]);
 
   useEffect(() => {
+    const masjidId = localStorage.getItem("selectedMasjidId");
+    const areaId = localStorage.getItem("selectedAreaId");
+    const cityId = localStorage.getItem("selectedCityId");
+
     publicAPI
-      .getGeneralAnnouncements()
+      .getGeneralAnnouncements({ masjidId, areaId, cityId })
       .then(setAnnouncements)
-      .catch((err) =>
-        console.error("Failed to fetch general announcements", err)
-      );
+      .catch((err) => console.error("General announcements error:", err));
   }, []);
 
   return (
-    <div className="bg-white p-4 rounded shadow">
-      <h2 className="text-lg font-bold mb-2">General Announcements</h2>
+    <div>
       {announcements.length === 0 ? (
         <p>No announcements</p>
       ) : (

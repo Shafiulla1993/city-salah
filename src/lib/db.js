@@ -18,6 +18,8 @@ export default async function connectDB() {
     console.log("✅ MongoDB Connected");
 
     await import("@/models/City");
+    await import("@/models/Area");
+    await import("@/models/Masjid");
   } catch (error) {
     console.error("❌ MongoDB connection error:", error);
   }

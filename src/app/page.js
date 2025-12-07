@@ -155,6 +155,28 @@ export default function ClientHome() {
   }, [selectedMasjid?._id, showToast]);
 
   // ---------- Save selection to localStorage whenever user picks a masjid ----------
+  // When city selected
+  useEffect(() => {
+    if (!selectedCity) return;
+
+    localStorage.setItem("selectedCityId", selectedCity);
+
+    // 🔥 When changing city, area & masjid should be cleared
+    localStorage.removeItem("selectedAreaId");
+    localStorage.removeItem("selectedMasjidId");
+  }, [selectedCity]);
+
+  // When area selected
+  useEffect(() => {
+    if (!selectedArea) return;
+
+    localStorage.setItem("selectedAreaId", selectedArea);
+
+    // 🔥 When changing area, masjid should be cleared
+    localStorage.removeItem("selectedMasjidId");
+  }, [selectedArea]);
+
+  // When masjid selected
   useEffect(() => {
     if (selectedMasjid?._id) {
       localStorage.setItem("selectedMasjidId", selectedMasjid._id);

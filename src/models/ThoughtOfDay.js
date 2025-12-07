@@ -1,3 +1,5 @@
+// src/models/ThoughtOfDay.js
+
 import mongoose, { Schema, models, model } from "mongoose";
 import auditPlugin from "@/lib/utils/auditPlugin";
 
@@ -13,7 +15,7 @@ const ThoughtOfDaySchema = new Schema({
   updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
 
   createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  updatedAt: { type: Date, default: Date.now },
 });
 
 ThoughtOfDaySchema.plugin(auditPlugin);

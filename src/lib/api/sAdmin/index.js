@@ -56,7 +56,9 @@ export const adminAPI = {
     httpFetch(`/super-admin/masjids/${id}`, { method: "DELETE" }),
 
   /** ------------------- ANNOUNCEMENTS ------------------- **/
-  getAnnouncements: () => httpFetch(`/super-admin/general-announcements`),
+  getAnnouncements: (query = "") =>
+    httpFetch(`/super-admin/general-announcements${query}`),
+
   getAnnouncementById: (id) =>
     httpFetch(`/super-admin/general-announcements/${id}`),
 
@@ -72,7 +74,7 @@ export const adminAPI = {
     }),
 
   /** ------------------- THOUGHTS ------------------- **/
-  getThoughts: () => httpFetch(`/super-admin/thoughts`),
+  getThoughts: (query = "") => httpFetch(`/super-admin/thoughts${query}`),
   getThoughtById: (id) => httpFetch(`/super-admin/thoughts/${id}`),
 
   createThought: (data) => send(`/super-admin/thoughts`, "POST", data),

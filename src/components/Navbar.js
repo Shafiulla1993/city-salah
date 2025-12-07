@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
+import Image from "next/image";
 
 export default function ModernNavbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -62,9 +63,14 @@ export default function ModernNavbar() {
                 className="cursor-pointer flex items-center"
                 onClick={() => router.push("/")}
               >
-                <span className="text-2xl font-extrabold tracking-wide text-white drop-shadow">
-                  City Salah
-                </span>
+                <Image
+                  src="/Design-logo.png"
+                  alt="City Salah Logo"
+                  width={180} // can be any
+                  height={50} // doesn't matter much, we'll control with class
+                  className="h-10 md:h-12 lg:h-14 w-auto object-contain drop-shadow"
+                  priority
+                />
               </div>
             </div>
 

@@ -39,8 +39,18 @@ export const publicAPI = {
   getContacts: (masjidId) => httpFetch(`${BASE}/masjids/${masjidId}`),
 
   /** ---------------- ANNOUNCEMENTS ---------------- **/
-  getGeneralAnnouncements: () =>
-    httpFetch(`${BASE}/general-announcements`).catch(() => []),
+  getGeneralAnnouncements: ({ cityId, areaId, masjidId } = {}) => {
+    const params = new URLSearchParams();
+    if (masjidId) params.append("masjidId", masjidId);
+    else if (areaId) params.append("areaId", areaId);
+    else if (cityId) params.append("cityId", cityId);
+
+    return httpFetch(
+      `${BASE}/general-announcements${
+        params.toString() ? `?${params.toString()}` : ""
+      }`
+    ).catch(() => []);
+  },
 
   getMasjidAnnouncements: (masjidId) =>
     httpFetch(`${BASE}/masjid-announcements?masjidId=${masjidId}`),
