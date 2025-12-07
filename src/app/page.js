@@ -59,7 +59,7 @@ export default function ClientHome() {
   // ---------- Init selection logic (once per tab) ----------
   useEffect(() => {
     // user may be null initially and later filled
-    init(user);
+    init();
   }, [user, init]);
 
   // ---------- 1. Load Cities ----------

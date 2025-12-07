@@ -1,19 +1,21 @@
 // src/app/updates/page.js
-
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useMasjidStore } from "@/store/useMasjidStore";
 import MasjidAnnouncements from "@/components/LeftPanel/MasjidAnnouncements";
 import GeneralAnnouncements from "@/components/LeftPanel/GeneralAnnouncements";
 import ThoughtOfDay from "@/components/LeftPanel/ThoughtOfDay";
 
 export default function UpdatesPage() {
-  const [selectedMasjidId, setSelectedMasjidId] = useState(null);
+  const init = useMasjidStore((s) => s.init);
+  const selectedMasjid = useMasjidStore((s) => s.selectedMasjid);
 
   useEffect(() => {
-    const id = localStorage.getItem("selectedMasjidId");
-    if (id) setSelectedMasjidId(id);
-  }, []);
+    init(); // ensures masjid loaded even after refresh
+  }, [init]);
+
+  const masjidId = selectedMasjid?._id;
 
   return (
     <div className="min-h-screen w-full bg-slate-300/40 px-3 py-5">
@@ -23,11 +25,11 @@ export default function UpdatesPage() {
           <h2 className="text-xl font-bold mb-3 text-slate-800">
             Masjid Announcements
           </h2>
-          {selectedMasjidId ? (
-            <MasjidAnnouncements masjidId={selectedMasjidId} />
+          {masjidId ? (
+            <MasjidAnnouncements masjidId={masjidId} />
           ) : (
             <p className="text-slate-600 text-sm">
-              No masjid selected. Please select a masjid once in home page.
+              No masjid selected. Go to Home page once to select.
             </p>
           )}
         </div>
@@ -40,7 +42,7 @@ export default function UpdatesPage() {
           <GeneralAnnouncements />
         </div>
 
-        {/* 🔥 Thought of Day */}
+        {/* 🔥 Thought of the Day */}
         <div className="bg-white shadow rounded p-4">
           <h2 className="text-xl font-bold mb-3 text-slate-800">
             Thought of the Day

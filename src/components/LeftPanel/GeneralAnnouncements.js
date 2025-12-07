@@ -2,20 +2,25 @@
 "use client";
 import { useEffect, useState } from "react";
 import { publicAPI } from "@/lib/api/public";
+import { useMasjidStore } from "@/store/useMasjidStore";
 
 export default function GeneralAnnouncements() {
+  const selectedMasjid = useMasjidStore((s) => s.selectedMasjid);
+  const selectedArea = useMasjidStore((s) => s.selectedArea);
+  const selectedCity = useMasjidStore((s) => s.selectedCity);
+
   const [announcements, setAnnouncements] = useState([]);
 
   useEffect(() => {
-    const masjidId = localStorage.getItem("selectedMasjidId");
-    const areaId = localStorage.getItem("selectedAreaId");
-    const cityId = localStorage.getItem("selectedCityId");
-
     publicAPI
-      .getGeneralAnnouncements({ masjidId, areaId, cityId })
+      .getGeneralAnnouncements({
+        masjidId: selectedMasjid?._id,
+        areaId: selectedArea,
+        cityId: selectedCity,
+      })
       .then(setAnnouncements)
       .catch((err) => console.error("General announcements error:", err));
-  }, []);
+  }, [selectedMasjid?._id, selectedArea, selectedCity]);
 
   return (
     <div>
