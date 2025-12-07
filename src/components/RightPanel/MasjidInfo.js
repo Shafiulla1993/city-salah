@@ -1,5 +1,6 @@
 // src/components/RightPanel/MasjidInfo.js
 "use client";
+
 import React from "react";
 import Image from "next/image";
 
@@ -14,13 +15,15 @@ export default function MasjidInfo({ masjid }) {
       : `/uploads/masjids/${masjid.imageUrl}`
     : defaultImage;
 
+  const altText = masjid?.name ? `Photo of ${masjid.name}` : "Masjid image";
+
   return (
     <div className="bg-white shadow rounded p-4">
       {/* BIG IMAGE, FULL WIDTH, NOT CROPPED */}
       <div className="relative w-full h-[350px] sm:h-[380px] md:h-[420px] lg:h-[450px] mb-4 bg-slate-100 rounded flex items-center justify-center overflow-hidden">
         <Image
           src={imageSrc}
-          alt={masjid.name}
+          alt={altText}
           fill
           className="object-contain rounded-md"
           priority

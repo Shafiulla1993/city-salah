@@ -1,9 +1,8 @@
 // src/context/AuthContext
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { httpFetch } from "@/lib/http/fetchClient";
-import { usePathname } from "next/navigation";
 
 const AuthContext = createContext();
 
@@ -12,7 +11,8 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const pathname = usePathname();
+  // ⚡ ensures fetchLoginState does NOT run twice
+  const hasLoadedOnce = useRef(false);
 
   const fetchLoginState = async () => {
     try {
@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }) => {
 
       setLoggedIn(data.loggedIn ?? false);
       setUser(data.user || null);
-    } catch (err) {
+    } catch {
       setLoggedIn(false);
       setUser(null);
     } finally {
@@ -32,10 +32,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // 🔥 RUN ON EVERY ROUTE CHANGE
+  // 🚀 Run only once (on first app load) instead of on every route change
   useEffect(() => {
-    fetchLoginState();
-  }, [pathname]);
+    if (!hasLoadedOnce.current) {
+      hasLoadedOnce.current = true;
+      fetchLoginState();
+    }
+  }, []);
 
   return (
     <AuthContext.Provider
@@ -45,7 +48,7 @@ export const AuthProvider = ({ children }) => {
         user,
         setUser,
         loading,
-        fetchLoginState,
+        fetchLoginState, // used after login/logout — keep as-is
       }}
     >
       {children}
