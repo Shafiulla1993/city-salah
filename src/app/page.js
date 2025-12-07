@@ -20,7 +20,6 @@ import {
 } from "@/components/RightPanel/loaders";
 
 export default function ClientHome() {
-  // ---------- GLOBAL MASJID STATE (persists across pages) ----------
   const {
     cities,
     areas,
@@ -30,6 +29,7 @@ export default function ClientHome() {
     selectedMasjid,
     prayerTimings,
     contacts,
+    hasAutoLocated,
     setCities,
     setAreas,
     setMasjids,
@@ -38,9 +38,9 @@ export default function ClientHome() {
     setSelectedMasjid,
     setPrayerTimings,
     setContacts,
+    setHasAutoLocated,
   } = useMasjid();
 
-  // ---------- LOCAL LOADING FLAGS ----------
   const [loadingCities, setLoadingCities] = useState(cities.length === 0);
   const [loadingAreas, setLoadingAreas] = useState(false);
   const [loadingMasjids, setLoadingMasjids] = useState(false);
@@ -55,15 +55,13 @@ export default function ClientHome() {
     else toast.info(msg);
   }, []);
 
-  // ---------- 1. Load Cities (only once per app session) ----------
+  // ---------- 1. Load Cities ----------
   useEffect(() => {
     if (cities.length > 0) {
       setLoadingCities(false);
       return;
     }
-
     let cancelled = false;
-
     (async () => {
       try {
         const res = await publicAPI.getCities();
@@ -74,27 +72,18 @@ export default function ClientHome() {
         if (!cancelled) setLoadingCities(false);
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => (cancelled = true);
   }, [cities.length, setCities, showToast]);
 
-  // ---------- 2. Load Areas when city selected ----------
+  // ---------- 2. Load Areas ----------
   useEffect(() => {
     if (!selectedCity) {
       setAreas([]);
-      // Do NOT reset selection from context here; user might return with saved area
       return;
     }
-
-    // Already have areas for this city? don't refetch
-    if (areas.length > 0) return;
-
     let cancelled = false;
-
+    setLoadingAreas(true);
     (async () => {
-      setLoadingAreas(true);
       try {
         const res = await publicAPI.getAreas(selectedCity);
         if (!cancelled) setAreas(res || []);
@@ -104,47 +93,31 @@ export default function ClientHome() {
         if (!cancelled) setLoadingAreas(false);
       }
     })();
+    return () => (cancelled = true);
+  }, [selectedCity, setAreas, showToast]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedCity, areas.length, setAreas, showToast]);
-
-  // ---------- 3. Load Masjids when area selected ----------
+  // ---------- 3. Load Masjids ----------
   useEffect(() => {
     if (!selectedArea) {
       setMasjids([]);
       return;
     }
-
-    if (masjids.length > 0) return;
-
     let cancelled = false;
-
+    setLoadingMasjids(true);
     (async () => {
-      setLoadingMasjids(true);
       try {
         const res = await publicAPI.getMasjids({ areaId: selectedArea });
         if (!cancelled) setMasjids(res || []);
-
-        const saved = localStorage.getItem("selectedMasjidId");
-        if (!cancelled && saved && res?.length) {
-          const found = res.find((m) => m._id === saved);
-          if (found) setSelectedMasjid(found);
-        }
       } catch {
         showToast("error", "Failed to load masjids");
       } finally {
         if (!cancelled) setLoadingMasjids(false);
       }
     })();
+    return () => (cancelled = true);
+  }, [selectedArea, setMasjids, showToast]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedArea, masjids.length, setMasjids, setSelectedMasjid, showToast]);
-
-  // ---------- 4. Load Masjid Details (once per selected masjid) ----------
+  // ---------- 4. Load Masjid Details ----------
   useEffect(() => {
     const id = selectedMasjid?._id;
     if (!id) {
@@ -152,13 +125,9 @@ export default function ClientHome() {
       setContacts([]);
       return;
     }
-
-    if (prayerTimings.length > 0 && contacts.length > 0) return;
-
     let cancelled = false;
-
+    setLoadingMasjidDetails(true);
     (async () => {
-      setLoadingMasjidDetails(true);
       try {
         const data = await publicAPI.getMasjidById(id);
         if (cancelled) return;
@@ -171,36 +140,27 @@ export default function ClientHome() {
         if (!cancelled) setLoadingMasjidDetails(false);
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => (cancelled = true);
   }, [
     selectedMasjid?._id,
-    prayerTimings.length,
-    contacts.length,
     setPrayerTimings,
     setContacts,
     setSelectedMasjid,
     showToast,
   ]);
 
-  // ---------- 5. Auto detect nearest masjid (only if no selection yet) ----------
+  // ---------- 5. Auto detect nearest masjid on manual refresh only ----------
   useEffect(() => {
-    if (
-      selectedMasjid ||
-      selectedCity ||
-      cities.length > 0 ||
-      areas.length > 0 ||
-      masjids.length > 0
-    ) {
-      return;
-    }
+    if (hasAutoLocated) return; // ALWAYS run on first mount after refresh
 
     let cancelled = false;
 
-    const detectLocation = async () => {
-      if (!navigator.geolocation) return;
+    const detectNearest = async () => {
+      if (!navigator.geolocation) {
+        setHasAutoLocated(true);
+        return;
+      }
+
       setLoadingLocation(true);
 
       navigator.geolocation.getCurrentPosition(
@@ -212,52 +172,57 @@ export default function ClientHome() {
               limit: 1,
             });
 
-            if (cancelled) return;
-
-            if (!nearest?.length) {
+            if (cancelled || !nearest?.length) {
+              setHasAutoLocated(true);
               setLoadingLocation(false);
               return;
             }
 
             const m = nearest[0];
-            const cityId = m.city?._id || m.city || "";
-            const areaId = m.area?._id || m.area || "";
+            const cityId = m.city?._id || m.city;
+            const areaId = m.area?._id || m.area;
 
+            // FORCE override selection on page reload
             setSelectedCity(cityId);
+            setAreas([]); // important to trigger fresh area load
             setSelectedArea(areaId);
+            setMasjids([]); // important to trigger fresh masjid load
 
             const full = await publicAPI.getMasjidById(m._id);
-            if (!cancelled) setSelectedMasjid(full);
-          } catch {
             if (!cancelled) {
-              showToast("error", "Location lookup failed — select manually.");
+              setSelectedMasjid(full);
+              setPrayerTimings(full.prayerTimings || []);
+              setContacts(full.contacts || []);
             }
+          } catch {
+            showToast("error", "Location lookup failed — select manually.");
           } finally {
-            if (!cancelled) setLoadingLocation(false);
+            if (!cancelled) {
+              setHasAutoLocated(true);
+              setLoadingLocation(false);
+            }
           }
         },
         () => {
-          if (!cancelled) setLoadingLocation(false);
+          setHasAutoLocated(true);
+          setLoadingLocation(false);
         }
       );
     };
 
-    detectLocation();
-
-    return () => {
-      cancelled = true;
-    };
+    detectNearest();
+    return () => (cancelled = true);
   }, [
-    selectedMasjid,
-    selectedCity,
-    cities.length,
-    areas.length,
-    masjids.length,
+    hasAutoLocated,
+    setHasAutoLocated,
     setSelectedCity,
     setSelectedArea,
     setSelectedMasjid,
+    setPrayerTimings,
+    setContacts,
+    setAreas,
+    setMasjids,
     showToast,
-    user,
   ]);
 
   // ---------- UI ----------
@@ -281,16 +246,17 @@ export default function ClientHome() {
             selectedMasjid={selectedMasjid}
             setSelectedCity={(c) => {
               setSelectedCity(c);
+              setAreas([]); // 🔥 FIX: force refetch areas
               setSelectedArea("");
-              setMasjids([]);
+              setMasjids([]); // 🔥 FIX: force refetch masjids
               setSelectedMasjid(null);
               setPrayerTimings([]);
               setContacts([]);
             }}
             setSelectedArea={(a) => {
               setSelectedArea(a);
+              setMasjids([]); // 🔥 FIX
               setSelectedMasjid(null);
-              setMasjids([]);
               setPrayerTimings([]);
               setContacts([]);
             }}
