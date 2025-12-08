@@ -73,6 +73,7 @@ export default function PrayerTimingsTable({
         iqaamat: timing.maghrib?.iqaamat,
       },
       { name: "Isha", azan: timing.isha?.azan, iqaamat: timing.isha?.iqaamat },
+      { name: "Juma", azan: timing.juma?.azan, iqaamat: timing.juma?.iqaamat },
     ];
 
     return (

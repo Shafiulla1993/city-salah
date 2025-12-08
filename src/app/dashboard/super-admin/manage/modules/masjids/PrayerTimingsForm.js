@@ -2,7 +2,7 @@
 "use client";
 
 export default function PrayerTimingsForm({ value = {}, onChange }) {
-  const prayers = ["fajr", "Zohar", "asr", "maghrib", "isha"];
+  const prayers = ["fajr", "Zohar", "asr", "maghrib", "isha", "juma"];
 
   function updatePrayer(prayer, field, fieldValue) {
     const updated = {

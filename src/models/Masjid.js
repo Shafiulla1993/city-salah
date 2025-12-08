@@ -24,6 +24,7 @@ const MasjidPrayerTimingSchema = new Schema(
     asr: { azan: String, iqaamat: String },
     maghrib: { azan: String, iqaamat: String },
     isha: { azan: String, iqaamat: String },
+    juma: { azan: String, iqaamat: String },
   },
   { _id: false }
 );

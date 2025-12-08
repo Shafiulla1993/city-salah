@@ -138,7 +138,7 @@ export async function createMasjidController({ body = {}, user }) {
     // 🔹 Normalize prayer timings BEFORE building masjidData
     if (b.prayerTimings && Array.isArray(b.prayerTimings)) {
       const p = b.prayerTimings[0]; // your schema uses a single object in array
-      const keys = ["fajr", "Zohar", "asr", "maghrib", "isha"];
+      const keys = ["fajr", "Zohar", "asr", "maghrib", "isha", "juma"];
       for (const k of keys) {
         if (p && p[k]) {
           p[k].azan = normalizeTime(p[k].azan, k);
@@ -334,7 +334,7 @@ export async function updateMasjidController({ id, body = {}, user }) {
     // normalize timings after assignment
     if (masjid.prayerTimings && Array.isArray(masjid.prayerTimings)) {
       const p = masjid.prayerTimings[0];
-      const keys = ["fajr", "Zohar", "asr", "maghrib", "isha"];
+      const keys = ["fajr", "Zohar", "asr", "maghrib", "isha", "juma"];
       for (const k of keys) {
         if (p && p[k]) {
           p[k].azan = normalizeTime(p[k].azan, k);
