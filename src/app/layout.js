@@ -37,7 +37,9 @@ export default function RootLayout({ children }) {
         <link rel="canonical" href="https://citysalah.in" />
 
         {/* Favicon */}
-        <link rel="icon" href="/logo.png" />
+        <link rel="icon" type="image/png" href="/favicon.png" sizes="250x250" />
+        <link rel="apple-touch-icon" href="/favicon.png" />
+        <link rel="shortcut icon" href="/favicon.png" />
 
         <meta name="theme-color" content="#1D4ED8" />
         <title>{metadata.title}</title>
