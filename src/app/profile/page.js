@@ -1,8 +1,8 @@
 // src/app/profile/page.js
-
 "use client";
 
 import { useEffect, useState } from "react";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { authAPI } from "@/lib/api/auth";
 import { publicAPI } from "@/lib/api/public";
 import { Input } from "@/components/form/Input";
@@ -12,7 +12,6 @@ import { notify } from "@/lib/toast";
 
 export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
-
   const [cities, setCities] = useState([]);
   const [areas, setAreas] = useState([]);
 
@@ -35,27 +34,20 @@ export default function ProfilePage() {
 
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
-  /* -------------------------------------------------
-   * INITIAL LOAD → USER + USER CITY/AREA NAMES
-   * ------------------------------------------------- */
+  /** Load initial profile */
   useEffect(() => {
     async function loadData() {
       try {
         const meRes = await authAPI.me();
-        if (!meRes.loggedIn) {
-          notify.error("Not logged in");
-          return;
-        }
+        if (!meRes.loggedIn) return;
 
         const user = meRes.user;
 
-        // store for temporary display
         setUserNames({
           cityName: user.city?.name || "",
           areaName: user.area?.name || "",
         });
 
-        // initial form values
         setForm({
           name: user.name || "",
           email: user.email || "",
@@ -64,7 +56,7 @@ export default function ProfilePage() {
           area: user.area?._id || "",
           password: "",
         });
-      } catch (err) {
+      } catch {
         notify.error("Failed to load profile");
       } finally {
         setLoading(false);
@@ -74,12 +66,9 @@ export default function ProfilePage() {
     loadData();
   }, []);
 
-  /* -------------------------------------------------
-   * LOAD ALL CITIES → only when dropdown is clicked
-   * ------------------------------------------------- */
+  /** Load cities */
   async function loadCitiesIfNeeded() {
     if (citiesLoaded) return;
-
     try {
       const res = await publicAPI.getCities();
       setCities(res?.data || []);
@@ -89,9 +78,7 @@ export default function ProfilePage() {
     }
   }
 
-  /* -------------------------------------------------
-   * LOAD AREAS → only when city changes or dropdown clicked
-   * ------------------------------------------------- */
+  /** Load areas */
   async function loadAreas(cityId) {
     if (!cityId) {
       setAreas([]);
@@ -108,28 +95,7 @@ export default function ProfilePage() {
     }
   }
 
-  /* -------------------------------------------------
-   * CITY SELECTED
-   * ------------------------------------------------- */
-  async function handleCityChange(cityId) {
-    update("city", cityId);
-    update("area", "");
-    setAreas([]);
-    setAreasLoaded(false);
-
-    await loadAreas(cityId);
-  }
-
-  /* -------------------------------------------------
-   * AREA SELECTED
-   * ------------------------------------------------- */
-  function handleAreaChange(areaId) {
-    update("area", areaId);
-  }
-
-  /* -------------------------------------------------
-   * SUBMIT UPDATE PROFILE
-   * ------------------------------------------------- */
+  /** Submit updated profile */
   async function handleUpdate(e) {
     e.preventDefault();
 
@@ -147,7 +113,6 @@ export default function ProfilePage() {
 
     try {
       const res = await authAPI.updateProfile(payload);
-
       if (res?.user) notify.success("Profile updated");
       update("password", "");
     } catch (err) {
@@ -164,89 +129,94 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-xl mx-auto py-10 space-y-6">
-      <h1 className="text-2xl font-semibold">Your Profile</h1>
+    <ProtectedRoute>
+      <div className="max-w-xl mx-auto py-10 space-y-8 px-3">
+        <h1 className="text-3xl font-bold text-indigo-700 text-center drop-shadow-sm">
+          Your Profile
+        </h1>
 
-      <form
-        onSubmit={handleUpdate}
-        className="space-y-6 bg-white p-6 rounded-xl shadow"
-      >
-        {/* Full Name */}
-        <Input
-          label="Full Name"
-          value={form.name}
-          onChange={(e) => update("name", e.target.value)}
-        />
-
-        {/* Email */}
-        <Input
-          label="Email"
-          value={form.email}
-          onChange={(e) => update("email", e.target.value)}
-        />
-
-        {/* Phone */}
-        <Input
-          label="Phone"
-          value={form.phone}
-          onChange={(e) => update("phone", e.target.value)}
-        />
-
-        {/* City */}
-        <Select
-          label="City"
-          value={form.city}
-          onClick={loadCitiesIfNeeded}
-          onChange={(e) => handleCityChange(e.target.value)}
-          options={[
-            // temporary selected city until cities are loaded
-            ...(!citiesLoaded && form.city
-              ? [{ value: form.city, label: userNames.cityName }]
-              : []),
-
-            ...cities.map((c) => ({
-              value: c._id,
-              label: c.name,
-            })),
-          ]}
-        />
-
-        {/* Area */}
-        <Select
-          label="Area"
-          value={form.area}
-          onClick={() => loadAreas(form.city)}
-          onChange={(e) => handleAreaChange(e.target.value)}
-          disabled={!form.city}
-          options={[
-            // temporary selected area until areas load
-            ...(!areasLoaded && form.area
-              ? [{ value: form.area, label: userNames.areaName }]
-              : []),
-
-            ...areas.map((a) => ({
-              value: a._id,
-              label: a.name,
-            })),
-          ]}
-        />
-
-        {/* Password */}
-        <PasswordInput
-          label="New Password"
-          value={form.password}
-          onChange={(e) => update("password", e.target.value)}
-          placeholder="Leave empty to keep current password"
-        />
-
-        {/* Submit */}
-        <button
-          type="submit"
-          className="w-full bg-slate-800 hover:bg-slate-900 text-white py-2 rounded-md"
+        <form
+          onSubmit={handleUpdate}
+          className="
+            space-y-6 
+            bg-white/95 rounded-xl shadow-2xl 
+            p-6 border border-white/40 backdrop-blur
+          "
         >
-          Save Changes
-        </button>
-      </form>
-    </div>
+          <Input
+            label="Full Name"
+            value={form.name}
+            onChange={(e) => update("name", e.target.value)}
+            required
+          />
+
+          <Input
+            label="Email"
+            value={form.email}
+            onChange={(e) => update("email", e.target.value)}
+          />
+
+          <Input
+            label="Phone"
+            value={form.phone}
+            onChange={(e) => update("phone", e.target.value)}
+            required
+          />
+
+          {/* City */}
+          <Select
+            label="City"
+            value={form.city}
+            onClick={loadCitiesIfNeeded}
+            onChange={(e) => {
+              update("city", e.target.value);
+              update("area", "");
+              loadAreas(e.target.value);
+            }}
+            options={[
+              ...(!citiesLoaded && form.city
+                ? [{ value: form.city, label: userNames.cityName }]
+                : []),
+              ...cities.map((c) => ({ value: c._id, label: c.name })),
+            ]}
+            required
+          />
+
+          {/* Area */}
+          <Select
+            label="Area"
+            value={form.area}
+            onClick={() => loadAreas(form.city)}
+            onChange={(e) => update("area", e.target.value)}
+            disabled={!form.city}
+            options={[
+              ...(!areasLoaded && form.area
+                ? [{ value: form.area, label: userNames.areaName }]
+                : []),
+              ...areas.map((a) => ({ value: a._id, label: a.name })),
+            ]}
+            required
+          />
+
+          <PasswordInput
+            label="New Password"
+            value={form.password}
+            onChange={(e) => update("password", e.target.value)}
+            placeholder="Leave empty to keep current password"
+          />
+
+          <button
+            type="submit"
+            className="
+              w-full py-3 rounded-lg text-lg font-semibold
+              bg-indigo-600 hover:bg-indigo-700 text-white
+              transition shadow-md
+            "
+          >
+            Save Changes
+          </button>
+        </form>
+      </div>
+    </ProtectedRoute>
   );
 }

@@ -1,3 +1,4 @@
+// src/app/register/page.js
 "use client";
 
 import { useState, useEffect } from "react";
@@ -21,35 +22,24 @@ export default function RegisterPage() {
 
   const [cities, setCities] = useState([]);
   const [areas, setAreas] = useState([]);
-
   const [loading, setLoading] = useState(false);
 
   // Load cities
   useEffect(() => {
     publicAPI.getCities().then((res) => {
       if (Array.isArray(res)) {
-        setCities(
-          res.map((c) => ({
-            label: c.name,
-            value: c._id,
-          }))
-        );
+        setCities(res.map((c) => ({ label: c.name, value: c._id })));
       }
     });
   }, []);
 
-  // Load areas when city changes
+  // Load areas when city selected
   useEffect(() => {
     if (!form.city) return setAreas([]);
 
     publicAPI.getAreas(form.city).then((res) => {
       if (Array.isArray(res)) {
-        setAreas(
-          res.map((a) => ({
-            label: a.name,
-            value: a._id,
-          }))
-        );
+        setAreas(res.map((a) => ({ label: a.name, value: a._id })));
       }
     });
   }, [form.city]);
@@ -72,19 +62,20 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center px-4">
+    <div className="w-full min-h-[80vh] flex items-center justify-center px-4 py-8">
       <div
         className="
-          w-full max-w-md rounded-2xl shadow-2xl p-10
-          bg-gradient-to-br from-slate-100 to-slate-300
-          border border-slate-300
+          w-full max-w-md
+          bg-white/95 rounded-2xl shadow-2xl
+          border border-white/40 backdrop-blur
+          p-10 space-y-6
         "
       >
-        <h1 className="text-3xl font-bold text-center mb-6 text-slate-900">
+        <h1 className="text-3xl font-bold text-center text-indigo-700 drop-shadow-sm">
           Create an Account
         </h1>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6 mt-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <Input
             label="Full Name"
             name="name"
@@ -138,7 +129,7 @@ export default function RegisterPage() {
             disabled={loading}
             className="
               w-full h-12 rounded-lg text-lg font-semibold
-              bg-slate-500 text-white hover:bg-slate-600
+              bg-indigo-600 text-white hover:bg-indigo-700
               transition-all duration-200 shadow-md
             "
           >
@@ -146,11 +137,11 @@ export default function RegisterPage() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-slate-700">
+        <p className="text-center text-slate-700 text-sm">
           Already have an account?
           <Link
             href="/login"
-            className="ml-1 font-semibold underline text-slate-900 hover:text-slate-600"
+            className="ml-1 font-semibold underline text-indigo-700 hover:text-indigo-900"
           >
             Login
           </Link>

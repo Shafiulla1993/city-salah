@@ -1,3 +1,5 @@
+// src/app/contact/page.js
+
 export default function ContactPage() {
   return (
     <div className="min-h-[80vh] flex flex-col gap-12 px-3 py-10 max-w-4xl mx-auto">

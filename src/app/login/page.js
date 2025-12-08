@@ -1,5 +1,4 @@
 // src/app/login/page.js
-
 "use client";
 
 import { useState } from "react";
@@ -50,27 +49,27 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center px-4">
+    <div className="w-full min-h-[80vh] flex items-center justify-center px-4 py-8">
       <div
         className="
           w-full max-w-md
-          rounded-2xl shadow-2xl
-          p-10
-          bg-gradient-to-br from-slate-100 to-slate-300
-          border border-slate-300
+          bg-white/95 rounded-2xl shadow-2xl
+          border border-white/40 backdrop-blur
+          p-10 space-y-6
         "
       >
-        <h1 className="text-3xl font-bold text-center mb-6 text-slate-900">
+        <h1 className="text-3xl font-bold text-center text-indigo-700 drop-shadow-sm">
           Login
         </h1>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6 mt-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <Input
             label="Phone Number"
             name="phone"
             placeholder="Enter your phone"
             value={form.phone}
             onChange={handleChange}
+            required
           />
 
           <PasswordInput
@@ -79,6 +78,7 @@ export default function LoginPage() {
             placeholder="Enter your password"
             value={form.password}
             onChange={handleChange}
+            required
           />
 
           <Button
@@ -86,8 +86,8 @@ export default function LoginPage() {
             disabled={loading}
             className="
               w-full h-12 rounded-lg
-              font-semibold text-lg shadow-lg
-              bg-slate-500 hover:bg-slate-600
+              font-semibold text-lg shadow-md
+              bg-indigo-600 hover:bg-indigo-700
               text-white transition-all
             "
           >
@@ -95,11 +95,11 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-slate-700">
+        <p className="text-center text-slate-700 text-sm">
           New here?
           <Link
             href="/register"
-            className="ml-1 font-semibold underline text-slate-900 hover:text-slate-600"
+            className="ml-1 font-semibold underline text-indigo-700 hover:text-indigo-900"
           >
             Register
           </Link>

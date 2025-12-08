@@ -35,12 +35,11 @@ export default function ClientHome() {
   const [loadingMasjids, setLoadingMasjids] = useState(false);
   const [loadingMasjidDetails, setLoadingMasjidDetails] = useState(false);
 
-  // 🔹 Scroll-to-top button visibility
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   const { user } = useAuth();
 
-  // ---------- Zustand store (global selection) ----------
+  // ---------- Zustand store ----------
   const {
     selectedCity,
     selectedArea,
@@ -52,6 +51,10 @@ export default function ClientHome() {
     loadingLocation,
   } = useMasjidStore();
 
+  // ---------- Helper names for SEO ----------
+  const selectedCityName = cities.find((c) => c._id === selectedCity)?.name;
+  const selectedAreaName = areas.find((a) => a._id === selectedArea)?.name;
+
   // ---------- Toast ----------
   const showToast = useCallback((type, msg) => {
     if (type === "success") toast.success(msg);
@@ -59,18 +62,14 @@ export default function ClientHome() {
     else toast.info(msg);
   }, []);
 
-  // ---------- Init selection logic (once per tab) ----------
+  // ---------- Init selection ----------
   useEffect(() => {
-    // user may be null initially and later filled
     init();
   }, [user, init]);
 
-  // ---------- Scroll-to-top effect ----------
+  // ---------- Scroll-to-top ----------
   useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 300);
-    };
-
+    const handleScroll = () => setShowScrollTop(window.scrollY > 300);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -91,12 +90,9 @@ export default function ClientHome() {
     return () => (mounted = false);
   }, [showToast]);
 
-  // ---------- 2. Load Areas (depends on selectedCity from store) ----------
+  // ---------- 2. Load Areas ----------
   useEffect(() => {
-    if (!selectedCity) {
-      setAreas([]);
-      return;
-    }
+    if (!selectedCity) return setAreas([]);
     let mounted = true;
     (async () => {
       setLoadingAreas(true);
@@ -112,13 +108,9 @@ export default function ClientHome() {
     return () => (mounted = false);
   }, [selectedCity, showToast]);
 
-  // ---------- 3. Load Masjids (depends on selectedArea from store) ----------
+  // ---------- 3. Load Masjids ----------
   useEffect(() => {
-    if (!selectedArea) {
-      setMasjids([]);
-      // DO NOT reset selectedMasjid here; store manages it
-      return;
-    }
+    if (!selectedArea) return setMasjids([]);
     let mounted = true;
     (async () => {
       setLoadingMasjids(true);
@@ -134,7 +126,7 @@ export default function ClientHome() {
     return () => (mounted = false);
   }, [selectedArea, showToast]);
 
-  // ---------- 4. Load Masjid Details (depends on selectedMasjid from store) ----------
+  // ---------- 4. Load Masjid Details ----------
   useEffect(() => {
     if (!selectedMasjid?._id) {
       setPrayerTimings([]);
@@ -149,7 +141,6 @@ export default function ClientHome() {
         if (!mounted) return;
         setPrayerTimings(data.prayerTimings || []);
         setContacts(data.contacts || []);
-        // also keep latest data in store
         setMasjid(data);
       } catch {
         showToast("error", "Could not load masjid details");
@@ -159,6 +150,51 @@ export default function ClientHome() {
     })();
     return () => (mounted = false);
   }, [selectedMasjid?._id, setMasjid, showToast]);
+
+  // ---------- Dynamic SEO: title + meta ----------
+  useEffect(() => {
+    if (!selectedMasjid?.name) return;
+    const title = `${selectedMasjid.name} — Prayer Timings | City Salah`;
+    const description = `Prayer timings, Iqamah schedule and announcements for ${
+      selectedMasjid.name
+    }, ${selectedAreaName || ""} ${
+      selectedCityName || ""
+    }. View Salah times instantly on CitySalah.`;
+
+    document.title = title;
+    let meta = document.querySelector("meta[name='description']");
+    if (meta) meta.setAttribute("content", description);
+  }, [selectedMasjid, selectedAreaName, selectedCityName]);
+
+  // ---------- Dynamic JSON-LD ----------
+  useEffect(() => {
+    if (!selectedMasjid?.name) return;
+
+    const ldJson = {
+      "@context": "https://schema.org",
+      "@type": "Mosque",
+      name: selectedMasjid.name,
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: selectedMasjid.address || "",
+        addressLocality: selectedAreaName || "",
+        addressRegion: selectedCityName || "Karnataka",
+        addressCountry: "India",
+      },
+      url: "https://citysalah.in",
+      description: `Prayer timings and announcements for ${selectedMasjid.name}`,
+      image: selectedMasjid.image || "",
+    };
+
+    let script = document.getElementById("masjid-schema");
+    if (!script) {
+      script = document.createElement("script");
+      script.id = "masjid-schema";
+      script.type = "application/ld+json";
+      document.head.appendChild(script);
+    }
+    script.textContent = JSON.stringify(ldJson);
+  }, [selectedMasjid, selectedAreaName, selectedCityName]);
 
   // ---------- UI ----------
   return (
@@ -184,6 +220,25 @@ export default function ClientHome() {
             setSelectedMasjid={setMasjid}
           />
         )}
+
+        {/* 🔹 Hidden SEO block visible only to Google */}
+        <div
+          style={{
+            position: "absolute",
+            width: "1px",
+            height: "1px",
+            margin: "-1px",
+            padding: "0",
+            overflow: "hidden",
+            clip: "rect(0 0 0 0)",
+            whiteSpace: "nowrap",
+            border: "0",
+          }}
+        >
+          City Salah (also written as CitySalah) provides accurate masjid-based
+          prayer timings, Iqamah schedules and community announcements for
+          cities including Mysuru, Nanjangud, Bengaluru, Mandya and more.
+        </div>
 
         {/* Main Masjid View */}
         <div className="space-y-2">
@@ -213,7 +268,6 @@ export default function ClientHome() {
         </div>
       </div>
 
-      {/* 🔹 Scroll to Top Button (bottom-right, theme matched) */}
       {showScrollTop && (
         <button
           aria-label="Scroll to top"
@@ -224,12 +278,11 @@ export default function ClientHome() {
             })
           }
           className="
-  fixed bottom-6 right-6 md:right-10 lg:right-12
-  bg-indigo-600 hover:bg-indigo-700 
-  text-white w-12 h-12 rounded-full 
-  shadow-xl flex items-center justify-center 
-  text-2xl transition-all active:scale-95 z-[999]
-"
+            fixed bottom-6 right-6 md:right-10 lg:right-12
+            bg-indigo-600 hover:bg-indigo-700 
+            text-white w-12 h-12 rounded-full 
+            shadow-xl flex items-center justify-center 
+            text-2xl transition-all active:scale-95 z-[999]"
         >
           ↑
         </button>
