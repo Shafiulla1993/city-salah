@@ -1,4 +1,4 @@
-// src/components/RightPanel/PrayerTimingsTable.js
+// src/components/masjid/PrayerTimingsTable.js
 
 "use client";
 import React from "react";
@@ -76,7 +76,7 @@ export default function PrayerTimingsTable({
     ];
 
     return (
-      <div className="bg-white shadow rounded-lg p-4 overflow-x-auto">
+      <div className="bg-white/95 rounded-xl shadow-xl border border-white/40 backdrop-blur p-6 overflow-x-auto">
         <h2 className="text-xl font-semibold mb-3 text-slate-800">
           Prayer Timings
         </h2>
@@ -110,13 +110,13 @@ export default function PrayerTimingsTable({
   const slots = prayerTimings[0].slots || [];
 
   return (
-    <div className="bg-white shadow rounded-lg p-4 overflow-x-auto">
+    <div className="bg-white/95 rounded-xl shadow-xl border border-white/40 backdrop-blur p-6 overflow-x-auto">
       <h2 className="text-2xl font-semibold mb-4 text-center text-slate-900 tracking-wide">
         Auqatus Salah Timings
       </h2>
 
-      <table className="w-full border border-gray-200 table-fixed rounded-lg">
-        <thead className="bg-slate-200">
+      <table className="w-full border border-slate-200/60 table-fixed rounded-lg overflow-hidden">
+        <thead className="bg-slate-100/80">
           <tr>
             <th className="px-3 py-2 text-center border-b font-bold text-slate-900 w-1/3">
               Name

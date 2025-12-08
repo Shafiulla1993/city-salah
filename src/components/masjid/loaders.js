@@ -1,4 +1,4 @@
-// src/components/RightPanel/loaders
+// src/components/masjid/loaders
 
 import Skeleton from "@/components/ui/Skeleton";
 
@@ -17,7 +17,7 @@ export function AnnouncementBoxSkeleton() {
 // 🔹 Contact Info Loader
 export function ContactInfoLoader() {
   return (
-    <div className="bg-white shadow rounded p-4">
+    <div className="bg-white/90 rounded-xl shadow-md border border-white/30 backdrop-blur p-4">
       <Skeleton className="h-6 w-32 mb-4" />
 
       <div className="space-y-4">

@@ -18,7 +18,10 @@ export default function MasjidInfo({ masjid }) {
   const altText = masjid?.name ? `Photo of ${masjid.name}` : "Masjid image";
 
   return (
-    <div className="bg-white shadow rounded p-4">
+    <div className="bg-white/95 rounded-xl shadow-xl border border-white/40 backdrop-blur p-6">
+      <h2 className="text-2xl font-bold mb-3 text-slate-800 tracking-wide">
+        Masjid
+      </h2>
       {/* BIG IMAGE, FULL WIDTH, NOT CROPPED */}
       <div className="relative w-full h-[350px] sm:h-[380px] md:h-[420px] lg:h-[450px] mb-4 bg-slate-100 rounded flex items-center justify-center overflow-hidden">
         <Image

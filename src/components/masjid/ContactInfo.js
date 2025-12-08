@@ -1,4 +1,4 @@
-// src/components/RightPanel/ContactInfo.js
+// src/components/masjid/ContactInfo.js
 "use client";
 import React from "react";
 
@@ -6,7 +6,7 @@ export default function ContactInfo({ contacts }) {
   if (!contacts?.length) return null;
 
   return (
-    <div className="bg-slate-100/40 shadow rounded p-4">
+    <div className="bg-white/95 rounded-xl shadow-xl border border-white/40 backdrop-blur p-6">
       <h2 className="text-xl font-semibold mb-2">Contacts</h2>
       <ul className="space-y-2">
         {contacts.map((c, idx) => (

@@ -5,8 +5,8 @@
 import { useEffect, useState } from "react";
 import { publicAPI } from "@/lib/api/public";
 import { toast } from "react-toastify";
-import PrayerTimingsTable from "@/components/RightPanel/PrayerTimingsTable";
-import AuqatusTimingsLoader from "@/components/RightPanel/loaders";
+import PrayerTimingsTable from "@/components/masjid/PrayerTimingsTable";
+import AuqatusTimingsLoader from "@/components/masjid/loaders";
 
 export default function AuqatusSalahPage() {
   const [cities, setCities] = useState([]);
@@ -14,25 +14,20 @@ export default function AuqatusSalahPage() {
   const [cityId, setCityId] = useState("");
   const [areaId, setAreaId] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-
   const [timings, setTimings] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Load saved city & area from localStorage
   useEffect(() => {
     const savedCity = localStorage.getItem("selectedCityId");
     const savedArea = localStorage.getItem("selectedAreaId");
-
     if (savedCity) setCityId(savedCity);
     if (savedArea) setAreaId(savedArea);
   }, []);
 
-  // Load cities
   useEffect(() => {
     publicAPI.getCities().then(setCities);
   }, []);
 
-  // Load areas when city changes
   useEffect(() => {
     if (!cityId) {
       setAreas([]);
@@ -42,7 +37,6 @@ export default function AuqatusSalahPage() {
     publicAPI.getAreas(cityId).then(setAreas);
   }, [cityId]);
 
-  // Load timings
   const loadTimings = async () => {
     if (!cityId) return;
     setLoading(true);
@@ -57,15 +51,12 @@ export default function AuqatusSalahPage() {
     }
   };
 
-  // Auto load timings when city/area/date changes
   useEffect(() => {
     if (cityId) loadTimings();
   }, [cityId, areaId, date]);
 
-  /* Ordered slot mapping for Auqatus Salah */
   function transformSlots(slots = []) {
     const map = Object.fromEntries(slots.map((s) => [s.name, s]));
-
     const ordering = [
       ["Sehri", "sehri_start", "sehri_end"],
       ["Fajr", "fajr_start", "fajr_end"],
@@ -89,17 +80,16 @@ export default function AuqatusSalahPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-3xl font-bold text-center text-slate-900">
-        Auqatus Salah
-      </h1>
+    <div className="min-h-screen w-full px-3 py-2 space-y-4">
+      {/* PAGE HEADING */}
+      <h2 className="text-3xl font-bold text-slate-900"> Auqatus Salah </h2>
 
-      {/* FILTER BAR */}
-      <div className="bg-white shadow rounded-lg p-4 space-y-4">
+      {/* FILTER CARD */}
+      <div className="bg-white/95 rounded-xl shadow-xl border border-white/40 backdrop-blur p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* CITY */}
           <select
-            className="border px-3 py-2 rounded"
+            className="w-full flex h-10 rounded-md border border-slate-300 bg-white/90 px-3 shadow-md focus:ring-2 focus:ring-indigo-500 transition"
             value={cityId}
             onChange={(e) => setCityId(e.target.value)}
           >
@@ -113,7 +103,7 @@ export default function AuqatusSalahPage() {
 
           {/* AREA */}
           <select
-            className="border px-3 py-2 rounded"
+            className="w-full flex h-10 rounded-md border border-slate-300 bg-white/90 px-3 shadow-md focus:ring-2 focus:ring-indigo-500 transition"
             value={areaId}
             onChange={(e) => setAreaId(e.target.value)}
           >
@@ -128,7 +118,7 @@ export default function AuqatusSalahPage() {
           {/* DATE */}
           <input
             type="date"
-            className="border px-3 py-2 rounded"
+            className="w-full flex h-10 rounded-md border border-slate-300 bg-white/90 px-3 shadow-md focus:ring-2 focus:ring-indigo-500 transition"
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
@@ -136,13 +126,13 @@ export default function AuqatusSalahPage() {
 
         <button
           onClick={loadTimings}
-          className="w-full md:w-auto bg-slate-800 text-white px-6 py-2 rounded hover:bg-slate-900 transition"
+          className="w-full md:w-auto bg-indigo-600 text-white px-8 py-2 rounded-md font-semibold shadow hover:bg-indigo-700 transition"
         >
           Refresh Timings
         </button>
       </div>
 
-      {/* TABLE */}
+      {/* TABLE / LOADER */}
       {loading ? (
         <AuqatusTimingsLoader />
       ) : timings ? (
@@ -152,10 +142,10 @@ export default function AuqatusSalahPage() {
           mode="auqatus"
         />
       ) : (
-        <div className="text-center text-gray-600">
+        <div className="text-center text-gray-600 italic">
           {cityId
             ? "No timings found for this selection"
-            : "Select city to view timings"}
+            : "Select a city to view timings"}
         </div>
       )}
     </div>

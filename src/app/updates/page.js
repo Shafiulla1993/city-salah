@@ -3,9 +3,9 @@
 
 import { useEffect } from "react";
 import { useMasjidStore } from "@/store/useMasjidStore";
-import MasjidAnnouncements from "@/components/LeftPanel/MasjidAnnouncements";
-import GeneralAnnouncements from "@/components/LeftPanel/GeneralAnnouncements";
-import ThoughtOfDay from "@/components/LeftPanel/ThoughtOfDay";
+import MasjidAnnouncements from "@/components/updates/MasjidAnnouncements";
+import GeneralAnnouncements from "@/components/updates/GeneralAnnouncements";
+import ThoughtOfDay from "@/components/updates/ThoughtOfDay";
 
 export default function UpdatesPage() {
   const init = useMasjidStore((s) => s.init);
@@ -18,33 +18,33 @@ export default function UpdatesPage() {
   const masjidId = selectedMasjid?._id;
 
   return (
-    <div className="min-h-screen w-full bg-slate-300/40 px-3 py-5">
-      <div className="max-w-3xl mx-auto space-y-6">
+    <div className="min-h-screen w-full px-3 py-8">
+      <div className="max-w-3xl mx-auto space-y-8">
         {/* 🔥 Masjid Announcements */}
-        <div className="bg-white shadow rounded p-4">
-          <h2 className="text-xl font-bold mb-3 text-slate-800">
+        <div className="bg-white/95 rounded-xl shadow-xl border border-white/40 backdrop-blur p-6">
+          <h2 className="text-xl font-bold mb-4 text-slate-800 tracking-wide">
             Masjid Announcements
           </h2>
           {masjidId ? (
             <MasjidAnnouncements masjidId={masjidId} />
           ) : (
-            <p className="text-slate-600 text-sm">
-              No masjid selected. Go to Home page once to select.
+            <p className="text-slate-600 text-sm italic">
+              No masjid selected. Please visit the Home page to choose one.
             </p>
           )}
         </div>
 
         {/* 🔥 General Announcements */}
-        <div className="bg-white shadow rounded p-4">
-          <h2 className="text-xl font-bold mb-3 text-slate-800">
+        <div className="bg-white/95 rounded-xl shadow-xl border border-white/40 backdrop-blur p-6">
+          <h2 className="text-xl font-bold mb-4 text-slate-800 tracking-wide">
             General Announcements
           </h2>
           <GeneralAnnouncements />
         </div>
 
         {/* 🔥 Thought of the Day */}
-        <div className="bg-white shadow rounded p-4">
-          <h2 className="text-xl font-bold mb-3 text-slate-800">
+        <div className="bg-white/95 rounded-xl shadow-xl border border-white/40 backdrop-blur p-6">
+          <h2 className="text-xl font-bold mb-4 text-slate-800 tracking-wide">
             Thought of the Day
           </h2>
           <ThoughtOfDay />

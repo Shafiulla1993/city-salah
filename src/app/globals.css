@@ -81,3 +81,23 @@ body {
 .Toastify__toast--info .Toastify__toast-icon svg {
   fill: #bfdbfe !important;
 }
+
+/* Heading Style */
+@keyframes headingSmooth {
+  0% {
+    letter-spacing: 1.25rem;
+    opacity: 0;
+    transform: translateY(-28px) scale(0.96);
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    letter-spacing: 0.25rem;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-headingSmooth {
+  animation: headingSmooth 1.4s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}

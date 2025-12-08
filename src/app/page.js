@@ -4,10 +4,10 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "react-toastify";
 
-import MasjidSelector from "@/components/RightPanel/MasjidSelector";
-import MasjidInfo from "@/components/RightPanel/MasjidInfo";
-import PrayerTimingsTable from "@/components/RightPanel/PrayerTimingsTable";
-import ContactInfo from "@/components/RightPanel/ContactInfo";
+import MasjidSelector from "@/components/masjid/MasjidSelector";
+import MasjidInfo from "@/components/masjid/MasjidInfo";
+import PrayerTimingsTable from "@/components/masjid/PrayerTimingsTable";
+import ContactInfo from "@/components/masjid/ContactInfo";
 
 import { publicAPI } from "@/lib/api/public";
 import { useAuth } from "@/context/AuthContext";
@@ -16,7 +16,7 @@ import {
   MasjidInfoLoader,
   PrayerTimingsLoader,
   ContactInfoLoader,
-} from "@/components/RightPanel/loaders";
+} from "@/components/masjid/loaders";
 
 import { useMasjidStore } from "@/store/useMasjidStore";
 
@@ -34,6 +34,9 @@ export default function ClientHome() {
   const [loadingAreas, setLoadingAreas] = useState(false);
   const [loadingMasjids, setLoadingMasjids] = useState(false);
   const [loadingMasjidDetails, setLoadingMasjidDetails] = useState(false);
+
+  // 🔹 Scroll-to-top button visibility
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const { user } = useAuth();
 
@@ -61,6 +64,16 @@ export default function ClientHome() {
     // user may be null initially and later filled
     init();
   }, [user, init]);
+
+  // ---------- Scroll-to-top effect ----------
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // ---------- 1. Load Cities ----------
   useEffect(() => {
@@ -149,8 +162,8 @@ export default function ClientHome() {
 
   // ---------- UI ----------
   return (
-    <div className="min-h-screen w-full bg-slate-300/40 px-3 py-5">
-      <div className="max-w-3xl mx-auto space-y-6">
+    <div className="min-h-screen w-full">
+      <div className="max-w-3xl mx-auto space-y-3 px-2 py-3">
         {/* Selector */}
         {loadingCities ? (
           <div className="flex gap-2 justify-center">
@@ -173,7 +186,7 @@ export default function ClientHome() {
         )}
 
         {/* Main Masjid View */}
-        <div className="space-y-6">
+        <div className="space-y-2">
           {loadingMasjidDetails ? (
             <>
               <MasjidInfoLoader />
@@ -199,6 +212,28 @@ export default function ClientHome() {
           )}
         </div>
       </div>
+
+      {/* 🔹 Scroll to Top Button (bottom-right, theme matched) */}
+      {showScrollTop && (
+        <button
+          aria-label="Scroll to top"
+          onClick={() =>
+            window.scrollTo({
+              top: 0,
+              behavior: "smooth",
+            })
+          }
+          className="
+  fixed bottom-6 right-6 md:right-10 lg:right-12
+  bg-indigo-600 hover:bg-indigo-700 
+  text-white w-12 h-12 rounded-full 
+  shadow-xl flex items-center justify-center 
+  text-2xl transition-all active:scale-95 z-[999]
+"
+        >
+          ↑
+        </button>
+      )}
     </div>
   );
 }
