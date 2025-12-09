@@ -1,3 +1,5 @@
+// src/app/dashboard/super-admin/components/skeleton/AdminTableSkeleton.js
+
 "use client";
 
 import Skeleton from "@/components/ui/Skeleton";

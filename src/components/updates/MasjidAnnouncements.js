@@ -1,4 +1,4 @@
-// src/components/LeftPanel/MasjidAnnouncements.js
+// src/components/updates/MasjidAnnouncements.js
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -23,14 +23,29 @@ export default function MasjidAnnouncements() {
   return (
     <div className="bg-white p-4 rounded shadow">
       <h2 className="text-lg font-bold mb-2">Masjid Announcements</h2>
+
       {announcements.length === 0 ? (
         <p>No announcements</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {announcements.map((a) => (
-            <li key={a._id} className="border-b border-gray-200 pb-1">
+            <li key={a._id} className="border-b border-gray-200 pb-3">
               <p className="font-semibold">{a.title}</p>
-              <p>{a.body}</p>
+              <p className="text-sm">{a.body}</p>
+
+              {/* IMAGE DISPLAY */}
+              {Array.isArray(a.images) && a.images.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {a.images.map((img, index) => (
+                    <img
+                      key={index}
+                      src={img}
+                      alt="announcement image"
+                      className="w-28 h-28 rounded object-cover border shadow-sm"
+                    />
+                  ))}
+                </div>
+              )}
             </li>
           ))}
         </ul>
