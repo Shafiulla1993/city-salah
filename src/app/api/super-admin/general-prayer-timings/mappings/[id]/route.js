@@ -3,7 +3,7 @@
 import { deleteMappingController } from "@/server/controllers/superadmin/generalPrayerTimings.controller";
 import { withAuth } from "@/lib/middleware/withAuth";
 
-export const DELETE = withAuth(
-  "super_admin",
-  async (req, ctx) => await deleteMappingController({ id: ctx.params.id })
-);
+export const DELETE = withAuth("super_admin", async (req, ctx) => {
+  const { id } = await ctx.params; // <-- FIX
+  return deleteMappingController({ id });
+});

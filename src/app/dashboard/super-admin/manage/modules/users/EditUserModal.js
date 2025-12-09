@@ -27,8 +27,8 @@ export default function EditUserModal({ open, onClose, userId, onUpdated }) {
     masjidId: [],
   });
 
-  function update(k, v) {
-    setForm((s) => ({ ...s, [k]: v }));
+  function update(key, value) {
+    setForm((prev) => ({ ...prev, [key]: value }));
   }
 
   /** Load user + cities + masjids */
@@ -52,7 +52,6 @@ export default function EditUserModal({ open, onClose, userId, onUpdated }) {
 
       const uRes = await adminAPI.getUserById(userId);
       const u = uRes?.data;
-
       if (!u) return;
 
       setInitial(u);
@@ -70,7 +69,7 @@ export default function EditUserModal({ open, onClose, userId, onUpdated }) {
           : [],
       });
 
-      // Load areas for saved city
+      // Load area list based on saved city
       if (u.city?._id) {
         const aRes = await adminAPI.getAreas(`?city=${u.city._id}`);
         setAreas(aRes?.data ?? []);
@@ -90,29 +89,33 @@ export default function EditUserModal({ open, onClose, userId, onUpdated }) {
       update("area", "");
       return;
     }
-
     adminAPI
       .getAreas(`?city=${form.city}`)
       .then((res) => setAreas(res?.data ?? []))
       .catch(() => setAreas([]));
   }, [form.city]);
 
-  /** Submit */
+  /** SUBMIT */
   async function submit(e) {
     e.preventDefault();
     setLoading(true);
 
     try {
       const payload = {};
+
       if (form.name !== initial.name) payload.name = form.name;
       if (form.phone !== initial.phone) payload.phone = form.phone;
       if (form.email !== initial.email) payload.email = form.email || undefined;
       if (form.password?.trim()) payload.password = form.password;
       if (form.role !== initial.role) payload.role = form.role;
-      if (form.city !== (initial.city?._id || "")) payload.city = form.city;
-      if (form.area !== (initial.area?._id || "")) payload.area = form.area;
 
-      // Compare masjids
+      // residential city & area — convert "" → null
+      if (form.city !== (initial.city?._id || ""))
+        payload.city = form.city || null;
+      if (form.area !== (initial.area?._id || ""))
+        payload.area = form.area || null;
+
+      // masjid assignments
       const oldMasj = (initial.masjidId || []).map((m) =>
         typeof m === "object" ? m._id : m
       );
@@ -140,7 +143,9 @@ export default function EditUserModal({ open, onClose, userId, onUpdated }) {
         notify.success("User updated");
         onUpdated?.(res.data);
         onClose();
-      } else notify.error(res?.message || "Update failed");
+      } else {
+        notify.error(res?.message || "Update failed");
+      }
     } catch (err) {
       console.error(err);
       notify.error("Failed to update user");
@@ -149,12 +154,17 @@ export default function EditUserModal({ open, onClose, userId, onUpdated }) {
     }
   }
 
-  /** Select options */
+  /** Dropdown lists */
   const cityList = cities.map((c) => ({ value: c._id, label: c.name }));
   const areaList = areas.map((a) => ({ value: a._id, label: a.name }));
 
+  /** Masjid list logic */
   const masjidList = masjids
     .filter((m) => {
+      // If masjid admin → show ALL masjids (no filtering)
+      if (form.role === "masjid_admin") return true;
+
+      // For other roles → show based on city/area if selected
       if (!form.city && !form.area) return true;
       if (form.area)
         return m.area?._id === form.area || form.masjidId.includes(m._id);
@@ -209,7 +219,9 @@ export default function EditUserModal({ open, onClose, userId, onUpdated }) {
           </div>
 
           <div>
-            <label className="block mb-1 text-sm font-medium">City</label>
+            <label className="block mb-1 text-sm font-medium">
+              City (User belongs to)
+            </label>
             <select
               value={form.city}
               onChange={(e) => update("city", e.target.value)}
@@ -225,11 +237,13 @@ export default function EditUserModal({ open, onClose, userId, onUpdated }) {
           </div>
 
           <div>
-            <label className="block mb-1 text-sm font-medium">Area</label>
+            <label className="block mb-1 text-sm font-medium">
+              Area (User belongs to)
+            </label>
             <select
               value={form.area}
-              disabled={!form.city}
               onChange={(e) => update("area", e.target.value)}
+              disabled={!form.city}
               className="border px-3 py-2 rounded-lg w-full disabled:bg-gray-200"
             >
               <option value="">Select Area</option>
@@ -242,11 +256,11 @@ export default function EditUserModal({ open, onClose, userId, onUpdated }) {
           </div>
         </div>
 
-        {/* MASJID ADMIN SELECTION */}
+        {/* MASJID SELECTION */}
         {form.role === "masjid_admin" && (
           <div>
             <label className="block mb-1 text-sm font-medium">
-              Assign Masjids
+              Assigned Masjids (User manages)
             </label>
             <MultiSelect
               options={masjidList}

@@ -20,11 +20,8 @@ export const mAdminAPI = {
   getMyMasjids: () => httpFetch(`/masjid-admin/masjids`),
   getMasjidById: (id) => httpFetch(`/masjid-admin/masjids/${id}`),
 
-  updateMasjid: (id, formData) =>
-    httpFetch(`/masjid-admin/masjids/${id}/update`, {
-      method: "PUT",
-      body: formData,
-    }),
+  updateMasjid: (id, data) =>
+    send(`/masjid-admin/masjids/${id}/update`, "PUT", data),
 
   /** ------------------- ANNOUNCEMENTS ------------------- **/
   getAnnouncements: (masjidId) =>

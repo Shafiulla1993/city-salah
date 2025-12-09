@@ -433,6 +433,18 @@ export async function createMappingController({ body = {}, user }) {
 }
 
 export async function deleteMappingController({ id }) {
-  await GeneralTimingMapping.findByIdAndDelete(id);
+  if (!mongoose.isValidObjectId(id)) {
+    return { status: 400, json: { success: false, message: "Invalid ID" } };
+  }
+
+  const deleted = await GeneralTimingMapping.findByIdAndDelete(id);
+
+  if (!deleted) {
+    return {
+      status: 404,
+      json: { success: false, message: "Mapping not found" },
+    };
+  }
+
   return { status: 200, json: { success: true, message: "Mapping deleted" } };
 }
