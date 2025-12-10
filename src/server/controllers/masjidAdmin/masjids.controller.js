@@ -74,6 +74,32 @@ export async function getMasjidByIdController({ id, user }) {
   }
 }
 
+// src/server/controllers/masjidAdmin/masjids.controller.js
+import Masjid from "@/models/Masjid";
+import cloudinary from "@/lib/cloudinary";
+import mongoose from "mongoose";
+import { normalizeTime } from "@/lib/utils/normalizeTime";
+
+// Reusable helper
+async function findMasjidById(id) {
+  if (!mongoose.isValidObjectId(id)) {
+    return {
+      status: 400,
+      json: { success: false, message: "Invalid Masjid ID" },
+    };
+  }
+
+  const masjid = await Masjid.findById(id);
+  if (!masjid) {
+    return {
+      status: 404,
+      json: { success: false, message: "Masjid not found" },
+    };
+  }
+
+  return { masjid };
+}
+
 export async function updateMasjidController({
   id,
   contacts,
@@ -83,6 +109,9 @@ export async function updateMasjidController({
   user,
 }) {
   try {
+    // ----------------------------------------------------
+    // 0️⃣ PERMISSION CHECK
+    // ----------------------------------------------------
     const allowedIds = (user.masjidId || []).map(String);
     if (!allowedIds.includes(String(id))) {
       return {
@@ -100,51 +129,49 @@ export async function updateMasjidController({
     const masjid = check.masjid;
 
     // ----------------------------------------------------
-    // 1️⃣ CONTACTS — Only update if NEW contacts provided
+    // 1️⃣ CONTACTS — update ONLY if provided (Option A)
     // ----------------------------------------------------
     if (Array.isArray(contacts) && contacts.length > 0) {
       masjid.contacts = contacts;
     }
 
     // ----------------------------------------------------
-    // 2️⃣ PRAYER TIMINGS — Only update NON-EMPTY fields
+    // 2️⃣ PRAYER TIMINGS — update only non-empty fields
     // ----------------------------------------------------
     if (Array.isArray(prayerTimings) && prayerTimings.length > 0) {
       const existing = masjid.prayerTimings?.[0] ?? {};
-
       const incoming = prayerTimings[0];
-      const keys = ["fajr", "Zohar", "asr", "maghrib", "isha", "juma"];
 
-      const updatedTimings = {};
+      const keys = ["fajr", "Zohar", "asr", "maghrib", "isha", "juma"];
+      const finalTimings = {};
 
       for (const k of keys) {
-        const incomingEntry = incoming?.[k] || {};
-        const existingEntry = existing?.[k] || {};
+        const newEntry = incoming?.[k] || {};
+        const oldEntry = existing?.[k] || {};
 
-        // If both azan and iqaamat are empty → keep old
-        const hasNewValues =
-          incomingEntry.azan?.trim() || incomingEntry.iqaamat?.trim();
+        const newProvided = newEntry.azan?.trim() || newEntry.iqaamat?.trim();
 
-        if (!hasNewValues) {
-          updatedTimings[k] = existingEntry;
+        // Keep old if new is empty
+        if (!newProvided) {
+          finalTimings[k] = oldEntry;
           continue;
         }
 
-        // Normalize ONLY if new values exist
-        updatedTimings[k] = {
-          azan: normalizeTime(incomingEntry.azan, k),
-          iqaamat: normalizeTime(incomingEntry.iqaamat, k),
+        // Apply normalization only if new provided
+        finalTimings[k] = {
+          azan: normalizeTime(newEntry.azan, k),
+          iqaamat: normalizeTime(newEntry.iqaamat, k),
         };
       }
 
-      masjid.prayerTimings = [updatedTimings];
+      masjid.prayerTimings = [finalTimings];
     }
 
     // ----------------------------------------------------
-    // 3️⃣ IMAGE — Only update if a NEW image is provided
+    // 3️⃣ IMAGE — update ONLY if new image uploaded
     // ----------------------------------------------------
     if (imageUrl) {
-      if (masjid.imagePublicId && imagePublicId !== masjid.imagePublicId) {
+      if (masjid.imagePublicId && masjid.imagePublicId !== imagePublicId) {
         cloudinary.uploader.destroy(masjid.imagePublicId).catch(() => {});
       }
       masjid.imageUrl = imageUrl;
@@ -152,12 +179,12 @@ export async function updateMasjidController({
     }
 
     // ----------------------------------------------------
-    // 4️⃣ Save updated masjid
+    // 4️⃣ SAVE CHANGES
     // ----------------------------------------------------
     masjid.updatedAt = new Date();
     await masjid.save();
 
-    const populated = await Masjid.findById(masjid._id).populate("city area");
+    const populated = await Masjid.findById(id).populate("city area");
 
     return {
       status: 200,
