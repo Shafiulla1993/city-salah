@@ -49,6 +49,7 @@ export default function ClientHome() {
     setMasjid,
     init,
     loadingLocation,
+    initializing, // 🔵 NEW GLOBAL INITIAL LOADING
   } = useMasjidStore();
 
   // ---------- Helper names for SEO ----------
@@ -151,29 +152,34 @@ export default function ClientHome() {
     return () => (mounted = false);
   }, [selectedMasjid?._id, setMasjid, showToast]);
 
-  // ---------- Dynamic SEO: title + meta ----------
+  // ---------- Dynamic SEO ----------
   useEffect(() => {
     if (!selectedMasjid?.name) return;
-    const title = `${selectedMasjid.name} — Prayer Timings | City Salah`;
-    const description = `Prayer timings, Iqamah schedule and announcements for ${
-      selectedMasjid.name
-    }, ${selectedAreaName || ""} ${
-      selectedCityName || ""
-    }. View Salah times instantly on CitySalah.`;
+
+    const fullName = [selectedMasjid.name, selectedAreaName, selectedCityName]
+      .filter(Boolean)
+      .join(", "); // "Masjid e Ahad, Tilaknagar, Mysuru"
+
+    const title = `${fullName} — Prayer Timings | City Salah`;
+
+    const description = `Accurate prayer timings, iqamah schedule, announcements for ${fullName}. View Salah times instantly on CitySalah, updated daily.`;
 
     document.title = title;
+
     let meta = document.querySelector("meta[name='description']");
     if (meta) meta.setAttribute("content", description);
   }, [selectedMasjid, selectedAreaName, selectedCityName]);
 
-  // ---------- Dynamic JSON-LD ----------
+  // ---------- JSON-LD Schema ----------
   useEffect(() => {
     if (!selectedMasjid?.name) return;
 
     const ldJson = {
       "@context": "https://schema.org",
       "@type": "Mosque",
-      name: selectedMasjid.name,
+      name: `${selectedMasjid.name}, ${selectedAreaName || ""} ${
+        selectedCityName || ""
+      }`.trim(),
       address: {
         "@type": "PostalAddress",
         streetAddress: selectedMasjid.address || "",
@@ -200,7 +206,7 @@ export default function ClientHome() {
   return (
     <div className="min-h-screen w-full">
       <div className="max-w-3xl mx-auto space-y-3 px-2 py-3">
-        {/* Selector */}
+        {/* CITY → AREA → MASJID SELECTOR */}
         {loadingCities ? (
           <div className="flex gap-2 justify-center">
             <div className="h-12 w-32 animate-pulse rounded bg-slate-200" />
@@ -221,7 +227,7 @@ export default function ClientHome() {
           />
         )}
 
-        {/* 🔹 Hidden SEO block visible only to Google */}
+        {/* 🔹 Hidden SEO text */}
         <div
           style={{
             position: "absolute",
@@ -235,20 +241,25 @@ export default function ClientHome() {
             border: "0",
           }}
         >
-          City Salah (also written as CitySalah) provides accurate masjid-based
-          prayer timings, Iqamah schedules and community announcements for
-          cities including Mysuru, Nanjangud, Bengaluru, Mandya and more.
+          City Salah provides accurate masjid prayer timings and announcements
+          for Mysuru, Nanjangud, Bengaluru, and more.
         </div>
 
-        {/* Main Masjid View */}
+        {/* ----------------------------------------
+            MAIN MASJID PANEL WITH GLOBAL INITIAL LOADER
+        ----------------------------------------- */}
         <div className="space-y-2">
-          {loadingMasjidDetails ? (
+          {/* 🔵 Case 1 — App initializing → show loaders */}
+          {initializing && (
             <>
               <MasjidInfoLoader />
               <PrayerTimingsLoader />
               <ContactInfoLoader />
             </>
-          ) : selectedMasjid ? (
+          )}
+
+          {/* 🔵 Case 2 — Masjid Selected */}
+          {!initializing && selectedMasjid && (
             <>
               <MasjidInfo masjid={selectedMasjid} />
               <PrayerTimingsTable
@@ -258,16 +269,18 @@ export default function ClientHome() {
               />
               <ContactInfo contacts={contacts} />
             </>
-          ) : (
-            !loadingLocation && (
-              <p className="text-center text-lg font-semibold text-slate-700 py-6">
-                Please select your City → Area → Masjid to view Salah timings.
-              </p>
-            )
+          )}
+
+          {/* 🔵 Case 3 — No masjid yet */}
+          {!initializing && !selectedMasjid && (
+            <p className="text-center text-lg font-semibold text-slate-700 py-6">
+              Please select your City → Area → Masjid to view Salah timings.
+            </p>
           )}
         </div>
       </div>
 
+      {/* SCROLL TO TOP */}
       {showScrollTop && (
         <button
           aria-label="Scroll to top"

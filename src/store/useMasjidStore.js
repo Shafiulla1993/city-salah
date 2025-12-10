@@ -17,7 +17,10 @@ export const useMasjidStore = create((set, get) => ({
 
   initialized: false,
   loadingLocation: false,
+  initializing: true, // 🔵 NEW
   userHasManualSelection: false,
+
+  setInitializing: (v) => set({ initializing: v }), // 🔵 NEW
 
   /* ---------- MANUAL SETTERS ---------- */
   setCity: (cityId) => {
@@ -51,7 +54,8 @@ export const useMasjidStore = create((set, get) => ({
   init: async () => {
     const { initialized, userHasManualSelection } = get();
     if (initialized) return;
-    set({ initialized: true });
+
+    set({ initialized: true, initializing: true });
 
     const fallbackToSaved = async () => {
       const savedMasjidId = localStorage.getItem("selectedMasjidId");
@@ -79,6 +83,7 @@ export const useMasjidStore = create((set, get) => ({
     // If reopened in same tab, do NOT run GPS again
     if (window.__MASJID_LOCATION_DONE) {
       await fallbackToSaved();
+      set({ initializing: false }); // 🔵 END LOADING
       return;
     }
     window.__MASJID_LOCATION_DONE = true;
@@ -86,6 +91,7 @@ export const useMasjidStore = create((set, get) => ({
     // Geolocation detection
     if (!navigator.geolocation) {
       await fallbackToSaved();
+      set({ initializing: false }); // 🔵 END LOADING
       return;
     }
 
@@ -124,12 +130,12 @@ export const useMasjidStore = create((set, get) => ({
           console.error("Nearest detection error", err);
           await fallbackToSaved();
         } finally {
-          set({ loadingLocation: false });
+          set({ loadingLocation: false, initializing: false }); // 🔵 END LOADING
         }
       },
       async () => {
         await fallbackToSaved();
-        set({ loadingLocation: false });
+        set({ loadingLocation: false, initializing: false }); // 🔵 END LOADING
       }
     );
   },

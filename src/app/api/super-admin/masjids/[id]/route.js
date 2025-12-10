@@ -27,27 +27,45 @@ export const PUT = withAuth("super_admin", async (req, ctx) => {
     files: {},
   }));
 
-  // clone fields to body
-  const body = { ...fields };
-  // Normalize all single-value fields (convert ["name"] → "name")
+  let body = { ...fields };
+
+  // ----------------------------------------------------
+  // 1️⃣ RESTORE ORIGINAL NORMALIZATION:
+  //    Convert array -> value[0]
+  //    EXCEPT contacts & prayerTimings
+  // ----------------------------------------------------
   Object.keys(body).forEach((key) => {
-    if (Array.isArray(body[key])) {
+    if (
+      Array.isArray(body[key]) &&
+      key !== "contacts" &&
+      key !== "prayerTimings"
+    ) {
       body[key] = body[key][0];
     }
   });
 
-  // 1️⃣ Parse JSON before Cloudinary steps
+  // ----------------------------------------------------
+  // 2️⃣ JSON PARSE EXACTLY LIKE POST ROUTE
+  // ----------------------------------------------------
   ["contacts", "prayerTimings", "location"].forEach((k) => {
-    if (body[k] && typeof body[k] === "string") {
-      try {
-        body[k] = JSON.parse(body[k]);
-      } catch (e) {
-        console.error("JSON parse failed for", k, body[k]);
+    try {
+      // Case 1: Array coming in → take first value
+      if (Array.isArray(body[k])) {
+        body[k] = body[k][0];
       }
+
+      // Case 2: String JSON → parse
+      if (typeof body[k] === "string") {
+        body[k] = JSON.parse(body[k]);
+      }
+    } catch (err) {
+      console.error("JSON parse failed for", k, body[k]);
     }
   });
 
-  // 2️⃣ Image upload (only if new image provided)
+  // ----------------------------------------------------
+  // 3️⃣ IMAGE UPLOAD (unchanged)
+  // ----------------------------------------------------
   if (files?.image) {
     const fileArr = files.image;
     const file = Array.isArray(fileArr) ? fileArr[0] : fileArr;
@@ -61,7 +79,6 @@ export const PUT = withAuth("super_admin", async (req, ctx) => {
       body.imageUrl = uploadRes.secure_url || uploadRes.url;
       body.imagePublicId = uploadRes.public_id;
 
-      // delete old image if exists
       if (existing?.imagePublicId) {
         cloudinary.uploader.destroy(existing.imagePublicId).catch(() => {});
       }
@@ -70,7 +87,9 @@ export const PUT = withAuth("super_admin", async (req, ctx) => {
     }
   }
 
-  // 3️⃣ Location fallback (do NOT erase previous location)
+  // ----------------------------------------------------
+  // 4️⃣ LOCATION FALLBACK (unchanged)
+  // ----------------------------------------------------
   if (!body.location || !Array.isArray(body.location.coordinates)) {
     await connectDB();
     const existing = await Masjid.findById(id).select("location");
@@ -79,7 +98,9 @@ export const PUT = withAuth("super_admin", async (req, ctx) => {
     }
   }
 
-  // 4️⃣ Update DB
+  // ----------------------------------------------------
+  // 5️⃣ Update Controller (unchanged)
+  // ----------------------------------------------------
   return await updateMasjidController({ id, body });
 });
 

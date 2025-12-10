@@ -99,25 +99,50 @@ export async function updateMasjidController({
 
     const masjid = check.masjid;
 
-    // CONTACTS
-    if (Array.isArray(contacts)) {
+    // ----------------------------------------------------
+    // 1️⃣ CONTACTS — Only update if NEW contacts provided
+    // ----------------------------------------------------
+    if (Array.isArray(contacts) && contacts.length > 0) {
       masjid.contacts = contacts;
     }
 
-    // PRAYER TIMINGS
+    // ----------------------------------------------------
+    // 2️⃣ PRAYER TIMINGS — Only update NON-EMPTY fields
+    // ----------------------------------------------------
     if (Array.isArray(prayerTimings) && prayerTimings.length > 0) {
-      const p = prayerTimings[0];
+      const existing = masjid.prayerTimings?.[0] ?? {};
+
+      const incoming = prayerTimings[0];
       const keys = ["fajr", "Zohar", "asr", "maghrib", "isha", "juma"];
+
+      const updatedTimings = {};
+
       for (const k of keys) {
-        if (p && p[k]) {
-          p[k].azan = normalizeTime(p[k].azan, k);
-          p[k].iqaamat = normalizeTime(p[k].iqaamat, k);
+        const incomingEntry = incoming?.[k] || {};
+        const existingEntry = existing?.[k] || {};
+
+        // If both azan and iqaamat are empty → keep old
+        const hasNewValues =
+          incomingEntry.azan?.trim() || incomingEntry.iqaamat?.trim();
+
+        if (!hasNewValues) {
+          updatedTimings[k] = existingEntry;
+          continue;
         }
+
+        // Normalize ONLY if new values exist
+        updatedTimings[k] = {
+          azan: normalizeTime(incomingEntry.azan, k),
+          iqaamat: normalizeTime(incomingEntry.iqaamat, k),
+        };
       }
-      masjid.prayerTimings = prayerTimings;
+
+      masjid.prayerTimings = [updatedTimings];
     }
 
-    // IMAGE (with cleanup of old publicId)
+    // ----------------------------------------------------
+    // 3️⃣ IMAGE — Only update if a NEW image is provided
+    // ----------------------------------------------------
     if (imageUrl) {
       if (masjid.imagePublicId && imagePublicId !== masjid.imagePublicId) {
         cloudinary.uploader.destroy(masjid.imagePublicId).catch(() => {});
@@ -126,6 +151,9 @@ export async function updateMasjidController({
       masjid.imagePublicId = imagePublicId;
     }
 
+    // ----------------------------------------------------
+    // 4️⃣ Save updated masjid
+    // ----------------------------------------------------
     masjid.updatedAt = new Date();
     await masjid.save();
 

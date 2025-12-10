@@ -12,9 +12,7 @@ import { updateMasjidController } from "@/server/controllers/masjidAdmin/masjids
 export const PUT = withAuth("masjid_admin", async (req, ctx) => {
   const { id } = await ctx.params;
 
-  /** ------------------------------------------------------
-   * 1️⃣ Parse multipart request (form fields + files)
-   * ------------------------------------------------------ */
+  // 1️⃣ Parse multipart request
   const { fields, files } = await parseMultipart(req).catch(() => ({
     fields: {},
     files: {},
@@ -22,43 +20,49 @@ export const PUT = withAuth("masjid_admin", async (req, ctx) => {
 
   let body = { ...fields };
 
-  // Normalize array field values (["value"] → "value")
+  // ------------------------------------------------------
+  // 2️⃣ RESTORE ORIGINAL NORMALIZATION (matches superadmin)
+  //    Convert array -> first item EXCEPT contacts & timings
+  // ------------------------------------------------------
   Object.keys(body).forEach((key) => {
-    if (Array.isArray(body[key])) {
+    if (
+      Array.isArray(body[key]) &&
+      key !== "contacts" &&
+      key !== "prayerTimings"
+    ) {
       body[key] = body[key][0];
     }
   });
 
-  /** ------------------------------------------------------
-   * 2️⃣ Parse JSON fields (contacts, prayerTimings)
-   * ------------------------------------------------------ */
+  // ------------------------------------------------------
+  // 3️⃣ JSON PARSING (same logic used in superadmin PUT)
+  // ------------------------------------------------------
   ["contacts", "prayerTimings"].forEach((k) => {
-    if (body[k] && typeof body[k] === "string") {
-      try {
-        body[k] = JSON.parse(body[k]);
-      } catch (err) {
-        console.error(`Failed to parse JSON for ${k}:`, body[k]);
-        body[k] = [];
+    try {
+      if (Array.isArray(body[k])) {
+        body[k] = body[k][0]; // restore original flow
       }
+
+      if (typeof body[k] === "string") {
+        body[k] = JSON.parse(body[k]);
+      }
+    } catch (err) {
+      console.error("Failed to parse", k, body[k]);
+      body[k] = []; // fallback only for contacts/timings
     }
   });
 
-  /** ------------------------------------------------------
-   * 3️⃣ IMAGE HANDLING — Similar to super-admin
-   * ------------------------------------------------------ */
-
+  // ------------------------------------------------------
+  // 4️⃣ IMAGE HANDLING (allowed for masjid admin)
+  // ------------------------------------------------------
   let fileObj = files?.image;
-  let file = null;
-
-  // parse-multipart returns file arrays
-  if (Array.isArray(fileObj)) file = fileObj[0];
-  else file = fileObj;
+  let file = Array.isArray(fileObj) ? fileObj[0] : fileObj;
 
   let imageUrl = null;
   let imagePublicId = null;
 
   if (file) {
-    const tempPath = file.filepath || file.path;
+    const tempPath = file.filepath;
 
     if (tempPath) {
       await connectDB();
@@ -69,7 +73,6 @@ export const PUT = withAuth("masjid_admin", async (req, ctx) => {
         imageUrl = uploaded.secure_url || uploaded.url;
         imagePublicId = uploaded.public_id;
 
-        // delete old image
         if (existing?.imagePublicId) {
           cloudinary.uploader.destroy(existing.imagePublicId).catch(() => {});
         }
@@ -79,10 +82,9 @@ export const PUT = withAuth("masjid_admin", async (req, ctx) => {
     }
   }
 
-  /** ------------------------------------------------------
-   * 4️⃣ Pass everything to controller
-   * ------------------------------------------------------ */
-
+  // ------------------------------------------------------
+  // 5️⃣ ONLY PASS FIELDS THAT MASJID ADMIN IS ALLOWED TO UPDATE
+  // ------------------------------------------------------
   return await updateMasjidController({
     id,
     contacts: body.contacts || [],

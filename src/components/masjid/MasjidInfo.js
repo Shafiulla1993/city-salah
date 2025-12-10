@@ -34,7 +34,11 @@ export default function MasjidInfo({ masjid }) {
         />
       </div>
 
-      <h2 className="text-2xl font-bold">{masjid.name}</h2>
+      <h2 className="text-2xl font-bold">
+        Masjid e {masjid.name}
+        {masjid?.area?.name ? ` — ${masjid.area.name}` : ""}
+        {masjid?.city?.name ? `, ${masjid.city.name}` : ""}
+      </h2>
 
       {masjid.address && <p className="text-gray-600 mt-1">{masjid.address}</p>}
 

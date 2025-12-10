@@ -21,16 +21,32 @@ export const POST = withAuth("super_admin", async (request, user) => {
     files: {},
   }));
 
-  const body = { ...fields };
-  // Normalize all single-value fields (convert ["name"] → "name")
+  let body = { ...fields };
+
+  // ---------------------------------------
+  // 1️⃣ Restore ORIGINAL behavior
+  //    Convert array → first element
+  //    EXCEPT contacts & prayerTimings
+  // ---------------------------------------
   Object.keys(body).forEach((key) => {
-    if (Array.isArray(body[key])) {
+    if (
+      Array.isArray(body[key]) &&
+      key !== "contacts" &&
+      key !== "prayerTimings"
+    ) {
       body[key] = body[key][0];
     }
   });
 
-  // Convert JSON-encoded fields
+  // ---------------------------------------
+  // 2️⃣ JSON.parse SUPPORTS BOTH:
+  //    - "[{...}]"
+  //    - ["[{...}]"]
+  // ---------------------------------------
   ["contacts", "prayerTimings", "location"].forEach((k) => {
+    if (Array.isArray(body[k])) {
+      body[k] = body[k][0];
+    }
     if (typeof body[k] === "string") {
       try {
         body[k] = JSON.parse(body[k]);
@@ -38,29 +54,20 @@ export const POST = withAuth("super_admin", async (request, user) => {
     }
   });
 
-  // IMAGE UPLOAD
+  // ---------------------------------------
+  // 3️⃣ Image upload
+  // ---------------------------------------
   if (files?.image) {
-    const fileArray = files.image;
-    const file = Array.isArray(fileArray) ? fileArray[0] : fileArray;
-    const tempFilePath = file.filepath;
+    const fileArr = files.image;
+    const file = Array.isArray(fileArr) ? fileArr[0] : fileArr;
+    const tmp = file.filepath;
 
-    if (!tempFilePath) {
-      console.error("❌ Missing file path for Cloudinary upload");
-      return {
-        status: 500,
-        json: { success: false, message: "Image upload failed (no filepath)" },
-      };
-    }
+    const uploaded = await uploadFileToCloudinary(tmp, "masjids");
+    body.imageUrl = uploaded.secure_url || uploaded.url;
+    body.imagePublicId = uploaded.public_id;
 
-    try {
-      const uploadRes = await uploadFileToCloudinary(tempFilePath, "masjids");
-      body.imageUrl = uploadRes.secure_url || uploadRes.url;
-      body.imagePublicId = uploadRes.public_id;
-    } finally {
-      await fs.unlink(tempFilePath).catch(() => {});
-    }
+    await fs.unlink(tmp).catch(() => {});
   }
 
-  const res = await createMasjidController({ body, user });
-  return res;
+  return await createMasjidController({ body, user });
 });
