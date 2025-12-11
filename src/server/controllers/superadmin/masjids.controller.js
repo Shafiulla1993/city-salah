@@ -71,6 +71,22 @@ function normalizeTime(raw, prayer) {
   return `${hhFmt}:${mmFmt} ${suffix}`;
 }
 
+async function findMasjidById(id) {
+  if (!mongoose.isValidObjectId(id)) {
+    return {
+      status: 400,
+      json: { success: false, message: "Invalid Masjid ID" },
+    };
+  }
+  const masjid = await Masjid.findById(id);
+  if (!masjid) {
+    return {
+      status: 404,
+      json: { success: false, message: "Masjid not found" },
+    };
+  }
+  return { masjid };
+}
 /**
  * Create Masjid (JSON)
  * Expects JSON body with fields matching Masjid model.
@@ -256,109 +272,108 @@ export async function getMasjidController({ id }) {
 /**
  * Update masjid (JSON)
  */
-export async function updateMasjidController({ id, body = {}, user }) {
+export async function updateMasjidController({ id, body = {} }) {
   try {
-    if (!mongoose.isValidObjectId(id))
-      return {
-        status: 400,
-        json: { success: false, message: "Invalid Masjid ID" },
-      };
+    const found = await findMasjidById(id);
+    if (!found.masjid) return found;
+    const masjid = found.masjid;
+    const existing = masjid.toObject();
+    const b = { ...body };
 
-    const masjid = await Masjid.findById(id);
-    if (!masjid)
-      return {
-        status: 404,
-        json: { success: false, message: "Masjid not found" },
-      };
-
-    let b = { ...body };
-
-    // 1️⃣ Resolve city/area if names passed
-    try {
-      const resolved = await resolveCityAreaIds({ city: b.city, area: b.area });
-      if (resolved.cityId) b.city = resolved.cityId;
-      if (resolved.areaId) b.area = resolved.areaId;
-    } catch (err) {
-      return { status: 404, json: { success: false, message: err.message } };
+    // Resolve city/area if provided (names -> ids)
+    if (b.city || b.area) {
+      try {
+        const resolved = await resolveCityAreaIds({
+          city: b.city,
+          area: b.area,
+        });
+        if (resolved.cityId) b.city = resolved.cityId;
+        if (resolved.areaId) b.area = resolved.areaId;
+      } catch (err) {
+        return { status: 404, json: { success: false, message: err.message } };
+      }
     }
 
-    // 2️⃣ Validate location if provided
-    if (
-      b.location &&
-      (!Array.isArray(b.location.coordinates) ||
-        b.location.coordinates.length !== 2)
-    ) {
-      return {
-        status: 400,
-        json: {
-          success: false,
-          message: "`location.coordinates` must be [lng, lat]",
-        },
-      };
-    }
+    // Helper: apply only when field present in body.
+    // For super-admin: explicit empty string "" means "clear" (so set it).
+    const applyIfSent = (field) => {
+      if (!Object.prototype.hasOwnProperty.call(b, field)) return;
+      // b[field] can be "", null, object, array etc — we set exactly what's provided
+      masjid[field] = b[field];
+    };
 
-    // 3️⃣ If name changed, update slug
-    if (b.name && b.name !== masjid.name) {
-      const newSlug = b.name.toLowerCase().replace(/\s+/g, "-");
-
-      const exists = await Masjid.findOne({
-        slug: newSlug,
-        area: b.area || masjid.area,
-        _id: { $ne: masjid._id },
-      });
-
-      if (exists)
-        return {
-          status: 400,
-          json: {
-            success: false,
-            message: "Another masjid exists in this area",
-          },
-        };
-
-      masjid.slug = newSlug;
-    }
-
-    // 4️⃣ Prevent prayerTimings = null
-    if (!Array.isArray(b.prayerTimings) || !b.prayerTimings[0]) {
-      b.prayerTimings = [
-        { fajr: {}, Zohar: {}, asr: {}, maghrib: {}, isha: {}, juma: {} },
-      ];
-    }
-
-    // 5️⃣ Assign allowed fields
-    const updatable = [
+    // Simple fields (apply only when present in body)
+    [
       "name",
       "address",
       "city",
       "area",
       "location",
-      "imageUrl",
-      "contacts",
-      "prayerTimings",
       "timezone",
       "description",
-    ];
+    ].forEach((f) => applyIfSent(f));
 
-    updatable.forEach((k) => {
-      if (b[k] !== undefined) masjid[k] = b[k];
-    });
+    // If name changed and present → update slug
+    if (
+      Object.prototype.hasOwnProperty.call(b, "name") &&
+      b.name !== existing.name
+    ) {
+      masjid.slug = (b.name || "").toLowerCase().replace(/\s+/g, "-");
+    }
 
-    // 6️⃣ Normalize timings
-    const p = masjid.prayerTimings[0];
-    const keys = ["fajr", "Zohar", "asr", "maghrib", "isha", "juma"];
+    // Contacts: if provided (even empty names), overwrite exactly as sent
+    if (Object.prototype.hasOwnProperty.call(b, "contacts")) {
+      // ensure array
+      let incomingContacts = b.contacts;
+      if (!Array.isArray(incomingContacts)) {
+        incomingContacts = incomingContacts ? [incomingContacts] : [];
+      }
+      // Normalize shape: role + name (allow empty name)
+      masjid.contacts = incomingContacts.map((c) => ({
+        role: c.role,
+        name: c.name ?? "",
+        phone: c.phone ?? "",
+        email: c.email ?? "",
+        note: c.note ?? "",
+      }));
+    }
 
-    keys.forEach((k) => {
-      if (!p[k]) p[k] = {};
-      p[k].azan = normalizeTime(p[k].azan, k);
-      p[k].iqaamat = normalizeTime(p[k].iqaamat, k);
-    });
+    // PrayerTimings: super-admin overwrite behavior (Option B)
+    if (Object.prototype.hasOwnProperty.call(b, "prayerTimings")) {
+      let incoming = b.prayerTimings;
+      if (!Array.isArray(incoming)) incoming = incoming ? [incoming] : [];
+      const p = incoming[0] || {};
+      const keys = ["fajr", "Zohar", "asr", "maghrib", "isha", "juma"];
+      const out = {};
+      keys.forEach((k) => {
+        const entry = p[k] || {};
+        // For super-admin, empty string is an explicit clear.
+        out[k] = {
+          azan: normalizeTime(entry.azan, k),
+          iqaamat: normalizeTime(entry.iqaamat, k),
+        };
+      });
+      masjid.prayerTimings = [out];
+    }
+
+    // Image: if provided in body, set; explicit clearing by sending "" is supported
+    if (Object.prototype.hasOwnProperty.call(b, "imageUrl")) {
+      // Remove old public id if changing to new id
+      if (
+        existing.imagePublicId &&
+        b.imagePublicId &&
+        b.imagePublicId !== existing.imagePublicId
+      ) {
+        cloudinary.uploader.destroy(existing.imagePublicId).catch(() => {});
+      }
+      masjid.imageUrl = b.imageUrl;
+      masjid.imagePublicId = b.imagePublicId;
+    }
 
     masjid.updatedAt = new Date();
     await masjid.save();
 
     const populated = await Masjid.findById(id).populate("city area");
-
     return {
       status: 200,
       json: {
@@ -368,14 +383,10 @@ export async function updateMasjidController({ id, body = {}, user }) {
       },
     };
   } catch (err) {
-    console.error("updateMasjidController error:", err);
+    console.error("super-admin update error:", err);
     return {
       status: 500,
-      json: {
-        success: false,
-        message: "Failed to update masjid",
-        error: err.message,
-      },
+      json: { success: false, message: "Update failed", error: err.message },
     };
   }
 }

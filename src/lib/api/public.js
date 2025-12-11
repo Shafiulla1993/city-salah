@@ -66,4 +66,7 @@ export const publicAPI = {
     if (date) params.append("date", date);
     return httpFetch(`/public/general-timings?${params.toString()}`);
   },
+
+  /** ----------------- MASJID SEARCH INDEX (LIGHTWEIGHT) ----------------- **/
+  getAllMasjidIndex: () => httpFetch(`${BASE}/masjids/index`),
 };

@@ -1,13 +1,12 @@
-// src/app/page.js
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { toast } from "react-toastify";
 
-import MasjidSelector from "@/components/masjid/MasjidSelector";
-import MasjidInfo from "@/components/masjid/MasjidInfo";
-import PrayerTimingsTable from "@/components/masjid/PrayerTimingsTable";
-import ContactInfo from "@/components/masjid/ContactInfo";
+import MasjidCarousel from "@/components/carousel/MasjidCarousel";
+import LocationBar from "@/components/location/LocationBar";
+import LocationSheet from "@/components/location/LocationSheet";
+import MasjidSearchBar from "@/components/search/MasjidSearchBar";
 
 import { publicAPI } from "@/lib/api/public";
 import { useAuth } from "@/context/AuthContext";
@@ -20,26 +19,13 @@ import {
 
 import { useMasjidStore } from "@/store/useMasjidStore";
 
+/* ---------------------------------------------------------
+      PAGE.JS — Final Version (Option A Slide-down)
+--------------------------------------------------------- */
+
 export default function ClientHome() {
-  // ---------- DATA (local) ----------
-  const [cities, setCities] = useState([]);
-  const [areas, setAreas] = useState([]);
-  const [masjids, setMasjids] = useState([]);
-
-  const [prayerTimings, setPrayerTimings] = useState([]);
-  const [contacts, setContacts] = useState([]);
-
-  // ---------- LOADING (local) ----------
-  const [loadingCities, setLoadingCities] = useState(true);
-  const [loadingAreas, setLoadingAreas] = useState(false);
-  const [loadingMasjids, setLoadingMasjids] = useState(false);
-  const [loadingMasjidDetails, setLoadingMasjidDetails] = useState(false);
-
-  const [showScrollTop, setShowScrollTop] = useState(false);
-
   const { user } = useAuth();
 
-  // ---------- Zustand store ----------
   const {
     selectedCity,
     selectedArea,
@@ -49,257 +35,473 @@ export default function ClientHome() {
     setMasjid,
     init,
     loadingLocation,
-    initializing, // 🔵 NEW GLOBAL INITIAL LOADING
   } = useMasjidStore();
 
-  // ---------- Helper names for SEO ----------
-  const selectedCityName = cities.find((c) => c._id === selectedCity)?.name;
-  const selectedAreaName = areas.find((a) => a._id === selectedArea)?.name;
+  const mountedRef = useRef(true);
+  const carouselRef = useRef(null);
 
-  // ---------- Toast ----------
+  useEffect(() => {
+    mountedRef.current = true;
+    init();
+    return () => (mountedRef.current = false);
+  }, [init]);
+
+  /* -----------------------------------------
+      Local States
+  ------------------------------------------*/
+  const [cities, setCities] = useState([]);
+  const [areas, setAreas] = useState([]);
+  const [masjids, setMasjids] = useState([]);
+  const [loadingMasjids, setLoadingMasjids] = useState(false);
+  const [loadingNearest, setLoadingNearest] = useState(false);
+
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [searchIndex, setSearchIndex] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearchResults, setShowSearchResults] = useState(false);
+
   const showToast = useCallback((type, msg) => {
-    if (type === "success") toast.success(msg);
-    else if (type === "error") toast.error(msg);
+    if (type === "error") toast.error(msg);
+    else if (type === "success") toast.success(msg);
     else toast.info(msg);
   }, []);
 
-  // ---------- Init selection ----------
+  /* -----------------------------------------
+      Load Cities
+  ------------------------------------------*/
   useEffect(() => {
-    init();
-  }, [user, init]);
-
-  // ---------- Scroll-to-top ----------
-  useEffect(() => {
-    const handleScroll = () => setShowScrollTop(window.scrollY > 300);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // ---------- 1. Load Cities ----------
-  useEffect(() => {
-    let mounted = true;
+    let cancelled = false;
     (async () => {
       try {
-        const res = await publicAPI.getCities();
-        if (mounted) setCities(res || []);
+        const c = await publicAPI.getCities();
+        if (!cancelled && mountedRef.current) setCities(c || []);
       } catch {
-        showToast("error", "Failed to load cities");
-      } finally {
-        if (mounted) setLoadingCities(false);
+        if (!cancelled) showToast("error", "Failed to load cities");
       }
     })();
-    return () => (mounted = false);
+    return () => (cancelled = true);
   }, [showToast]);
 
-  // ---------- 2. Load Areas ----------
+  /* -----------------------------------------
+      Load Areas (when city changes)
+  ------------------------------------------*/
   useEffect(() => {
     if (!selectedCity) return setAreas([]);
-    let mounted = true;
+    let cancelled = false;
     (async () => {
-      setLoadingAreas(true);
       try {
         const res = await publicAPI.getAreas(selectedCity);
-        if (mounted) setAreas(res || []);
+        if (!cancelled && mountedRef.current) setAreas(res || []);
       } catch {
-        showToast("error", "Failed to load areas");
-      } finally {
-        if (mounted) setLoadingAreas(false);
+        if (!cancelled) showToast("error", "Failed to load areas");
       }
     })();
-    return () => (mounted = false);
+    return () => (cancelled = true);
   }, [selectedCity, showToast]);
 
-  // ---------- 3. Load Masjids ----------
-  useEffect(() => {
-    if (!selectedArea) return setMasjids([]);
-    let mounted = true;
-    (async () => {
-      setLoadingMasjids(true);
-      try {
-        const res = await publicAPI.getMasjids({ areaId: selectedArea });
-        if (mounted) setMasjids(res || []);
-      } catch {
-        showToast("error", "Failed to load masjids");
-      } finally {
-        if (mounted) setLoadingMasjids(false);
-      }
-    })();
-    return () => (mounted = false);
-  }, [selectedArea, showToast]);
+  /* -----------------------------------------
+      Compute Next Prayer
+  ------------------------------------------*/
+  const computeNextPrayer = (m) => {
+    const timings = m.prayerTimings?.[0];
+    if (!timings) return null;
 
-  // ---------- 4. Load Masjid Details ----------
-  useEffect(() => {
-    if (!selectedMasjid?._id) {
-      setPrayerTimings([]);
-      setContacts([]);
-      return;
-    }
-    let mounted = true;
-    (async () => {
-      setLoadingMasjidDetails(true);
-      try {
-        const data = await publicAPI.getMasjidById(selectedMasjid._id);
-        if (!mounted) return;
-        setPrayerTimings(data.prayerTimings || []);
-        setContacts(data.contacts || []);
-        setMasjid(data);
-      } catch {
-        showToast("error", "Could not load masjid details");
-      } finally {
-        if (mounted) setLoadingMasjidDetails(false);
-      }
-    })();
-    return () => (mounted = false);
-  }, [selectedMasjid?._id, setMasjid, showToast]);
+    const list = [
+      { name: "Fajr", time: timings.fajr?.iqaamat },
+      { name: "Zohar", time: timings.Zohar?.iqaamat },
+      { name: "Asr", time: timings.asr?.iqaamat },
+      { name: "Maghrib", time: timings.maghrib?.iqaamat },
+      { name: "Isha", time: timings.isha?.iqaamat },
+      { name: "Juma", time: timings.juma?.iqaamat },
+    ];
 
-  // ---------- Dynamic SEO ----------
-  useEffect(() => {
-    if (!selectedMasjid?.name) return;
-
-    const fullName = [selectedMasjid.name, selectedAreaName, selectedCityName]
-      .filter(Boolean)
-      .join(", "); // "Masjid e Ahad, Tilaknagar, Mysuru"
-
-    const title = `${fullName} — Prayer Timings | City Salah`;
-
-    const description = `Accurate prayer timings, iqamah schedule, announcements for ${fullName}. View Salah times instantly on CitySalah, updated daily.`;
-
-    document.title = title;
-
-    let meta = document.querySelector("meta[name='description']");
-    if (meta) meta.setAttribute("content", description);
-  }, [selectedMasjid, selectedAreaName, selectedCityName]);
-
-  // ---------- JSON-LD Schema ----------
-  useEffect(() => {
-    if (!selectedMasjid?.name) return;
-
-    const ldJson = {
-      "@context": "https://schema.org",
-      "@type": "Mosque",
-      name: `${selectedMasjid.name}, ${selectedAreaName || ""} ${
-        selectedCityName || ""
-      }`.trim(),
-      address: {
-        "@type": "PostalAddress",
-        streetAddress: selectedMasjid.address || "",
-        addressLocality: selectedAreaName || "",
-        addressRegion: selectedCityName || "Karnataka",
-        addressCountry: "India",
-      },
-      url: "https://citysalah.in",
-      description: `Prayer timings and announcements for ${selectedMasjid.name}`,
-      image: selectedMasjid.image || "",
+    const toDate = (t) => {
+      if (!t) return null;
+      let [h, m2] = t.split(":").map(Number);
+      const now = new Date();
+      const d = new Date();
+      d.setHours(h, m2, 0, 0);
+      if (d < now) d.setDate(d.getDate() + 1);
+      return d;
     };
 
-    let script = document.getElementById("masjid-schema");
-    if (!script) {
-      script = document.createElement("script");
-      script.id = "masjid-schema";
-      script.type = "application/ld+json";
-      document.head.appendChild(script);
-    }
-    script.textContent = JSON.stringify(ldJson);
-  }, [selectedMasjid, selectedAreaName, selectedCityName]);
+    const up = list
+      .map((p) => ({ ...p, date: toDate(p.time) }))
+      .filter((p) => p.date)
+      .sort((a, b) => a.date - b.date)[0];
 
-  // ---------- UI ----------
+    if (!up) return null;
+
+    const hh = String(up.date.getHours()).padStart(2, "0");
+    const mm = String(up.date.getMinutes()).padStart(2, "0");
+
+    return { name: up.name, timeStr: `${hh}:${mm}` };
+  };
+
+  /* -----------------------------------------
+      Prepare Masjid List
+  ------------------------------------------*/
+  const prepareMasjidList = useCallback((list = []) => {
+    const mapped = list.map((m) => {
+      const next = computeNextPrayer(m);
+      return {
+        _id: m._id,
+        name: m.name,
+        area: m.area || {},
+        city: m.city || {},
+        imageUrl: m.imageUrl || m.image || "/Default_Image.png",
+        address: m.address || "",
+        prayerTimings: m.prayerTimings || [],
+        nextPrayer: next,
+        fullDetails: null,
+        fullDetailsLoading: false,
+      };
+    });
+
+    mapped.sort((a, b) => {
+      if (!a.nextPrayer && !b.nextPrayer) return 0;
+      if (!a.nextPrayer) return 1;
+      if (!b.nextPrayer) return -1;
+      return a.nextPrayer.timeStr.localeCompare(b.nextPrayer.timeStr);
+    });
+
+    return mapped.slice(0, 8);
+  }, []);
+
+  /* -----------------------------------------
+      Load Masjids by Area
+  ------------------------------------------*/
+  const loadMasjidsByArea = useCallback(
+    async (areaId) => {
+      if (!areaId) return;
+      setLoadingMasjids(true);
+      try {
+        const list = await publicAPI.getMasjids({ areaId });
+        if (!mountedRef.current) return;
+        const prepared = prepareMasjidList(list || []);
+        setMasjids(prepared);
+      } catch {
+        showToast("error", "Failed to load masjids for area");
+      } finally {
+        if (mountedRef.current) setLoadingMasjids(false);
+      }
+    },
+    [prepareMasjidList, showToast]
+  );
+
+  /* -----------------------------------------
+      GPS → Nearest Masjids
+  ------------------------------------------*/
+  const tryLoadNearest = useCallback(
+    async (lat, lng) => {
+      setLoadingNearest(true);
+      try {
+        const nearest = await publicAPI.getNearestMasjids({
+          lat,
+          lng,
+          limit: 8,
+        });
+        if (!mountedRef.current) return false;
+        if (nearest?.length) {
+          const prepared = prepareMasjidList(nearest);
+          setMasjids(prepared);
+
+          if (nearest[0]?.area?._id) {
+            setArea(nearest[0].area._id);
+            if (nearest[0].area.city?._id) setCity(nearest[0].area.city._id);
+          }
+          return true;
+        }
+      } catch {
+      } finally {
+        if (mountedRef.current) setLoadingNearest(false);
+      }
+      return false;
+    },
+    [prepareMasjidList, setArea, setCity]
+  );
+
+  /* -----------------------------------------
+      Initial Flow (GPS → user area → manual)
+  ------------------------------------------*/
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      // 1) GPS
+      if ("geolocation" in navigator) {
+        try {
+          const pos = await new Promise((res, rej) =>
+            navigator.geolocation.getCurrentPosition(res, rej)
+          );
+          if (cancelled) return;
+          const ok = await tryLoadNearest(
+            pos.coords.latitude,
+            pos.coords.longitude
+          );
+          if (ok) return;
+        } catch {}
+      }
+
+      // 2) User's preferred area
+      if (user && (user.area || user.masjidAreaId)) {
+        const id = user.area || user.masjidAreaId;
+        setArea(id);
+        await loadMasjidsByArea(id);
+        return;
+      }
+
+      // 3) Manual selector
+      setSheetOpen(true);
+    })();
+
+    return () => (cancelled = true);
+  }, [user, tryLoadNearest, loadMasjidsByArea, setArea]);
+
+  /* -----------------------------------------
+      Load Masjids when area changes
+  ------------------------------------------*/
+  useEffect(() => {
+    if (!selectedArea) return;
+    loadMasjidsByArea(selectedArea);
+  }, [selectedArea, loadMasjidsByArea]);
+
+  /* -----------------------------------------
+      SEARCH — Load Small Index
+  ------------------------------------------*/
+  const ensureSearchIndex = useCallback(async () => {
+    if (searchIndex) return;
+
+    try {
+      const raw = await publicAPI.getMasjids({ search: "" });
+
+      const idx = (raw || []).map((m) => ({
+        _id: m._id,
+        name: m.name,
+        areaId: m.area?._id || "",
+        areaName: m.area?.name || "",
+        cityName: m.city?.name || "",
+      }));
+
+      if (mountedRef.current) setSearchIndex(idx);
+    } catch {
+      setSearchIndex([]);
+    }
+  }, [searchIndex]);
+
+  /* -----------------------------------------
+      SEARCH RESULTS
+  ------------------------------------------*/
+  const searchResults =
+    searchQuery && searchIndex
+      ? searchIndex.filter((m) =>
+          m.name.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : [];
+
+  /* -----------------------------------------
+      OPTION A — SEARCH SELECTION BEHAVIOR
+      Selected masjid becomes #1, others follow
+  ------------------------------------------*/
+
+  const prepareSingle = (full) => {
+    const next = computeNextPrayer(full);
+
+    return [
+      {
+        _id: full._id,
+        name: full.name,
+        area: full.area || {},
+        city: full.city || {},
+        imageUrl: full.imageUrl || "/Default_Image.png",
+        address: full.address || "",
+        prayerTimings: full.prayerTimings || [],
+        nextPrayer: next,
+        fullDetails: {
+          prayerTimings: (full.prayerTimings && full.prayerTimings[0]) || {},
+          contacts: full.contacts || [],
+          address: full.address || "",
+        },
+        fullDetailsLoading: false,
+      },
+    ];
+  };
+
+  const onSelectFromSheet = async (m) => {
+    if (!m || !m._id) return;
+
+    let selectedFull = null;
+
+    // 1) If masjid belongs to different area → load that area first
+    if (m.areaId && m.areaId !== selectedArea) {
+      setArea(m.areaId);
+      await loadMasjidsByArea(m.areaId);
+    }
+
+    // 2) Ensure we have full masjid details
+    try {
+      selectedFull = await publicAPI.getMasjidById(m._id);
+    } catch {
+      showToast("error", "Failed to load masjid");
+      return;
+    }
+
+    const prepared = prepareSingle(selectedFull);
+
+    // 3) Put selected masjid at TOP always
+    setMasjids((prev) => {
+      const others = prev.filter((x) => x._id !== m._id);
+      return [...prepared, ...others];
+    });
+
+    // 4) Update global store
+    setMasjid(selectedFull);
+
+    // 5) Close UI
+    setSearchQuery("");
+    setShowSearchResults(false);
+    setSheetOpen(false);
+
+    // 6) Scroll to carousel
+    setTimeout(() => {
+      carouselRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 200);
+  };
+
+  /* -----------------------------------------
+      Expand card (fetch full details)
+  ------------------------------------------*/
+  const handleExpand = async (mLight) => {
+    if (!mLight || !mLight._id) return;
+
+    // mark loading
+    setMasjids((prev) =>
+      prev.map((x) =>
+        x._id === mLight._id ? { ...x, fullDetailsLoading: true } : x
+      )
+    );
+
+    try {
+      const full = await publicAPI.getMasjidById(mLight._id);
+      if (!mountedRef.current) return;
+
+      // update local list
+      setMasjids((prev) =>
+        prev.map((x) =>
+          x._id === mLight._id
+            ? {
+                ...x,
+                fullDetails: {
+                  prayerTimings:
+                    (full.prayerTimings && full.prayerTimings[0]) || {},
+                  contacts: full.contacts || [],
+                  address: full.address || "",
+                },
+                fullDetailsLoading: false,
+              }
+            : x
+        )
+      );
+
+      // update global store
+      setMasjid(full);
+
+      // update SEO
+      const fullName = `${full.name}, ${full.area?.name || ""}, ${
+        full.city?.name || ""
+      }`;
+      document.title = `${fullName} — Prayer Timings | City Salah`;
+    } catch {
+      showToast("error", "Failed to load masjid details");
+      setMasjids((prev) =>
+        prev.map((x) =>
+          x._id === mLight._id ? { ...x, fullDetailsLoading: false } : x
+        )
+      );
+    }
+  };
+
+  /* -----------------------------------------
+      RETURN JSX
+  ------------------------------------------*/
   return (
     <div className="min-h-screen w-full">
-      <div className="max-w-3xl mx-auto space-y-3 px-2 py-3">
-        {/* CITY → AREA → MASJID SELECTOR */}
-        {loadingCities ? (
-          <div className="flex gap-2 justify-center">
-            <div className="h-12 w-32 animate-pulse rounded bg-slate-200" />
-            <div className="h-12 w-32 animate-pulse rounded bg-slate-200" />
-            <div className="h-12 w-32 animate-pulse rounded bg-slate-200" />
-          </div>
-        ) : (
-          <MasjidSelector
-            cities={cities}
-            areas={areas}
-            masjids={masjids}
-            selectedCity={selectedCity}
-            selectedArea={selectedArea}
-            selectedMasjid={selectedMasjid}
-            setSelectedCity={setCity}
-            setSelectedArea={setArea}
-            setSelectedMasjid={setMasjid}
-          />
-        )}
-
-        {/* 🔹 Hidden SEO text */}
-        <div
-          style={{
-            position: "absolute",
-            width: "1px",
-            height: "1px",
-            margin: "-1px",
-            padding: "0",
-            overflow: "hidden",
-            clip: "rect(0 0 0 0)",
-            whiteSpace: "nowrap",
-            border: "0",
+      <div className="max-w-3xl mx-auto px-2 py-3 space-y-3">
+        {/* SEARCH BAR */}
+        <MasjidSearchBar
+          value={searchQuery}
+          onChange={(val) => {
+            setSearchQuery(val);
+            ensureSearchIndex();
+            setShowSearchResults(true);
           }}
-        >
-          City Salah provides accurate masjid prayer timings and announcements
-          for Mysuru, Nanjangud, Bengaluru, and more.
-        </div>
+          onFocus={() => {
+            ensureSearchIndex();
+            setShowSearchResults(true);
+          }}
+          results={searchResults}
+          showResults={showSearchResults}
+          onSelect={(m) => {
+            setSearchQuery("");
+            setShowSearchResults(false);
+            onSelectFromSheet(m);
+          }}
+        />
 
-        {/* ----------------------------------------
-            MAIN MASJID PANEL WITH GLOBAL INITIAL LOADER
-        ----------------------------------------- */}
-        <div className="space-y-2">
-          {/* 🔵 Case 1 — App initializing → show loaders */}
-          {initializing && (
-            <>
+        {/* LOCATION BAR */}
+        <LocationBar
+          cityName={cities.find((c) => c._id === selectedCity)?.name || ""}
+          areaName={areas.find((a) => a._id === selectedArea)?.name || ""}
+          onOpen={() => setSheetOpen(true)}
+        />
+
+        {/* CAROUSEL */}
+        <div className="mt-4">
+          {loadingMasjids || loadingNearest || loadingLocation ? (
+            <div className="space-y-3">
               <MasjidInfoLoader />
               <PrayerTimingsLoader />
               <ContactInfoLoader />
-            </>
-          )}
-
-          {/* 🔵 Case 2 — Masjid Selected */}
-          {!initializing && selectedMasjid && (
-            <>
-              <MasjidInfo masjid={selectedMasjid} />
-              <PrayerTimingsTable
-                prayerTimings={prayerTimings}
-                loading={loadingMasjidDetails}
-                masjidSelected={!!selectedMasjid}
-              />
-              <ContactInfo contacts={contacts} />
-            </>
-          )}
-
-          {/* 🔵 Case 3 — No masjid yet */}
-          {!initializing && !selectedMasjid && (
-            <p className="text-center text-lg font-semibold text-slate-700 py-6">
-              Please select your City → Area → Masjid to view Salah timings.
-            </p>
+            </div>
+          ) : masjids.length ? (
+            <MasjidCarousel
+              masjids={masjids}
+              selectedMasjidId={selectedMasjid?._id}
+              onSelect={() => {}}
+              onExpand={handleExpand}
+              carouselRef={carouselRef}
+            />
+          ) : (
+            <div className="text-center py-20 text-slate-600">
+              No masjids found. Please choose city/area.
+            </div>
           )}
         </div>
       </div>
 
-      {/* SCROLL TO TOP */}
-      {showScrollTop && (
+      {/* FLOATING BUTTON */}
+      <div className="fixed right-4 bottom-6 z-50">
         <button
-          aria-label="Scroll to top"
-          onClick={() =>
-            window.scrollTo({
-              top: 0,
-              behavior: "smooth",
-            })
-          }
-          className="
-            fixed bottom-6 right-6 md:right-10 lg:right-12
-            bg-indigo-600 hover:bg-indigo-700 
-            text-white w-12 h-12 rounded-full 
-            shadow-xl flex items-center justify-center 
-            text-2xl transition-all active:scale-95 z-[999]"
+          onClick={() => setSheetOpen(true)}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center text-xl"
         >
-          ↑
+          📍
         </button>
-      )}
+      </div>
+
+      {/* LOCATION SHEET */}
+      <LocationSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        cities={cities}
+        areas={areas}
+        searchIndex={searchIndex || []}
+        selectedCity={selectedCity}
+        selectedArea={selectedArea}
+        setSelectedCity={setCity}
+        setSelectedArea={setArea}
+        onSelectMasjid={onSelectFromSheet}
+      />
     </div>
   );
 }

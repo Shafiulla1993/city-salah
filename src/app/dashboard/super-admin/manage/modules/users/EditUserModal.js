@@ -69,7 +69,7 @@ export default function EditUserModal({ open, onClose, userId, onUpdated }) {
           : [],
       });
 
-      // Load area list based on saved city
+      // Load areas for saved city
       if (u.city?._id) {
         const aRes = await adminAPI.getAreas(`?city=${u.city._id}`);
         setAreas(aRes?.data ?? []);
@@ -109,7 +109,7 @@ export default function EditUserModal({ open, onClose, userId, onUpdated }) {
       if (form.password?.trim()) payload.password = form.password;
       if (form.role !== initial.role) payload.role = form.role;
 
-      // residential city & area — convert "" → null
+      // Convert "" → null
       if (form.city !== (initial.city?._id || ""))
         payload.city = form.city || null;
       if (form.area !== (initial.area?._id || ""))
@@ -158,18 +158,21 @@ export default function EditUserModal({ open, onClose, userId, onUpdated }) {
   const cityList = cities.map((c) => ({ value: c._id, label: c.name }));
   const areaList = areas.map((a) => ({ value: a._id, label: a.name }));
 
-  /** Masjid list logic */
+  /** FIXED MASJID LIST FILTERING */
   const masjidList = masjids
     .filter((m) => {
-      // If masjid admin → show ALL masjids (no filtering)
+      const isAssigned = form.masjidId.includes(m._id);
+
+      // Masjid admin → show all
       if (form.role === "masjid_admin") return true;
 
-      // For other roles → show based on city/area if selected
+      // Other roles → filter normally but always include assigned ones
       if (!form.city && !form.area) return true;
-      if (form.area)
-        return m.area?._id === form.area || form.masjidId.includes(m._id);
-      if (form.city)
-        return m.city?._id === form.city || form.masjidId.includes(m._id);
+
+      if (form.area) return m.area?._id === form.area || isAssigned;
+
+      if (form.city) return m.city?._id === form.city || isAssigned;
+
       return true;
     })
     .map((m) => ({ value: m._id, label: m.name }));

@@ -12,7 +12,7 @@ import { updateMasjidController } from "@/server/controllers/masjidAdmin/masjids
 export const PUT = withAuth("masjid_admin", async (req, ctx) => {
   const { id } = await ctx.params;
 
-  // 1️⃣ Parse multipart
+  // parse multipart
   const { fields, files } = await parseMultipart(req).catch(() => ({
     fields: {},
     files: {},
@@ -20,7 +20,7 @@ export const PUT = withAuth("masjid_admin", async (req, ctx) => {
 
   let body = { ...fields };
 
-  // 2️⃣ Normalize simple fields (EXCEPT contacts/prayerTimings)
+  // Normalize simple fields (array -> first) BUT we usually don't need those here.
   Object.keys(body).forEach((key) => {
     if (
       Array.isArray(body[key]) &&
@@ -31,46 +31,51 @@ export const PUT = withAuth("masjid_admin", async (req, ctx) => {
     }
   });
 
-  // 3️⃣ Parse JSON safely (same as superadmin)
+  // Parse JSON for contacts/prayerTimings
   ["contacts", "prayerTimings"].forEach((k) => {
     try {
       if (Array.isArray(body[k])) body[k] = body[k][0];
       if (typeof body[k] === "string") body[k] = JSON.parse(body[k]);
+      // ensure arrays
+      if (k === "prayerTimings" && body[k] && !Array.isArray(body[k])) {
+        body[k] = [body[k]];
+      }
+      if (k === "contacts" && body[k] && !Array.isArray(body[k])) {
+        body[k] = [body[k]];
+      }
     } catch {
-      body[k] = [];
+      body[k] = undefined;
     }
   });
 
-  // 4️⃣ IMAGE handling (allowed for masjid admin)
+  // Image upload
   let file = Array.isArray(files?.image) ? files.image[0] : files?.image;
   let imageUrl = null;
   let imagePublicId = null;
 
   if (file) {
-    const temp = file.filepath;
-    if (temp) {
-      await connectDB();
-      const existing = await Masjid.findById(id).select("imagePublicId");
+    const tmp = file.filepath;
+    await connectDB();
+    const old = await Masjid.findById(id).select("imagePublicId");
 
-      try {
-        const uploaded = await uploadFileToCloudinary(temp, "masjids");
-        imageUrl = uploaded.secure_url || uploaded.url;
-        imagePublicId = uploaded.public_id;
+    try {
+      const uploaded = await uploadFileToCloudinary(tmp, "masjids");
+      imageUrl = uploaded.secure_url || uploaded.url;
+      imagePublicId = uploaded.public_id;
 
-        if (existing?.imagePublicId) {
-          cloudinary.uploader.destroy(existing.imagePublicId).catch(() => {});
-        }
-      } finally {
-        await fs.unlink(temp).catch(() => {});
+      if (old?.imagePublicId) {
+        cloudinary.uploader.destroy(old.imagePublicId).catch(() => {});
       }
+    } finally {
+      await fs.unlink(tmp).catch(() => {});
     }
   }
 
-  // 5️⃣ Only pass ALLOWED fields to controller
+  // Pass only allowed fields to masjid-admin controller. If not provided, they will be undefined.
   return await updateMasjidController({
     id,
-    contacts: body.contacts || [],
-    prayerTimings: body.prayerTimings || [],
+    contacts: body.contacts,
+    prayerTimings: body.prayerTimings,
     imageUrl,
     imagePublicId,
     user: ctx.user,

@@ -236,9 +236,12 @@ export async function updateUserController({ id, body = {} }) {
         json: { success: false, message: "User not found" },
       };
 
+    // --------------------------
+    // UNIQUE FIELD VALIDATION
+    // --------------------------
     if (body.phone && body.phone !== user.phone) {
-      const existingPhone = await User.findOne({ phone: body.phone });
-      if (existingPhone)
+      const exists = await User.findOne({ phone: body.phone });
+      if (exists)
         return {
           status: 400,
           json: { success: false, message: "Phone already in use" },
@@ -246,53 +249,100 @@ export async function updateUserController({ id, body = {} }) {
     }
 
     if (body.email && body.email !== user.email) {
-      const existingEmail = await User.findOne({ email: body.email });
-      if (existingEmail)
+      const exists = await User.findOne({ email: body.email });
+      if (exists)
         return {
           status: 400,
           json: { success: false, message: "Email already in use" },
         };
     }
 
+    // --------------------------
+    // ROLE VALIDATION
+    // --------------------------
     const allowedRoles = ["public", "masjid_admin", "super_admin"];
-    if (body.role && !allowedRoles.includes(body.role))
+    if (body.role && !allowedRoles.includes(body.role)) {
       return {
         status: 400,
         json: { success: false, message: "Invalid role value" },
       };
-
-    // Resolve new city/area IDs
-    if (body.city && !mongoose.isValidObjectId(body.city)) {
-      const c = await City.findOne({
-        name: { $regex: `^${body.city}$`, $options: "i" },
-      });
-      if (!c)
-        return {
-          status: 404,
-          json: { success: false, message: `City not found: ${body.city}` },
-        };
-      body.city = c._id;
     }
 
-    if (body.area && !mongoose.isValidObjectId(body.area)) {
-      const a = await Area.findOne({
-        name: { $regex: `^${body.area}$`, $options: "i" },
-        city: body.city || user.city,
-      });
-      if (!a)
-        return {
-          status: 404,
-          json: { success: false, message: `Area not found: ${body.area}` },
-        };
-      body.area = a._id;
+    // --------------------------
+    // RESOLVE CITY
+    // --------------------------
+    if (body.city !== undefined) {
+      if (body.city === null || body.city === "") {
+        user.city = null;
+      } else if (!mongoose.isValidObjectId(body.city)) {
+        // find city by name
+        const c = await City.findOne({
+          name: { $regex: `^${body.city}$`, $options: "i" },
+        });
+        if (!c)
+          return {
+            status: 404,
+            json: { success: false, message: `City not found: ${body.city}` },
+          };
+        user.city = c._id;
+      } else {
+        user.city = body.city;
+      }
     }
 
-    let masjidArray;
+    // --------------------------
+    // RESOLVE AREA
+    // --------------------------
+    if (body.area !== undefined) {
+      if (body.area === null || body.area === "") {
+        user.area = null;
+      } else if (!mongoose.isValidObjectId(body.area)) {
+        const a = await Area.findOne({
+          name: { $regex: `^${body.area}$`, $options: "i" },
+          city: user.city,
+        });
+        if (!a)
+          return {
+            status: 404,
+            json: { success: false, message: `Area not found: ${body.area}` },
+          };
+        user.area = a._id;
+      } else {
+        user.area = body.area;
+      }
+    }
+
+    // --------------------------
+    // PASSWORD HASH
+    // --------------------------
+    if (body.password) {
+      user.password = bcrypt.hashSync(body.password, bcrypt.genSaltSync(10));
+    }
+
+    // --------------------------
+    // BASIC FIELDS UPDATE
+    // --------------------------
+    const updatable = ["name", "email", "phone", "role", "imageUrl"];
+    updatable.forEach((key) => {
+      if (body[key] !== undefined) user[key] = body[key];
+    });
+
+    // --------------------------
+    // MASJID ASSIGNMENTS
+    // --------------------------
+
+    // CASE 1: Role explicitly changed away from masjid_admin → wipe masjids
+    if (body.role !== undefined && body.role !== "masjid_admin") {
+      user.masjidId = [];
+    }
+
+    // CASE 2: Client provided new masjidId array
     if (body.masjidId !== undefined) {
-      masjidArray = Array.isArray(body.masjidId)
+      const masjidArray = Array.isArray(body.masjidId)
         ? body.masjidId
         : [body.masjidId];
 
+      // Validate masjid IDs
       const validMasjids = await Masjid.find({ _id: { $in: masjidArray } });
       if (validMasjids.length !== masjidArray.length) {
         return {
@@ -303,34 +353,32 @@ export async function updateUserController({ id, body = {} }) {
           },
         };
       }
+
+      // Only masjid_admin can have masjid assignments
+      if (user.role === "masjid_admin" || body.role === "masjid_admin") {
+        user.masjidId = masjidArray;
+      }
     }
 
-    if (body.password) {
-      body.password = bcrypt.hashSync(body.password, bcrypt.genSaltSync(10));
+    // CASE 3: Role changed to masjid_admin but no masjid list sent → keep old masjids
+
+    // CASE 4: Validate masjid_admin MUST have ≥1 masjid
+    if (
+      (body.role === "masjid_admin" || user.role === "masjid_admin") &&
+      user.masjidId.length === 0
+    ) {
+      return {
+        status: 400,
+        json: {
+          success: false,
+          message: "Masjid admin must be assigned to at least one masjid",
+        },
+      };
     }
 
-    const updatable = [
-      "name",
-      "email",
-      "phone",
-      "password",
-      "city",
-      "area",
-      "role",
-      "imageUrl",
-    ];
-
-    updatable.forEach((k) => {
-      if (body[k] !== undefined) user[k] = body[k];
-    });
-
-    // Only masjid admin can have masjids
-    if (body.role !== "masjid_admin") {
-      user.masjidId = [];
-    } else if (masjidArray !== undefined) {
-      user.masjidId = masjidArray;
-    }
-
+    // --------------------------
+    // SAVE + POPULATE
+    // --------------------------
     await user.save();
 
     const saved = await User.findById(user._id)

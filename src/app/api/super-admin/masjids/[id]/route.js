@@ -19,9 +19,9 @@ export const GET = withAuth("super_admin", async (req, ctx) => {
 });
 
 export const PUT = withAuth("super_admin", async (req, ctx) => {
-  const params = await ctx.params;
-  const id = params.id;
+  const { id } = await ctx.params;
 
+  // 1️⃣ parse form-data
   const { fields, files } = await parseMultipart(req).catch(() => ({
     fields: {},
     files: {},
@@ -29,11 +29,7 @@ export const PUT = withAuth("super_admin", async (req, ctx) => {
 
   let body = { ...fields };
 
-  // ----------------------------------------------------
-  // 1️⃣ RESTORE ORIGINAL NORMALIZATION:
-  //    Convert array -> value[0]
-  //    EXCEPT contacts & prayerTimings
-  // ----------------------------------------------------
+  // 2️⃣ Normalize simple fields (array -> first) EXCEPT contacts & prayerTimings
   Object.keys(body).forEach((key) => {
     if (
       Array.isArray(body[key]) &&
@@ -44,63 +40,61 @@ export const PUT = withAuth("super_admin", async (req, ctx) => {
     }
   });
 
-  // ----------------------------------------------------
-  // 2️⃣ JSON PARSE EXACTLY LIKE POST ROUTE
-  // ----------------------------------------------------
+  // 3️⃣ Parse JSON for contacts/prayerTimings/location (supports ["{...}"] and "{...}")
   ["contacts", "prayerTimings", "location"].forEach((k) => {
     try {
-      // Case 1: Array coming in → take first value
-      if (Array.isArray(body[k])) {
-        body[k] = body[k][0];
+      if (k === "contacts" || k === "prayerTimings") {
+        // If sent as ["[{...}]"] → take first element then JSON.parse
+        if (
+          Array.isArray(body[k]) &&
+          body[k].length === 1 &&
+          typeof body[k][0] === "string"
+        ) {
+          body[k] = JSON.parse(body[k][0]);
+        }
+        // If sent as array of objects → keep as-is
+        else if (Array.isArray(body[k])) {
+          // do nothing
+        }
+        // If sent as string → parse
+        else if (typeof body[k] === "string") {
+          body[k] = JSON.parse(body[k]);
+        }
+      } else {
+        // Original behavior for simple fields
+        if (Array.isArray(body[k])) body[k] = body[k][0];
       }
-
-      // Case 2: String JSON → parse
-      if (typeof body[k] === "string") {
-        body[k] = JSON.parse(body[k]);
+      if (typeof body[k] === "string") body[k] = JSON.parse(body[k]);
+      // Ensure prayerTimings is an array if parsed as object
+      if (k === "prayerTimings" && body[k] && !Array.isArray(body[k])) {
+        body[k] = [body[k]];
       }
-    } catch (err) {
-      console.error("JSON parse failed for", k, body[k]);
+    } catch {
+      body[k] = undefined;
     }
   });
 
-  // ----------------------------------------------------
-  // 3️⃣ IMAGE UPLOAD (unchanged)
-  // ----------------------------------------------------
-  if (files?.image) {
-    const fileArr = files.image;
-    const file = Array.isArray(fileArr) ? fileArr[0] : fileArr;
-    const tempFilePath = file.filepath;
-
+  // 4️⃣ IMAGE upload (if provided)
+  let file = Array.isArray(files?.image) ? files.image[0] : files?.image;
+  if (file) {
+    const tmp = file.filepath;
     await connectDB();
-    const existing = await Masjid.findById(id).select("imagePublicId");
+    const old = await Masjid.findById(id).select("imagePublicId");
 
     try {
-      const uploadRes = await uploadFileToCloudinary(tempFilePath, "masjids");
-      body.imageUrl = uploadRes.secure_url || uploadRes.url;
-      body.imagePublicId = uploadRes.public_id;
+      const uploaded = await uploadFileToCloudinary(tmp, "masjids");
+      body.imageUrl = uploaded.secure_url || uploaded.url;
+      body.imagePublicId = uploaded.public_id;
 
-      if (existing?.imagePublicId) {
-        cloudinary.uploader.destroy(existing.imagePublicId).catch(() => {});
+      if (old?.imagePublicId) {
+        cloudinary.uploader.destroy(old.imagePublicId).catch(() => {});
       }
     } finally {
-      await fs.unlink(tempFilePath).catch(() => {});
+      await fs.unlink(tmp).catch(() => {});
     }
   }
 
-  // ----------------------------------------------------
-  // 4️⃣ LOCATION FALLBACK (unchanged)
-  // ----------------------------------------------------
-  if (!body.location || !Array.isArray(body.location.coordinates)) {
-    await connectDB();
-    const existing = await Masjid.findById(id).select("location");
-    if (existing?.location) {
-      body.location = existing.location;
-    }
-  }
-
-  // ----------------------------------------------------
-  // 5️⃣ Update Controller (unchanged)
-  // ----------------------------------------------------
+  // 5️⃣ call controller (no role flag here — route enforces withAuth)
   return await updateMasjidController({ id, body });
 });
 
