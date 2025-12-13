@@ -1,10 +1,10 @@
 // src/app/sitemap-areas.xml/route.js
 
 import { serverFetch } from "@/lib/http/serverFetch";
-import { generateSlug } from "@/lib/helpers/slugHelper";
 
 export async function GET() {
   const base = "https://citysalah.in";
+  const now = new Date().toISOString();
 
   const areas = await serverFetch("/api/public/allareas");
 
@@ -12,9 +12,12 @@ export async function GET() {
     .map(
       (a) => `
     <url>
-      <loc>${base}/city/${generateSlug(a.city)}/area/${generateSlug(
-        a.name
-      )}</loc>
+      <loc>${base}/city/${a.city
+        .toLowerCase()
+        .replace(/\s+/g, "-")}/area/${a.name
+        .toLowerCase()
+        .replace(/\s+/g, "-")}</loc>
+      <lastmod>${now}</lastmod>
       <changefreq>weekly</changefreq>
       <priority>0.7</priority>
     </url>

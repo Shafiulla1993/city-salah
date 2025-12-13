@@ -1,54 +1,60 @@
-// /src/app/city/[citySlug]/page.js
+// src/app/city/[citySlug]/page.js
 
+import Link from "next/link";
+import { notFound } from "next/navigation";
 import { serverFetch } from "@/lib/http/serverFetch";
-import ClientRedirectToHome from "@/components/ClientRedirectToHome";
-import { generateSlug } from "@/lib/helpers/slugHelper";
 
-export async function generateStaticParams() {
-  const cities = await serverFetch("/api/public/cities");
-
-  return cities.map((c) => ({
-    citySlug: generateSlug(c.name),
-  }));
-}
 
 export async function generateMetadata({ params }) {
-  const citySlug = params.citySlug;
+  // ✅ IMPORTANT: unwrap params
+  const { citySlug } = await params;
+
   const cityName = citySlug.replace(/-/g, " ");
 
   return {
-    title: `${cityName} — Masjids & Prayer Timings`,
-    description: `Find masjids and prayer timings for ${cityName}.`,
+    title: `${cityName} Masjids & Prayer Timings | CitySalah`,
+    description: `Find masjids and prayer timings in ${cityName}.`,
+    alternates: {
+      canonical: `https://citysalah.in/city/${citySlug}`,
+    },
   };
 }
 
-export default async function CitySEO({ params }) {
-  const citySlug = params.citySlug;
+export default async function CityPage({ params }) {
+  // ✅ IMPORTANT: unwrap params
+  const { citySlug } = await params;
 
-  const allCities = await serverFetch("/api/public/cities");
-  const city = allCities.find((c) => generateSlug(c.name) === citySlug);
+  const cities = await serverFetch("/api/public/cities");
+  const city = cities.find((c) => c.slug === citySlug);
 
-  if (!city)
-    return (
-      <main className="p-6">
-        <h1>City Not Found</h1>
-        <ClientRedirectToHome />
-      </main>
-    );
+  if (!city) notFound();
 
   const areas = await serverFetch(`/api/public/areas?cityId=${city._id}`);
 
   return (
-    <main className="max-w-3xl mx-auto p-6">
-      <h1 className="text-2xl font-bold">Masjids in {city.name}</h1>
+    <main className="max-w-4xl mx-auto p-6">
+      <h1 className="text-3xl font-bold">
+        Masjids in {city.name}
+      </h1>
 
-      <ul className="mt-4 space-y-2">
+      <p className="mt-4 text-gray-700">
+        Find nearby masjids, prayer timings, and Jummah schedules in {city.name}.
+      </p>
+
+      <ul className="mt-6 space-y-2 list-disc list-inside">
         {areas.map((a) => (
-          <li key={a._id}>{a.name}</li>
+          <li key={a._id}>
+            <Link
+              href={`/city/${city.slug}/area/${a.name
+                .toLowerCase()
+                .replace(/\s+/g, "-")}`}
+              className="text-blue-600 hover:underline"
+            >
+              Masjids in {a.name}
+            </Link>
+          </li>
         ))}
       </ul>
-
-      <ClientRedirectToHome />
     </main>
   );
 }

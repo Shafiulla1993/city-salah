@@ -8,3 +8,4 @@ export default function sitemap() {
     { url: "https://citysalah.in/sitemap-masjids.xml" },
   ];
 }
+

@@ -1,64 +1,64 @@
 // src/app/city/[citySlug]/area/[areaSlug]/page.js
 
+import Link from "next/link";
+import { notFound } from "next/navigation";
 import { serverFetch } from "@/lib/http/serverFetch";
-import ClientRedirectToHome from "@/components/ClientRedirectToHome";
-import { generateSlug } from "@/lib/helpers/slugHelper";
 
-export async function generateStaticParams() {
-  const areas = await serverFetch("/api/public/allareas");
-
-  return areas.map((a) => ({
-    citySlug: generateSlug(a.city),
-    areaSlug: generateSlug(a.name),
-  }));
-}
 
 export async function generateMetadata({ params }) {
-  const cityName = params.citySlug.replace(/-/g, " ");
-  const areaName = params.areaSlug.replace(/-/g, " ");
+  const { citySlug, areaSlug } = await params; // ✅ FIX
+
+  const city = citySlug.replace(/-/g, " ");
+  const area = areaSlug.replace(/-/g, " ");
 
   return {
-    title: `${areaName}, ${cityName} — Masjids & Prayer Timings`,
-    description: `Find masjids and prayer timings in ${areaName}, ${cityName}.`,
+    title: `Masjids in ${area}, ${city} | CitySalah`,
+    description: `Find masjids and prayer timings in ${area}, ${city}.`,
+    alternates: {
+      canonical: `https://citysalah.in/city/${citySlug}/area/${areaSlug}`,
+    },
   };
 }
 
-export default async function AreaSEO({ params }) {
-  const { citySlug, areaSlug } = params;
+export default async function AreaPage({ params }) {
+  const { citySlug, areaSlug } = await params; // ✅ FIX
 
-  const allAreas = await serverFetch("/api/public/allareas");
+  const areas = await serverFetch("/api/public/allareas");
 
-  const thisArea = allAreas.find(
+  const area = areas.find(
     (a) =>
-      generateSlug(a.city) === citySlug && generateSlug(a.name) === areaSlug
+      a.city.toLowerCase().replace(/\s+/g, "-") === citySlug &&
+      a.name.toLowerCase().replace(/\s+/g, "-") === areaSlug
   );
 
-  if (!thisArea)
-    return (
-      <main className="p-6">
-        <h1>Area Not Found</h1>
-        <ClientRedirectToHome />
-      </main>
-    );
+  if (!area) notFound();
 
   const masjids = await serverFetch("/api/public/masjids");
-  const filtered = masjids.filter(
-    (m) => m.area?.name === thisArea.name || m.area === thisArea._id
-  );
+  const filtered = masjids.filter((m) => m.area?.name === area.name);
 
   return (
-    <main className="max-w-3xl mx-auto p-6">
-      <h1 className="text-2xl font-bold">
-        Masjids in {thisArea.name}, {thisArea.city}
+    <main className="max-w-4xl mx-auto p-6">
+      <h1 className="text-3xl font-bold">
+        Masjids in {area.name}, {area.city}
       </h1>
 
-      <ul className="mt-4 space-y-2">
+      <p className="mt-4 text-gray-700">
+        Find nearby masjids, prayer timings, and Jummah schedules
+        in {area.name}, {area.city}.
+      </p>
+
+      <ul className="mt-6 space-y-2">
         {filtered.map((m) => (
-          <li key={m._id}>{m.name}</li>
+          <li key={m._id}>
+            <Link
+              href={`/masjid/${m.slug}-${m._id}`}
+              className="text-blue-600 hover:underline"
+            >
+              {m.name}
+            </Link>
+          </li>
         ))}
       </ul>
-
-      <ClientRedirectToHome />
     </main>
   );
 }

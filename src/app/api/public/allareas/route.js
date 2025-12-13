@@ -1,3 +1,5 @@
+// src/app/api/public/allareas/route.js
+
 import { NextResponse } from "next/server";
 import Area from "@/models/Area";
 import connectDB from "@/lib/db";

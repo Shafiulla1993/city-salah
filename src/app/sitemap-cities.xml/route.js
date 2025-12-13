@@ -1,10 +1,10 @@
 // src/app/sitemap-cities.xml/route.js
 
 import { serverFetch } from "@/lib/http/serverFetch";
-import { generateSlug } from "@/lib/helpers/slugHelper";
 
 export async function GET() {
   const base = "https://citysalah.in";
+  const now = new Date().toISOString();
 
   const cities = await serverFetch("/api/public/cities");
 
@@ -12,7 +12,8 @@ export async function GET() {
     .map(
       (c) => `
     <url>
-      <loc>${base}/city/${generateSlug(c.name)}</loc>
+      <loc>${base}/city/${c.slug}</loc>
+      <lastmod>${now}</lastmod>
       <changefreq>weekly</changefreq>
       <priority>0.9</priority>
     </url>
