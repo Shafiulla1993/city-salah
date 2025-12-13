@@ -66,22 +66,23 @@ export default function MasjidSearchBar({
           style={{ WebkitOverflowScrolling: "touch" }}
         >
           {results.map((r) => (
-            <div
-              key={r._id}
-              onClick={() => {
-                onSelect(r);
-                setOpen(false);
-              }}
-              className="px-4 py-3 text-sm cursor-pointer select-none hover:bg-indigo-50 active:bg-indigo-100"
-            >
-              <div className="font-semibold text-slate-900">{r.name}</div>
+  <div
+    key={`${r.slug}-${r.areaId}`}
+    onClick={() => {
+      onSelect(r);
+      setOpen(false);
+    }}
+    className="px-4 py-3 text-sm cursor-pointer select-none hover:bg-indigo-50 active:bg-indigo-100"
+  >
+    <div className="font-semibold text-slate-900">{r.name}</div>
 
-              <div className="text-xs text-slate-500 mt-0.5">
-                {r.areaName ? `${r.areaName}, ` : ""}
-                {r.cityName || ""}
-              </div>
-            </div>
-          ))}
+    <div className="text-xs text-slate-500 mt-0.5">
+      {r.areaName ? `${r.areaName}, ` : ""}
+      {r.cityName || ""}
+    </div>
+  </div>
+))}
+
         </div>
       )}
 

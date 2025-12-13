@@ -1,47 +1,88 @@
 // src/components/location/LocationSheet.js
-// Full-screen bottom sheet for selecting City, Area, and Masjid Search
+// Full-screen bottom sheet for selecting City, Area, and Masjid
 
+"use client";
+
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiX, FiMapPin, FiSearch } from "react-icons/fi";
+
+import { searchItems } from "@/lib/search/searchCore";
+import { SEARCH_PRESETS } from "@/lib/search/searchPresets";
 
 export default function LocationSheet({
   open,
   onClose,
   cities,
   areas,
-  searchIndex = [], // [{ _id, name, areaId }]
+  searchIndex = [], // [{ slug, name, areaId, areaName, cityId, cityName }]
   selectedCity,
   selectedArea,
   setSelectedCity,
   setSelectedArea,
   onSelectMasjid,
 }) {
+  const [searchQuery, setSearchQuery] = useState("");
+
+
+  /* --------------------------
+     City / Area handlers
+  ---------------------------*/
   const handleCityChange = (e) => {
     const id = e.target.value;
     setSelectedCity(id);
-
-    // Reset area & search results
     setSelectedArea("");
+    setSearchQuery("");
   };
 
   const handleAreaChange = (e) => {
     const id = e.target.value;
     setSelectedArea(id);
+    setSearchQuery("");
   };
 
-  // ------------------ MASJID SEARCH ------------------
-  const filteredMasjids = (keyword) => {
-    if (!keyword.trim()) return [];
-    keyword = keyword.toLowerCase();
-    return searchIndex.filter((m) => m.name.toLowerCase().includes(keyword));
-  };
+  /* --------------------------
+     Scope masjids to selected
+     city + area
+  ---------------------------*/
+  const scopedMasjids = useMemo(() => {
+  if (!selectedCity || !searchIndex.length) return [];
 
-  let searchResults = [];
+  // City only
+  if (selectedCity && !selectedArea) {
+    return searchIndex.filter(
+      (m) => String(m.cityId) === String(selectedCity)
+    );
+  }
 
-  const onSearch = (e) => {
-    const value = e.target.value;
-    searchResults = filteredMasjids(value);
-  };
+  // City + Area
+  return searchIndex.filter(
+    (m) =>
+      String(m.cityId) === String(selectedCity) &&
+      String(m.areaId) === String(selectedArea)
+  );
+}, [searchIndex, selectedCity, selectedArea]);
+
+
+
+
+  /* --------------------------
+     Centralized search
+  ---------------------------*/
+  const searchResults = useMemo(() => {
+  console.log("scopedMasjids:", scopedMasjids);
+  console.log("searchQuery:", searchQuery);
+
+  if (!searchQuery.trim()) return scopedMasjids;
+
+  return searchItems({
+    data: scopedMasjids,
+    query: searchQuery,
+    fields: SEARCH_PRESETS.MASJID_PUBLIC,
+  });
+}, [scopedMasjids, searchQuery]);
+
+
 
   return (
     <AnimatePresence>
@@ -77,7 +118,7 @@ export default function LocationSheet({
               </button>
             </div>
 
-            {/* CITY DROPDOWN */}
+            {/* CITY */}
             <label className="text-sm font-medium text-slate-700">City</label>
             <select
               value={selectedCity}
@@ -92,7 +133,7 @@ export default function LocationSheet({
               ))}
             </select>
 
-            {/* AREA DROPDOWN */}
+            {/* AREA */}
             <label className="text-sm font-medium text-slate-700">Area</label>
             <select
               value={selectedArea}
@@ -116,22 +157,33 @@ export default function LocationSheet({
             <label className="text-sm font-medium text-slate-700">
               Search Masjid
             </label>
+
             <div className="relative mt-1 mb-3">
               <input
                 type="text"
-                onChange={onSearch}
-                placeholder="Search Masjid by name..."
-                className="w-full px-4 py-2 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                disabled={!selectedArea}
+                placeholder={
+                  selectedArea
+                    ? "Search masjid..."
+                    : "Select area first"
+                }
+                className={`w-full px-4 py-2 rounded-xl border ${
+                  selectedArea
+                    ? "border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500"
+                    : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                }`}
               />
               <FiSearch className="absolute right-3 top-2.5 text-slate-500 text-lg" />
             </div>
 
-            {/* RESULTS LIST */}
+            {/* RESULTS */}
             <div className="max-h-64 overflow-y-auto space-y-2">
               {searchResults.length > 0 ? (
                 searchResults.map((m) => (
                   <button
-                    key={m._id}
+                    key={`${m.slug}-${m.areaId}`}
                     onClick={() => {
                       onSelectMasjid(m);
                       onClose();
@@ -140,13 +192,17 @@ export default function LocationSheet({
                   >
                     <p className="font-semibold text-slate-900">{m.name}</p>
                     <p className="text-xs text-slate-500">
-                      Area ID: {m.areaId}
+                      {m.areaName}, {m.cityName}
                     </p>
                   </button>
                 ))
+              ) : searchQuery ? (
+                <p className="text-center text-slate-400 text-sm py-4">
+                  No masjid found
+                </p>
               ) : (
                 <p className="text-center text-slate-400 text-sm py-4">
-                  Start typing to search masjids...
+                  Start typing to search masjids…
                 </p>
               )}
             </div>

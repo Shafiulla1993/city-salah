@@ -13,6 +13,8 @@ import { publicAPI } from "@/lib/api/public";
 import { useMasjidStore } from "@/store/useMasjidStore";
 import { sortMasjidsByNext } from "@/utils/prayerSorting";
 import { getPrevAndNextIqaamats } from "@/hooks/usePrayerCountdown";
+import { searchItems } from "@/lib/search/searchCore";
+import { SEARCH_PRESETS } from "@/lib/search/searchPresets";
 
 export default function ClientHome() {
   const {
@@ -165,35 +167,31 @@ export default function ClientHome() {
   ---------------------------*/
   const ensureSearchIndex = useCallback(async () => {
     if (searchIndex !== null) return;
+
     try {
-      // your old working code used getMasjids({ search: "" })
-      const raw = await publicAPI.getMasjids({ search: "" });
+      const idx = await publicAPI.getAllMasjidIndex();
+      console.log("Masjid index API result:", idx);
 
-      const idx = (raw || []).map((m) => ({
-        _id: m._id,
-        name: m.name,
-        areaId: m.area?._id || "",
-        areaName: m.area?.name || "",
-        cityId: m.city?._id || "",
-        cityName: m.city?.name || "",
-      }));
 
-      if (mountedRef.current) setSearchIndex(idx);
+      if (mountedRef.current) {
+        setSearchIndex(idx || []);
+      }
     } catch (err) {
-      console.error("search index load failed", err);
+      console.error("Masjid index load failed", err);
       if (mountedRef.current) setSearchIndex([]);
     }
   }, [searchIndex]);
 
+
   /* --------------------------
      Search results (local filter)
   ---------------------------*/
-  const filteredSearchResults =
-    searchQuery && searchIndex
-      ? searchIndex.filter((m) =>
-          m.name.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      : [];
+  const filteredSearchResults = searchItems({
+    data: searchIndex || [],
+    query: searchQuery,
+    fields: SEARCH_PRESETS.MASJID_PUBLIC,
+  });
+
 
   /* --------------------------
      Search selection behavior (S2: move to top & keep structure)
@@ -275,7 +273,7 @@ export default function ClientHome() {
       const el = document.querySelector('input[placeholder="Search masjid…"]');
       try {
         el?.focus();
-      } catch (e) {}
+      } catch (e) { }
     }, 60);
 
     return () => clearTimeout(id);
@@ -310,7 +308,10 @@ export default function ClientHome() {
             <LocationBar
               cityName={cities.find((c) => c._id === selectedCity)?.name || ""}
               areaName={areas.find((a) => a._id === selectedArea)?.name || ""}
-              onOpen={() => setSheetOpen(true)}
+              onOpen={() => {
+                ensureSearchIndex();   // 👈 THIS WAS MISSING
+                setSheetOpen(true);
+              }}
             />
 
             {/* SEARCH ICON + DROPDOWN */}
@@ -385,10 +386,10 @@ export default function ClientHome() {
                     prev.map((x) =>
                       x._id === m._id
                         ? {
-                            ...x,
-                            fullDetails: full,
-                            fullDetailsLoading: false,
-                          }
+                          ...x,
+                          fullDetails: full,
+                          fullDetailsLoading: false,
+                        }
                         : x
                     )
                   );
@@ -434,57 +435,43 @@ export default function ClientHome() {
      to S2 (no prepareSingle) and A3 (move searched masjid to top)
   ---------------------------*/
   async function onSelectFromSearchWrapper(m) {
-    // m likely comes from searchIndex mapping with areaId, cityId
-    if (!m || !m._id) return;
+    if (!m?.slug) return;
 
-    // close UI
+    // 1️⃣ Close search UI
     setSearchOpen(false);
     setSearchQuery("");
     setShowSearchResults(false);
 
-    // If area differs, set area & city and load that area's masjids
-    if (m.areaId && m.areaId !== selectedArea) {
-      setArea(m.areaId);
-      if (m.cityId) setCity(m.cityId);
+    try {
+      // 2️⃣ Fetch FULL masjid using slug (same API route)
+      const full = await publicAPI.getMasjidByIdentifier(m.slug, m.areaId);
 
-      // load area masjids (this ensures only masjids in that area appear)
-      await loadMasjidsByArea(m.areaId);
-    } else {
-      // ensure city is set too if needed
-      if (m.cityId && m.cityId !== selectedCity) setCity(m.cityId);
-    }
+      // 3️⃣ Update global selected masjid
+      setMasjid(full);
 
-    // Reorder: put searched masjid to top (A3) but keep structure (S2)
-    setMasjids((prev) => {
-      const idx = prev.findIndex((x) => x._id === m._id);
-      if (idx !== -1) {
-        const copy = [...prev];
-        const [sel] = copy.splice(idx, 1);
-        return [sel, ...copy];
-      } else {
-        // if absent, insert minimal object at top
-        const minimal = {
-          _id: m._id,
-          name: m.name,
-          area: { _id: m.areaId, name: m.areaName },
-          city: { _id: m.cityId, name: m.cityName },
-          imageUrl: "/Default_Image.png",
-          address: "",
-          prayerTimings: [],
-          nextPrayer: null,
-          fullDetails: null,
-          fullDetailsLoading: false,
-        };
-        return [minimal, ...(prev || [])];
+      // 4️⃣ Ensure city & area are set
+      if (full.city?._id) setCity(full.city._id);
+      if (full.area?._id) setArea(full.area._id);
+
+      // 5️⃣ Load masjids of the same area for grid
+      if (full.area?._id) {
+        await loadMasjidsByArea(full.area._id);
       }
-    });
 
-    // Update global selected masjid in store (minimal shape)
-    setMasjid({
-      _id: m._id,
-      name: m.name,
-      area: { _id: m.areaId, name: m.areaName },
-      city: { _id: m.cityId, name: m.cityName },
-    });
+      // 6️⃣ Move selected masjid to top (UX polish)
+      setMasjids((prev) => {
+        const idx = prev.findIndex((x) => x._id === full._id);
+        if (idx !== -1) {
+          const copy = [...prev];
+          const [sel] = copy.splice(idx, 1);
+          return [sel, ...copy];
+        }
+        return prev;
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to select masjid");
+    }
   }
+
 }

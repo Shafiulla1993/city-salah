@@ -28,8 +28,14 @@ export const publicAPI = {
   getNearestMasjids: ({ lat, lng, limit = 5 }) =>
     httpFetch(`${BASE}/masjids/nearest?lat=${lat}&lng=${lng}&limit=${limit}`),
 
-  /** ---------------- MASJID BY ID ---------------- **/
-  getMasjidById: (id) => httpFetch(`${BASE}/masjids/${id}`),
+ /** ----------------- Masjid by ID or slug ----------------- **/
+    getMasjidById: (id) =>
+    httpFetch(`${BASE}/masjids/${id}`),
+
+  getMasjidByIdentifier: (slug, areaId) => {
+  const qs = areaId ? `?areaId=${areaId}` : "";
+  return httpFetch(`${BASE}/masjids/${slug}${qs}`);
+},
 
   /** ---------------- PRAYER TIMINGS ---------------- **/
   getPrayerTimings: (masjidId) =>

@@ -92,55 +92,99 @@ async function findMasjidById(id) {
  * Expects JSON body with fields matching Masjid model.
  * imageUrl should be a string (Cloudinary or remote URL) if provided.
  */
+import mongoose from "mongoose";
+import Masjid from "@/models/Masjid";
+import City from "@/models/City";
+import Area from "@/models/Area";
+
+/**
+ * Helper: resolve city/area if caller passed a string name instead of ObjectId.
+ */
+async function resolveCityAreaIds({ city, area }) {
+  let cityId = city;
+  let areaId = area;
+
+  if (city && typeof city === "string" && !mongoose.isValidObjectId(city)) {
+    const foundCity = await City.findOne({
+      name: { $regex: `^${city}$`, $options: "i" },
+    });
+    if (!foundCity) throw new Error(`City not found: ${city}`);
+    cityId = foundCity._id;
+  }
+
+  if (area && typeof area === "string" && !mongoose.isValidObjectId(area)) {
+    const areaQuery = { name: { $regex: `^${area}$`, $options: "i" } };
+    if (cityId) areaQuery.city = cityId;
+
+    const foundArea = await Area.findOne(areaQuery);
+    if (!foundArea) throw new Error(`Area not found: ${area}`);
+    areaId = foundArea._id;
+  }
+
+  return { cityId, areaId };
+}
+
+/**
+ * Normalize time
+ */
+function normalizeTime(raw, prayer) {
+  if (!raw) return "";
+
+  let str = raw.toString().toUpperCase().trim();
+  str = str.replace(/\./g, ":");
+  str = str.replace(/AM|PM/g, "").trim();
+
+  let [hh, mm] = str.split(":");
+  if (!mm) mm = "00";
+
+  let h = parseInt(hh, 10) || 0;
+  let m = parseInt(mm, 10) || 0;
+
+  if (h <= 0) h = 12;
+  if (h > 12) h = h % 12 || 12;
+  if (m > 59) m = m % 60;
+
+  const suffix = prayer === "fajr" ? "AM" : "PM";
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")} ${suffix}`;
+}
+
 export async function createMasjidController({ body = {}, user }) {
   try {
     const b = { ...body };
 
-    /* ----------------------------------------------------
-     * 1️⃣ Resolve City & Area IDs
-     * ---------------------------------------------------- */
+    /* ------------------------------------
+     * 1️⃣ Resolve City & Area
+     * ------------------------------------ */
     try {
       const resolved = await resolveCityAreaIds({
         city: b.city,
         area: b.area,
       });
-      if (resolved.cityId) b.city = resolved.cityId;
-      if (resolved.areaId) b.area = resolved.areaId;
+      b.city = resolved.cityId;
+      b.area = resolved.areaId;
     } catch (err) {
-      return {
-        status: 404,
-        json: { success: false, message: err.message },
-      };
+      return { status: 404, json: { success: false, message: err.message } };
     }
 
-    /* ----------------------------------------------------
-     * 2️⃣ Required validations
-     * ---------------------------------------------------- */
-    if (!b.name?.trim()) {
+    /* ------------------------------------
+     * 2️⃣ Validations
+     * ------------------------------------ */
+    if (!b.name?.trim())
       return {
         status: 400,
         json: { success: false, message: "Masjid name is required" },
       };
-    }
 
-    if (!b.city) {
+    if (!b.city || !b.area)
       return {
         status: 400,
-        json: { success: false, message: "City is required" },
+        json: { success: false, message: "City and Area are required" },
       };
-    }
-
-    if (!b.area) {
-      return {
-        status: 400,
-        json: { success: false, message: "Area is required" },
-      };
-    }
 
     if (
       !Array.isArray(b.location?.coordinates) ||
       b.location.coordinates.length !== 2
-    ) {
+    )
       return {
         status: 400,
         json: {
@@ -148,32 +192,26 @@ export async function createMasjidController({ body = {}, user }) {
           message: "`location.coordinates` must be [lng, lat]",
         },
       };
-    }
 
-    /* ----------------------------------------------------
-     * 3️⃣ CONTACTS — PRESERVE INPUT (NO DATA LOSS)
-     * ---------------------------------------------------- */
-    if (Array.isArray(b.contacts)) {
-      b.contacts = b.contacts
-        .filter((c) => c?.role && c?.name?.trim())
-        .map((c) => ({
-          role: c.role,
-          name: c.name.trim(),
-          phone: c.phone?.trim() || "",
-          email: c.email?.trim() || "",
-          note: c.note?.trim() || "",
-        }));
-    } else {
-      b.contacts = [];
-    }
+    /* ------------------------------------
+     * 3️⃣ Contacts
+     * ------------------------------------ */
+    b.contacts = Array.isArray(b.contacts)
+      ? b.contacts
+          .filter((c) => c?.role && c?.name?.trim())
+          .map((c) => ({
+            role: c.role,
+            name: c.name.trim(),
+            phone: c.phone?.trim() || "",
+            email: c.email?.trim() || "",
+            note: c.note?.trim() || "",
+          }))
+      : [];
 
-    /* ----------------------------------------------------
-     * 4️⃣ PRAYER TIMINGS — SAFE NORMALIZATION
-     *    • Accepts [{}]
-     *    • Accepts partial timings
-     *    • Never produces [null]
-     * ---------------------------------------------------- */
-    const EMPTY_TIMINGS = {
+    /* ------------------------------------
+     * 4️⃣ Prayer Timings
+     * ------------------------------------ */
+    const EMPTY = {
       fajr: { azan: "", iqaamat: "" },
       Zohar: { azan: "", iqaamat: "" },
       asr: { azan: "", iqaamat: "" },
@@ -182,16 +220,14 @@ export async function createMasjidController({ body = {}, user }) {
       juma: { azan: "", iqaamat: "" },
     };
 
-    let finalTimings = { ...EMPTY_TIMINGS };
+    let finalTimings = { ...EMPTY };
 
     if (Array.isArray(b.prayerTimings) && b.prayerTimings[0]) {
-      const incoming = b.prayerTimings[0];
-
-      for (const key of Object.keys(EMPTY_TIMINGS)) {
-        if (incoming[key]) {
+      for (const key of Object.keys(EMPTY)) {
+        if (b.prayerTimings[0][key]) {
           finalTimings[key] = {
-            azan: normalizeTime(incoming[key].azan, key),
-            iqaamat: normalizeTime(incoming[key].iqaamat, key),
+            azan: normalizeTime(b.prayerTimings[0][key].azan, key),
+            iqaamat: normalizeTime(b.prayerTimings[0][key].iqaamat, key),
           };
         }
       }
@@ -199,38 +235,35 @@ export async function createMasjidController({ body = {}, user }) {
 
     b.prayerTimings = [finalTimings];
 
-    /* ----------------------------------------------------
-     * 5️⃣ Slug uniqueness per area
-     * ---------------------------------------------------- */
-    const slug = generateSlug(b.name);
-    const exists = await Masjid.findOne({ slug, area: b.area });
-    if (exists) {
+    /* ------------------------------------
+     * 5️⃣ Create (DB enforces uniqueness)
+     * ------------------------------------ */
+    try {
+      const masjid = await Masjid.create({
+        ...b,
+        createdBy: user?._id,
+      });
+
       return {
-        status: 400,
+        status: 201,
         json: {
-          success: false,
-          message: "Another masjid exists in this area",
+          success: true,
+          message: "Masjid created successfully",
+          data: masjid,
         },
       };
+    } catch (err) {
+      if (err.code === 11000) {
+        return {
+          status: 400,
+          json: {
+            success: false,
+            message: "A masjid with this name already exists in this area",
+          },
+        };
+      }
+      throw err;
     }
-
-    /* ----------------------------------------------------
-     * 6️⃣ Create masjid
-     * ---------------------------------------------------- */
-    const masjid = await Masjid.create({
-      ...b,
-      slug,
-      createdBy: user?._id,
-    });
-
-    return {
-      status: 201,
-      json: {
-        success: true,
-        message: "Masjid created successfully",
-        data: masjid,
-      },
-    };
   } catch (err) {
     console.error("createMasjidController error:", err);
     return {
@@ -243,6 +276,7 @@ export async function createMasjidController({ body = {}, user }) {
     };
   }
 }
+
 
 /**
  * Get paginated list of masjids

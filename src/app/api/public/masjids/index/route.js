@@ -1,4 +1,3 @@
-// src/app/api/public/masjids/index/route.js
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Masjid from "@/models/Masjid";
@@ -8,27 +7,50 @@ let cache = {
   expires: 0,
 };
 
-export async function GET() {
+/**
+ * GET /api/public/masjids/index
+ * Optional:
+ *   ?city=<cityId>
+ */
+export async function GET(req) {
   try {
-    // Serve from cache if fresh
     const now = Date.now();
+
+    // -----------------------------
+    // Cache (10 minutes)
+    // -----------------------------
     if (cache.data && cache.expires > now) {
       return NextResponse.json(cache.data, { status: 200 });
     }
 
     await connectDB();
 
-    // Fetch minimal fields only
-    const masjids = await Masjid.find({}).select("name area city").lean();
+    const { searchParams } = new URL(req.url);
+    const cityId = searchParams.get("city");
 
-    const formatted = masjids.map((m) => ({
-      _id: m._id.toString(),
-      name: m.name,
-      areaId: m.area?.toString() || null,
-      cityId: m.city?.toString() || null,
-    }));
+    const filter = {};
+    if (cityId) filter.city = cityId;
 
-    // Cache for 10 minutes
+    // -----------------------------
+    // Lightweight index query
+    // -----------------------------
+    const masjids = await Masjid.find({})
+  .populate("city", "name")
+  .populate("area", "name")
+  .lean();
+
+const formatted = masjids.map((m) => ({
+  slug: m.slug,
+  name: m.name,
+
+  areaId: m.area?._id?.toString() || null,
+  areaName: m.area?.name || "",
+
+  cityId: m.city?._id?.toString() || null,
+  cityName: m.city?.name || "",
+}));
+
+
     cache = {
       data: formatted,
       expires: now + 10 * 60 * 1000,
@@ -38,8 +60,9 @@ export async function GET() {
   } catch (err) {
     console.error("Masjid index error:", err);
     return NextResponse.json(
-      { message: "Server Error", error: err.message },
+      { success: false, message: "Failed to load masjid index" },
       { status: 500 }
     );
   }
 }
+

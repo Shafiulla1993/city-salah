@@ -1,28 +1,41 @@
+// src/app/api/public/masjids/[id]/route.js
+
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Masjid from "@/models/Masjid";
-import City from "@/models/City";
-import Area from "@/models/Area";
+import mongoose from "mongoose";
 
 export async function GET(request) {
   try {
     await connectDB();
 
-    // Read ID manually from URL path
+    // -----------------------------
+    // Read identifier from URL
+    // -----------------------------
     const url = new URL(request.url);
     const parts = url.pathname.split("/");
-    const id = parts[parts.length - 1];
+    const identifier = parts[parts.length - 1];
 
-    console.log("PARAM ID:", id);
-
-    if (!id) {
+    if (!identifier) {
       return NextResponse.json(
-        { message: "Masjid ID is required" },
+        { message: "Masjid identifier is required" },
         { status: 400 }
       );
     }
 
-    const masjid = await Masjid.findById(id)
+    // -----------------------------
+    // Decide: _id or slug
+    // -----------------------------
+    const isObjectId = mongoose.Types.ObjectId.isValid(identifier);
+
+    const query = isObjectId
+      ? { _id: identifier }
+      : { slug: identifier };
+
+    // -----------------------------
+    // Fetch masjid
+    // -----------------------------
+    const masjid = await Masjid.findOne(query)
       .populate("city", "name timezone")
       .populate("area", "name")
       .lean();
@@ -34,9 +47,12 @@ export async function GET(request) {
       );
     }
 
-    return NextResponse.json(masjid);
+    return NextResponse.json(masjid, { status: 200 });
   } catch (err) {
     console.error("Error fetching masjid:", err);
-    return NextResponse.json({ message: err.message }, { status: 500 });
+    return NextResponse.json(
+      { message: "Server error" },
+      { status: 500 }
+    );
   }
 }
