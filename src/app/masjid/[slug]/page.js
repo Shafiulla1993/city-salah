@@ -1,46 +1,40 @@
 // /src/app/masjid/[slug]/page.js
 
+
 import { notFound } from "next/navigation";
 import { serverFetch } from "@/lib/http/serverFetch";
 
+
 export async function generateMetadata({ params }) {
-  const slug = params.slug;
+  const { slug } = await params; // ✅ FIX
+
   const id = slug.split("-").pop();
 
   const masjid = await serverFetch(`/api/public/masjids/${id}`);
+
+
   if (!masjid) return {};
 
   const city = masjid.city?.name || "";
   const area = masjid.area?.name || "";
 
-  const title = `${masjid.name}, ${area}, ${city} – Prayer Timings | CitySalah`;
-  const description = `View iqaamat times, prayer schedule, and contact details for ${masjid.name} in ${area}, ${city}.`;
-
   return {
-    title,
-    description,
+    title: `${masjid.name}, ${area}, ${city} – Prayer Timings | CitySalah`,
+    description: `View prayer timings, Jummah details, and contact information for ${masjid.name} in ${area}, ${city}.`,
     alternates: {
       canonical: `https://citysalah.in/masjid/${masjid.slug}-${masjid._id}`,
-    },
-    openGraph: {
-      title,
-      description,
-      images: [
-        {
-          url: `https://citysalah.in/api/og/masjid/${masjid._id}`,
-          width: 1080,
-          height: 1920,
-        },
-      ],
     },
   };
 }
 
 export default async function MasjidPage({ params }) {
-  const slug = params.slug;
+  const { slug } = await params; // ✅ FIX
+
   const id = slug.split("-").pop();
 
-  const masjid = await serverFetch(`/api/public/masjids/${id}`);
+  const masjids = await serverFetch("/api/public/masjids");
+  const masjid = masjids.find((m) => m._id === id);
+
   if (!masjid) notFound();
 
   const timings = masjid.prayerTimings?.[0] || {};
@@ -55,14 +49,15 @@ export default async function MasjidPage({ params }) {
 
       <p className="mt-4 text-gray-700">
         {masjid.name} is located in {area}, {city}. Below are the daily
-        prayer iqaamat timings.
+        prayer timings.
       </p>
 
       <ul className="mt-6 space-y-2">
         {Object.entries(timings).map(([k, v]) => (
           <li key={k} className="capitalize">
             <strong>{k}:</strong>{" "}
-            {v?.iqaamat || "--"}
+            {v?.azan || "-"}{" "}
+            {v?.iqaamat ? `(Iqamat: ${v.iqaamat})` : ""}
           </li>
         ))}
       </ul>
