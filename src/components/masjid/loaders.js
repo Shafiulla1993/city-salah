@@ -1,78 +1,101 @@
-// src/components/masjid/loaders
+// src/components/masjid/loaders.js
+"use client";
 
 import Skeleton from "@/components/ui/Skeleton";
 
-// 🔹 Announcement Box Loader
-export function AnnouncementBoxSkeleton() {
+/* ===============================
+   FRONT CARD SKELETON
+================================ */
+export function MasjidCardSkeleton() {
   return (
-    <div className="bg-white shadow rounded p-4 mb-4">
-      <Skeleton className="h-6 w-1/3 mb-3" />
-      <Skeleton className="h-4 w-full mb-2" />
-      <Skeleton className="h-4 w-5/6 mb-2" />
-      <Skeleton className="h-4 w-3/4" />
-    </div>
-  );
-}
+    <div
+      className="relative w-full max-w-[420px] mx-auto rounded-2xl bg-white overflow-hidden shadow"
+      style={{ height: "82vh" }}
+    >
+      {/* Header */}
+      <div className="h-[10%] flex items-center justify-between px-4">
+        <Skeleton className="h-5 w-40" />
+        <div className="space-y-1">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+      </div>
 
-// 🔹 Contact Info Loader
-export function ContactInfoLoader() {
-  return (
-    <div className="bg-white/90 rounded-xl shadow-md border border-white/30 backdrop-blur p-4">
-      <Skeleton className="h-6 w-32 mb-4" />
+      {/* Image */}
+      <div className="h-[70%] flex items-center justify-center bg-slate-100">
+        <Skeleton className="h-[90%] w-[90%] rounded-xl" />
+      </div>
 
-      <div className="space-y-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i}>
-            <Skeleton className="h-5 w-2/3 mb-1" />
-            <Skeleton className="h-4 w-40 mb-1" />
-            <Skeleton className="h-4 w-32" />
-          </div>
-        ))}
+      {/* Bottom */}
+      <div className="h-[20%] px-4 py-3 flex items-center justify-between">
+        <div className="space-y-1">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+
+        <Skeleton className="w-14 h-14 rounded-full" />
       </div>
     </div>
   );
 }
 
-// 🔹 Masjid Info Loader
-export function MasjidInfoLoader() {
+/* ===============================
+   BACK CARD SKELETON
+================================ */
+export function MasjidCardBackSkeleton() {
   return (
-    <div className="bg-white shadow rounded p-4 animate-pulse space-y-4">
-      <div className="w-full h-40 sm:h-48 md:h-56 lg:h-64 bg-slate-300 rounded"></div>
-      <Skeleton className="h-6 w-2/3" />
-      <Skeleton className="h-4 w-1/2" />
-      <Skeleton className="h-4 w-1/3" />
-    </div>
-  );
-}
+    <div className="w-full h-full p-4 bg-white rounded-2xl space-y-4">
+      {/* Header */}
+      <div className="flex justify-between">
+        <Skeleton className="h-5 w-40" />
+        <div className="space-y-1">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+      </div>
 
-// 🔹 Prayer Timings Loader
-export function PrayerTimingsLoader() {
-  return (
-    <div className="bg-white shadow rounded p-4">
-      <Skeleton className="h-6 w-40 mb-4" />
-
-      <div className="space-y-3">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="flex justify-between">
-            <Skeleton className="w-20 h-4" />
-            <Skeleton className="w-16 h-4" />
-            <Skeleton className="w-16 h-4" />
+      {/* Prayer Timings */}
+      <div className="grid grid-cols-2 gap-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="p-3 border rounded-xl space-y-2">
+            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-3 w-20" />
           </div>
         ))}
+      </div>
+
+      {/* Contacts */}
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-24" />
+        <div className="grid grid-cols-3 gap-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 rounded-lg" />
+          ))}
+        </div>
+      </div>
+
+      {/* Address */}
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-10 w-full rounded-lg" />
       </div>
     </div>
   );
 }
 
-//🔹 AuqatusTimingsLoader
-
-export default function AuqatusTimingsLoader() {
+// 🔹 Auqatus Timings Skeleton Loader
+export function AuqatusTimingsLoader() {
   return (
     <div className="bg-white shadow rounded-lg p-4 animate-pulse">
+      {/* Title */}
       <Skeleton className="h-7 w-56 mx-auto mb-6" />
 
+      {/* Rows */}
       <div className="space-y-4">
-        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+        {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
             className="grid grid-cols-3 gap-4 py-2 border-b last:border-none"

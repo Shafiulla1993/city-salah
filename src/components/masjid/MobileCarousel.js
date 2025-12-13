@@ -1,3 +1,5 @@
+// src/components/masjid/MobileCarousel.js
+
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";

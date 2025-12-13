@@ -87,66 +87,7 @@ async function findMasjidById(id) {
   }
   return { masjid };
 }
-/**
- * Create Masjid (JSON)
- * Expects JSON body with fields matching Masjid model.
- * imageUrl should be a string (Cloudinary or remote URL) if provided.
- */
-import mongoose from "mongoose";
-import Masjid from "@/models/Masjid";
-import City from "@/models/City";
-import Area from "@/models/Area";
 
-/**
- * Helper: resolve city/area if caller passed a string name instead of ObjectId.
- */
-async function resolveCityAreaIds({ city, area }) {
-  let cityId = city;
-  let areaId = area;
-
-  if (city && typeof city === "string" && !mongoose.isValidObjectId(city)) {
-    const foundCity = await City.findOne({
-      name: { $regex: `^${city}$`, $options: "i" },
-    });
-    if (!foundCity) throw new Error(`City not found: ${city}`);
-    cityId = foundCity._id;
-  }
-
-  if (area && typeof area === "string" && !mongoose.isValidObjectId(area)) {
-    const areaQuery = { name: { $regex: `^${area}$`, $options: "i" } };
-    if (cityId) areaQuery.city = cityId;
-
-    const foundArea = await Area.findOne(areaQuery);
-    if (!foundArea) throw new Error(`Area not found: ${area}`);
-    areaId = foundArea._id;
-  }
-
-  return { cityId, areaId };
-}
-
-/**
- * Normalize time
- */
-function normalizeTime(raw, prayer) {
-  if (!raw) return "";
-
-  let str = raw.toString().toUpperCase().trim();
-  str = str.replace(/\./g, ":");
-  str = str.replace(/AM|PM/g, "").trim();
-
-  let [hh, mm] = str.split(":");
-  if (!mm) mm = "00";
-
-  let h = parseInt(hh, 10) || 0;
-  let m = parseInt(mm, 10) || 0;
-
-  if (h <= 0) h = 12;
-  if (h > 12) h = h % 12 || 12;
-  if (m > 59) m = m % 60;
-
-  const suffix = prayer === "fajr" ? "AM" : "PM";
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")} ${suffix}`;
-}
 
 export async function createMasjidController({ body = {}, user }) {
   try {

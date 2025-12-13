@@ -15,6 +15,7 @@ import { sortMasjidsByNext } from "@/utils/prayerSorting";
 import { getPrevAndNextIqaamats } from "@/hooks/usePrayerCountdown";
 import { searchItems } from "@/lib/search/searchCore";
 import { SEARCH_PRESETS } from "@/lib/search/searchPresets";
+import { MasjidCardSkeleton } from "@/components/masjid/loaders";
 
 export default function ClientHome() {
   const {
@@ -41,6 +42,11 @@ export default function ClientHome() {
   const [areas, setAreas] = useState([]);
   const [masjids, setMasjids] = useState([]);
   const [loadingMasjids, setLoadingMasjids] = useState(false);
+
+  const skeletonCount = Math.max(
+    1,
+    Math.min(3, masjids?.length || 1)
+  );
 
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -366,8 +372,13 @@ export default function ClientHome() {
         {/* MASJID GRID / CAROUSEL */}
         <div className="mt-4">
           {loadingMasjids || loadingLocation ? (
-            <div className="text-center text-slate-500 py-20">Loading…</div>
+            <div className="flex flex-col lg:flex-row gap-6 justify-center">
+              {Array.from({ length: skeletonCount }).map((_, i) => (
+                <MasjidCardSkeleton key={i} />
+              ))}
+            </div>
           ) : masjids.length ? (
+
             <MasjidGrid
               masjids={masjids}
               onExpand={async (m) => {

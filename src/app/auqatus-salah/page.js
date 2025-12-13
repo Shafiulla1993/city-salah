@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { publicAPI } from "@/lib/api/public";
 import { toast } from "react-toastify";
 import PrayerTimingsTable from "@/components/masjid/PrayerTimingsTable";
-import AuqatusTimingsLoader from "@/components/masjid/loaders";
+import { AuqatusTimingsLoader } from "@/components/masjid/loaders";
 
 export default function AuqatusSalahPage() {
   const [cities, setCities] = useState([]);

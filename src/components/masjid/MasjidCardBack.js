@@ -1,3 +1,5 @@
+// src/components/masjid/MasjidCardBack.js
+
 "use client";
 
 import React, { useEffect } from "react";

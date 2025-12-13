@@ -1,3 +1,5 @@
+// src/components/masjid/MasjidGrid.js
+
 "use client";
 
 import React from "react";

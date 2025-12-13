@@ -1,9 +1,12 @@
+// src/components/masjid/MasjidCard.js
+
 "use client";
 
 import { useState, useRef, useEffect } from "react";
 import MasjidCardFront from "./MasjidCardFront";
 import MasjidCardBack from "./MasjidCardBack";
 import "@/styles/flip.css";
+import { MasjidCardBackSkeleton } from "./loaders";
 
 export default function MasjidCard({ masjid, onExpand }) {
   const [flipped, setFlipped] = useState(false);
@@ -60,9 +63,8 @@ export default function MasjidCard({ masjid, onExpand }) {
     >
       {/* 3D card */}
       <div
-        className={`card-inner w-full h-full rounded-2xl ${
-          flipped ? "card-flipped" : ""
-        }`}
+        className={`card-inner w-full h-full rounded-2xl ${flipped ? "card-flipped" : ""
+          }`}
       >
         {/* FRONT */}
         <div className="card-face card-front w-full h-full rounded-2xl overflow-hidden bg-white">
@@ -77,8 +79,13 @@ export default function MasjidCard({ masjid, onExpand }) {
             scrollbarWidth: "none",
           }}
         >
-          <MasjidCardBack masjid={masjid} />
+          {masjid?.fullDetailsLoading ? (
+            <MasjidCardBackSkeleton />
+          ) : (
+            <MasjidCardBack masjid={masjid} />
+          )}
         </div>
+
       </div>
     </div>
   );
