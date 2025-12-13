@@ -136,6 +136,29 @@ export default function MasjidCardBack({ masjid }) {
             📍 View on Google Maps
           </a>
         )}
+        {data?._id && (
+          <button
+            onClick={() => {
+              const shareUrl = `${window.location.origin}/api/og/masjid/${data._id}`;
+
+              if (navigator.share) {
+                navigator.share({
+                  title: `${data.name} Prayer Timings`,
+                  text: `Iqaamat timings for ${data.name}`,
+                  url: shareUrl,
+                });
+              } else {
+                navigator.clipboard.writeText(shareUrl);
+                alert("Masjid prayer timings link copied!");
+              }
+            }}
+            className="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-semibold"
+          >
+            📤 Share Prayer Timings
+          </button>
+        )}
+
+
       </div>
     </div>
   );

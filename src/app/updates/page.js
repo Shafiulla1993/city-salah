@@ -1,55 +1,29 @@
 // src/app/updates/page.js
-"use client";
+import UpdatesClient from "./UpdatesClient";
 
-import { useEffect } from "react";
-import { useMasjidStore } from "@/store/useMasjidStore";
-import MasjidAnnouncements from "@/components/updates/MasjidAnnouncements";
-import GeneralAnnouncements from "@/components/updates/GeneralAnnouncements";
-import ThoughtOfDay from "@/components/updates/ThoughtOfDay";
+export const metadata = {
+  title: "Community Updates & Announcements | CitySalah",
+  description:
+    "Stay updated with the latest masjid announcements, community notices, and daily Islamic reminders on CitySalah.",
+  alternates: {
+    canonical: "https://citysalah.in/updates",
+  },
+  openGraph: {
+    title: "Community Updates | CitySalah",
+    description:
+      "Latest masjid announcements, general notices, and thought of the day.",
+    url: "https://citysalah.in/updates",
+    siteName: "CitySalah",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Community Updates | CitySalah",
+    description:
+      "Masjid announcements, community updates, and daily Islamic reminders.",
+  },
+};
 
 export default function UpdatesPage() {
-  const init = useMasjidStore((s) => s.init);
-  const selectedMasjid = useMasjidStore((s) => s.selectedMasjid);
-
-  useEffect(() => {
-    init(); // ensures masjid loaded even after refresh
-  }, [init]);
-
-  const masjidId = selectedMasjid?._id;
-
-  return (
-    <div className="min-h-screen w-full px-3 py-8">
-      <div className="max-w-3xl mx-auto space-y-8">
-        {/* 🔥 Masjid Announcements */}
-        <div className="bg-white/95 rounded-xl shadow-xl border border-white/40 backdrop-blur p-6">
-          <h2 className="text-xl font-bold mb-4 text-slate-800 tracking-wide">
-            Masjid Announcements
-          </h2>
-          {masjidId ? (
-            <MasjidAnnouncements masjidId={masjidId} />
-          ) : (
-            <p className="text-slate-600 text-sm italic">
-              No masjid selected. Please visit the Home page to choose one.
-            </p>
-          )}
-        </div>
-
-        {/* 🔥 General Announcements */}
-        <div className="bg-white/95 rounded-xl shadow-xl border border-white/40 backdrop-blur p-6">
-          <h2 className="text-xl font-bold mb-4 text-slate-800 tracking-wide">
-            General Announcements
-          </h2>
-          <GeneralAnnouncements />
-        </div>
-
-        {/* 🔥 Thought of the Day */}
-        <div className="bg-white/95 rounded-xl shadow-xl border border-white/40 backdrop-blur p-6">
-          <h2 className="text-xl font-bold mb-4 text-slate-800 tracking-wide">
-            Thought of the Day
-          </h2>
-          <ThoughtOfDay />
-        </div>
-      </div>
-    </div>
-  );
+  return <UpdatesClient />;
 }

@@ -1,5 +1,28 @@
 // src/app/contact/page.js
 
+export const metadata = {
+  title: "Contact CitySalah | Masjid & Prayer Timings Support",
+  description:
+    "Contact CitySalah for support, suggestions, or masjid-related updates. Reach us easily via WhatsApp or email.",
+  alternates: {
+    canonical: "https://citysalah.in/contact",
+  },
+  openGraph: {
+    title: "Contact CitySalah",
+    description:
+      "Get in touch with CitySalah for masjid information, prayer timings, and community support.",
+    url: "https://citysalah.in/contact",
+    siteName: "CitySalah",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Contact CitySalah",
+    description:
+      "Reach CitySalah support for masjid updates and prayer timing assistance.",
+  },
+};
+
 export default function ContactPage() {
   return (
     <div className="min-h-[80vh] flex flex-col gap-12 px-3 py-10 max-w-4xl mx-auto">
@@ -19,7 +42,7 @@ export default function ContactPage() {
 
       {/* Contact Sections */}
       <div className="grid sm:grid-cols-2 gap-8">
-        {/* WhatsApp Section */}
+        {/* WhatsApp */}
         <div className="bg-white/95 rounded-xl shadow-xl border border-white/40 backdrop-blur p-6">
           <h2 className="text-xl font-semibold text-green-700 mb-3 tracking-wide">
             WhatsApp Support
@@ -39,7 +62,7 @@ export default function ContactPage() {
           </p>
         </div>
 
-        {/* Email Section */}
+        {/* Email */}
         <div className="bg-white/95 rounded-xl shadow-xl border border-white/40 backdrop-blur p-6">
           <h2 className="text-xl font-semibold text-blue-700 mb-3 tracking-wide">
             Email Support
@@ -55,7 +78,6 @@ export default function ContactPage() {
         </div>
       </div>
 
-      {/* Footer */}
       <p className="text-center text-slate-600 text-sm mt-4">
         We truly appreciate your support, feedback, and patience.
         <br />
