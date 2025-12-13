@@ -94,35 +94,48 @@ async function findMasjidById(id) {
  */
 export async function createMasjidController({ body = {}, user }) {
   try {
-    let b = { ...body };
+    const b = { ...body };
 
-    // 1️⃣ Resolve city & area IDs
+    /* ----------------------------------------------------
+     * 1️⃣ Resolve City & Area IDs
+     * ---------------------------------------------------- */
     try {
-      const resolved = await resolveCityAreaIds({ city: b.city, area: b.area });
+      const resolved = await resolveCityAreaIds({
+        city: b.city,
+        area: b.area,
+      });
       if (resolved.cityId) b.city = resolved.cityId;
       if (resolved.areaId) b.area = resolved.areaId;
     } catch (err) {
-      return { status: 404, json: { success: false, message: err.message } };
+      return {
+        status: 404,
+        json: { success: false, message: err.message },
+      };
     }
 
-    // 2️⃣ Basic validations
-    if (!b.name)
+    /* ----------------------------------------------------
+     * 2️⃣ Required validations
+     * ---------------------------------------------------- */
+    if (!b.name?.trim()) {
       return {
         status: 400,
         json: { success: false, message: "Masjid name is required" },
       };
+    }
 
-    if (!b.city)
+    if (!b.city) {
       return {
         status: 400,
         json: { success: false, message: "City is required" },
       };
+    }
 
-    if (!b.area)
+    if (!b.area) {
       return {
         status: 400,
         json: { success: false, message: "Area is required" },
       };
+    }
 
     if (
       !Array.isArray(b.location?.coordinates) ||
@@ -137,44 +150,78 @@ export async function createMasjidController({ body = {}, user }) {
       };
     }
 
-    // 3️⃣ Ensure prayer timings array exists
-    if (!Array.isArray(b.prayerTimings) || !b.prayerTimings[0]) {
-      b.prayerTimings = [
-        { fajr: {}, Zohar: {}, asr: {}, maghrib: {}, isha: {}, juma: {} },
-      ];
+    /* ----------------------------------------------------
+     * 3️⃣ CONTACTS — PRESERVE INPUT (NO DATA LOSS)
+     * ---------------------------------------------------- */
+    if (Array.isArray(b.contacts)) {
+      b.contacts = b.contacts
+        .filter((c) => c?.role && c?.name?.trim())
+        .map((c) => ({
+          role: c.role,
+          name: c.name.trim(),
+          phone: c.phone?.trim() || "",
+          email: c.email?.trim() || "",
+          note: c.note?.trim() || "",
+        }));
+    } else {
+      b.contacts = [];
     }
 
-    // 4️⃣ Normalize timings
-    const p = b.prayerTimings[0];
-    const keys = ["fajr", "Zohar", "asr", "maghrib", "isha", "juma"];
-    keys.forEach((k) => {
-      if (!p[k]) p[k] = {};
-      p[k].azan = normalizeTime(p[k].azan, k);
-      p[k].iqaamat = normalizeTime(p[k].iqaamat, k);
-    });
+    /* ----------------------------------------------------
+     * 4️⃣ PRAYER TIMINGS — SAFE NORMALIZATION
+     *    • Accepts [{}]
+     *    • Accepts partial timings
+     *    • Never produces [null]
+     * ---------------------------------------------------- */
+    const EMPTY_TIMINGS = {
+      fajr: { azan: "", iqaamat: "" },
+      Zohar: { azan: "", iqaamat: "" },
+      asr: { azan: "", iqaamat: "" },
+      maghrib: { azan: "", iqaamat: "" },
+      isha: { azan: "", iqaamat: "" },
+      juma: { azan: "", iqaamat: "" },
+    };
 
-    // 5️⃣ Ensure contacts is array
-    if (!Array.isArray(b.contacts)) b.contacts = [];
+    let finalTimings = { ...EMPTY_TIMINGS };
 
-    // 6️⃣ Slug uniqueness check
-    const slug = b.name.toLowerCase().replace(/\s+/g, "-");
+    if (Array.isArray(b.prayerTimings) && b.prayerTimings[0]) {
+      const incoming = b.prayerTimings[0];
 
+      for (const key of Object.keys(EMPTY_TIMINGS)) {
+        if (incoming[key]) {
+          finalTimings[key] = {
+            azan: normalizeTime(incoming[key].azan, key),
+            iqaamat: normalizeTime(incoming[key].iqaamat, key),
+          };
+        }
+      }
+    }
+
+    b.prayerTimings = [finalTimings];
+
+    /* ----------------------------------------------------
+     * 5️⃣ Slug uniqueness per area
+     * ---------------------------------------------------- */
+    const slug = generateSlug(b.name);
     const exists = await Masjid.findOne({ slug, area: b.area });
-    if (exists)
+    if (exists) {
       return {
         status: 400,
-        json: { success: false, message: "Another masjid exists in this area" },
+        json: {
+          success: false,
+          message: "Another masjid exists in this area",
+        },
       };
+    }
 
-    // 7️⃣ Build payload
-    const masjidData = {
+    /* ----------------------------------------------------
+     * 6️⃣ Create masjid
+     * ---------------------------------------------------- */
+    const masjid = await Masjid.create({
       ...b,
       slug,
       createdBy: user?._id,
-    };
-
-    // 8️⃣ Save
-    const masjid = await Masjid.create(masjidData);
+    });
 
     return {
       status: 201,

@@ -2,22 +2,23 @@
 "use client";
 
 import React from "react";
-import usePrayerCountdown from "@/hooks/usePrayerCountdown";
+import usePrayerCountdown, {
+  getPrevAndNextIqaamats,
+} from "@/hooks/usePrayerCountdown";
 
 export default function MasjidCardFront({ masjid }) {
   const timings = masjid.prayerTimings?.[0] || {};
 
-  const {
-    nextPrayer = null,
-    nextTime = null,
-    secondsLeft = null,
-    percent = 0,
-  } = usePrayerCountdown(timings);
+  // ✅ derive next & prev correctly
+  const { next, prev } = getPrevAndNextIqaamats(timings);
 
-  const safePercent = Number.isFinite(percent) ? percent : 0;
+  // ✅ pass correct arguments to hook
+  const { remainingStr, progress } = usePrayerCountdown(next?.time, prev?.time);
+
   const radius = 22;
   const circumference = 2 * Math.PI * radius;
-  const offset = (circumference * (100 - safePercent)) / 100;
+  const offset =
+    circumference - circumference * (Number.isFinite(progress) ? progress : 0);
 
   return (
     <div className="w-full h-full bg-white rounded-2xl flex flex-col overflow-hidden">
@@ -44,31 +45,34 @@ export default function MasjidCardFront({ masjid }) {
       <div className="h-[20%] px-4 py-3 flex items-center justify-between">
         <div>
           <div className="text-xs text-slate-500">Upcoming</div>
-          <div className="font-semibold text-slate-800">
-            {nextPrayer ? nextPrayer.toUpperCase() : "--"}
+          <div className="font-semibold text-slate-800 uppercase">
+            {next?.name || "--"}
           </div>
           <div className="text-sm font-mono text-slate-600">
-            {nextTime || "-- : --"}
+            {next?.timeStr || "--:--"}
           </div>
         </div>
 
-        {/* Countdown */}
+        {/* Countdown Ring */}
         <div className="relative w-14 h-14">
-          <svg className="w-full h-full rotate-[-90deg]">
+          <svg className="w-full h-full -rotate-90">
+            {/* Background track */}
             <circle
               cx="28"
               cy="28"
               r={radius}
-              stroke="#e2e8f0"
-              strokeWidth="4"
+              stroke="#cbd5e1" // slate-300
+              strokeWidth="6"
               fill="transparent"
             />
+
+            {/* Progress ring */}
             <circle
               cx="28"
               cy="28"
               r={radius}
-              stroke="#6366f1"
-              strokeWidth="4"
+              stroke="#16a34a" // strong green
+              strokeWidth="6"
               strokeDasharray={circumference}
               strokeDashoffset={offset}
               strokeLinecap="round"
@@ -76,8 +80,8 @@ export default function MasjidCardFront({ masjid }) {
             />
           </svg>
 
-          <div className="absolute inset-0 flex items-center justify-center text-[10px] text-slate-700">
-            {Number.isFinite(secondsLeft) ? `${secondsLeft}s` : "--"}
+          <div className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-slate-800 tracking-tigh">
+            {remainingStr}
           </div>
         </div>
       </div>

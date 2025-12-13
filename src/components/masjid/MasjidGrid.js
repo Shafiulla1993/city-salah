@@ -18,15 +18,17 @@ export default function MasjidGrid({ masjids = [], onExpand }) {
       <div className="hidden lg:block w-full">
         <div
           className="
-            grid 
-            gap-10
-            w-full
-            grid-cols-[repeat(auto-fill,minmax(380px,1fr))]
-            xl:grid-cols-[repeat(auto-fill,minmax(420px,1fr))]
-          "
+      grid
+      mx-auto
+      justify-center
+      gap-6
+      grid-cols-[repeat(auto-fit,minmax(320px,1fr))]
+      xl:grid-cols-[repeat(auto-fit,minmax(360px,1fr))]
+      max-w-[1280px]
+    "
         >
           {masjids.map((m) => (
-            <div key={m._id} className="overflow-visible">
+            <div key={m._id} className="flex justify-center">
               <MasjidCard masjid={m} onExpand={onExpand} />
             </div>
           ))}

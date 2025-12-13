@@ -1,97 +1,140 @@
-// src/components/masjid/MasjidCardBack.js
 "use client";
 
 import React, { useEffect } from "react";
 
-function PrayerCard({ title, time1, time2 }) {
+/* ---------------- Prayer Card ---------------- */
+function PrayerCard({ title, azan, iqaamat }) {
   return (
     <div className="p-3 bg-white rounded-xl border shadow-sm">
       <div className="font-semibold text-slate-800">{title}</div>
-      <div className="text-sm text-slate-600">Azaan: {time1 || "--"}</div>
-      <div className="text-sm text-slate-600">Iqaamat: {time2 || "--"}</div>
+      <div className="text-sm text-slate-600">Azaan: {azan || "--"}</div>
+      <div className="text-sm text-slate-600">Iqaamat: {iqaamat || "--"}</div>
+    </div>
+  );
+}
+
+/* ---------------- Contact Column ---------------- */
+function ContactColumn({ title, contact }) {
+  return (
+    <div className="p-4">
+      <div className="font-semibold text-slate-800 mb-1">{title}</div>
+      <div className="text-sm text-slate-700">
+        Name: {contact?.name || "--"}
+      </div>
+      <div className="text-sm text-slate-600">
+        Phone: {contact?.phone || "--"}
+      </div>
     </div>
   );
 }
 
 export default function MasjidCardBack({ masjid }) {
-  const full = masjid.fullDetails || {};
-  const timings = full.prayerTimings || masjid.prayerTimings?.[0] || {};
-  const contacts = full.contacts || [];
+  /* -------------------------------------------------
+     🔑 NORMALIZE DATA SOURCE (THIS FIXES YOUR ISSUE)
+  -------------------------------------------------- */
+  const data = masjid?.fullDetails || masjid;
 
-  // SEO update
+  const timings = data?.prayerTimings?.[0] || {};
+  const contacts = data?.contacts || [];
+
+  const imam = contacts.find((c) => c.role === "imam");
+  const mozin = contacts.find((c) => c.role === "mozin");
+  const mutawalli = contacts.find((c) => c.role === "mutawalli");
+
+  // coordinates = [lng, lat]
+  const lng = data?.location?.coordinates?.[0];
+  const lat = data?.location?.coordinates?.[1];
+
+  const mapUrl =
+    typeof lat === "number" && typeof lng === "number"
+      ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+      : null;
+
+  /* ---------------- SEO ---------------- */
   useEffect(() => {
-    document.title = `${masjid.name} – ${masjid.area?.name}, ${masjid.city?.name} | Prayer Timings`;
-  }, [masjid]);
+    if (data?.name) {
+      document.title = `${data.name} – ${data.area?.name}, ${data.city?.name} | Prayer Timings`;
+    }
+  }, [data]);
 
   return (
-    <div className="w-full h-full p-4 overflow-y-auto overscroll-contain bg-white rounded-2xl">
+    <div className="w-full h-full p-4 overflow-y-auto bg-white rounded-2xl">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <div className="font-bold text-lg">{masjid.name}</div>
+        <div className="font-bold text-lg">{data?.name}</div>
         <div className="text-sm text-slate-500 text-right">
-          {masjid.area?.name}
+          {data?.area?.name}
           <br />
-          {masjid.city?.name}
+          {data?.city?.name}
         </div>
       </div>
 
-      {/* Namaz Timings */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      {/* Prayer Timings */}
+      <div className="grid grid-cols-2 gap-3 mb-6">
         <PrayerCard
           title="Fajr"
-          time1={timings.fajr?.azan}
-          time2={timings.fajr?.iqaamat}
+          azan={timings.fajr?.azan}
+          iqaamat={timings.fajr?.iqaamat}
         />
         <PrayerCard
           title="Zohar"
-          time1={timings.Zohar?.azan}
-          time2={timings.Zohar?.iqaamat}
+          azan={timings.Zohar?.azan}
+          iqaamat={timings.Zohar?.iqaamat}
         />
         <PrayerCard
           title="Asr"
-          time1={timings.asr?.azan}
-          time2={timings.asr?.iqaamat}
+          azan={timings.asr?.azan}
+          iqaamat={timings.asr?.iqaamat}
         />
         <PrayerCard
           title="Maghrib"
-          time1={timings.maghrib?.azan}
-          time2={timings.maghrib?.iqaamat}
+          azan={timings.maghrib?.azan}
+          iqaamat={timings.maghrib?.iqaamat}
         />
         <PrayerCard
           title="Isha"
-          time1={timings.isha?.azan}
-          time2={timings.isha?.iqaamat}
+          azan={timings.isha?.azan}
+          iqaamat={timings.isha?.iqaamat}
         />
         <PrayerCard
           title="Juma"
-          time1={timings.juma?.azan}
-          time2={timings.juma?.iqaamat}
+          azan={timings.juma?.azan}
+          iqaamat={timings.juma?.iqaamat}
         />
       </div>
 
       {/* Contacts */}
-      <div className="mb-4">
+      <div className="mb-6">
         <div className="font-semibold text-slate-800 mb-2">Contacts</div>
 
-        {contacts.length ? (
-          contacts.map((c, i) => (
-            <div key={i} className="bg-white rounded-xl shadow p-3 border mb-2">
-              <div className="font-medium capitalize">{c.role}</div>
-              <div>{c.name}</div>
-              {c.phone && <div>📞 {c.phone}</div>}
-            </div>
-          ))
-        ) : (
-          <div className="text-sm text-slate-500">No contacts provided</div>
-        )}
+        <div className="border rounded-xl bg-white overflow-hidden">
+          <div className="grid grid-cols-3 divide-x">
+            <ContactColumn title="Imam" contact={imam} />
+            <ContactColumn title="Mozin" contact={mozin} />
+            <ContactColumn title="Zimmedar" contact={mutawalli} />
+          </div>
+        </div>
       </div>
 
-      {/* Address */}
-      {masjid.address && (
-        <div className="bg-white border shadow-sm p-4 rounded-xl text-slate-800">
-          {masjid.address}
+      {/* Address + Map */}
+      <div className="border rounded-xl bg-white p-4">
+        <div className="font-semibold text-slate-800 mb-1">Address</div>
+
+        <div className="text-sm text-slate-700 mb-3">
+          {data?.address || "--"}
         </div>
-      )}
+
+        {mapUrl && (
+          <a
+            href={mapUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-medium"
+          >
+            📍 View on Google Maps
+          </a>
+        )}
+      </div>
     </div>
   );
 }

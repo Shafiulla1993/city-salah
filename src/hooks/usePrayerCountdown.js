@@ -2,17 +2,35 @@
 import { useEffect, useState } from "react";
 
 function parseTimeString(str) {
-  if (!str) return null;
+  if (!str || typeof str !== "string") return null;
 
   const now = new Date();
-  const [h, m] = str.split(":").map(Number);
 
-  if (isNaN(h) || isNaN(m)) return null;
+  let hours, minutes;
+
+  // Handle 12-hour format with AM/PM
+  if (str.toUpperCase().includes("AM") || str.toUpperCase().includes("PM")) {
+    const [time, modifier] = str.trim().split(" ");
+    if (!time || !modifier) return null;
+
+    const [h, m] = time.split(":").map(Number);
+    if (isNaN(h) || isNaN(m)) return null;
+
+    hours = h % 12;
+    if (modifier.toUpperCase() === "PM") hours += 12;
+    minutes = m;
+  } else {
+    // Handle 24-hour format
+    const [h, m] = str.split(":").map(Number);
+    if (isNaN(h) || isNaN(m)) return null;
+    hours = h;
+    minutes = m;
+  }
 
   const d = new Date();
-  d.setHours(h, m, 0, 0);
+  d.setHours(hours, minutes, 0, 0);
 
-  // If the time already passed → next day
+  // If time already passed → next day
   if (d < now) d.setDate(d.getDate() + 1);
 
   return d;

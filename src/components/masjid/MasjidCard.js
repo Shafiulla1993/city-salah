@@ -52,7 +52,7 @@ export default function MasjidCard({ masjid, onExpand }) {
 
   return (
     <div
-      className="relative w-full rounded-2xl overflow-visible"
+      className="relative w-full max-w-[420px] mx-auto rounded-2xl overflow-visible"
       style={{ height: FIXED_HEIGHT }}
       onPointerDown={beginPointer}
       onPointerMove={detectMove}

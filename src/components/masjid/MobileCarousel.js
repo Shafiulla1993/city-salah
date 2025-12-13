@@ -1,46 +1,77 @@
-// src/components/masjid/MobileCarousel.js
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import MasjidCard from "./MasjidCard";
 
 export default function MobileCarousel({ masjids = [], onExpand }) {
-  const [index, setIndex] = useState(0);
-
-  const startX = useRef(0);
-  const lastX = useRef(0);
-  const dragging = useRef(false);
-
   if (!masjids.length) return null;
 
-  // Go Prev / Next
-  const goPrev = () => setIndex((i) => (i > 0 ? i - 1 : masjids.length - 1));
+  const slides = [masjids[masjids.length - 1], ...masjids, masjids[0]];
 
-  const goNext = () => setIndex((i) => (i < masjids.length - 1 ? i + 1 : 0));
+  const [index, setIndex] = useState(1);
+  const [animating, setAnimating] = useState(true);
+  const [dragX, setDragX] = useState(0);
 
-  // -----------------------------
-  // Swipe Handlers
-  // -----------------------------
+  const startX = useRef(0);
+  const dragging = useRef(false);
+
+  /* -----------------------------
+     Swipe handlers
+  ----------------------------- */
   const handleStart = (e) => {
     dragging.current = true;
     startX.current = e.touches ? e.touches[0].clientX : e.clientX;
-    lastX.current = startX.current;
+    setAnimating(false);
   };
 
   const handleMove = (e) => {
     if (!dragging.current) return;
-    lastX.current = e.touches ? e.touches[0].clientX : e.clientX;
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    setDragX(x - startX.current);
   };
 
   const handleEnd = () => {
     if (!dragging.current) return;
     dragging.current = false;
 
-    const delta = lastX.current - startX.current;
+    if (dragX > 60) setIndex((i) => i - 1);
+    else if (dragX < -60) setIndex((i) => i + 1);
 
-    if (delta > 60) goPrev(); // Swipe right
-    else if (delta < -60) goNext(); // Swipe left
+    setDragX(0);
+    setAnimating(true);
   };
+
+  /* -----------------------------
+     Infinite loop correction
+  ----------------------------- */
+  useEffect(() => {
+    if (index === 0) {
+      setTimeout(() => {
+        setAnimating(false);
+        setIndex(slides.length - 2);
+      }, 300);
+    }
+
+    if (index === slides.length - 1) {
+      setTimeout(() => {
+        setAnimating(false);
+        setIndex(1);
+      }, 300);
+    }
+  }, [index, slides.length]);
+
+  useEffect(() => {
+    if (!animating) {
+      requestAnimationFrame(() => setAnimating(true));
+    }
+  }, [animating]);
+
+  /* -----------------------------
+     3D math
+  ----------------------------- */
+  const swipeProgress = Math.max(-1, Math.min(1, dragX / 160));
+  const rotateY = swipeProgress * -12; // degrees
+  const scale = 1 - Math.abs(swipeProgress) * 0.06;
 
   return (
     <div
@@ -48,24 +79,36 @@ export default function MobileCarousel({ masjids = [], onExpand }) {
       onTouchStart={handleStart}
       onTouchMove={handleMove}
       onTouchEnd={handleEnd}
+      style={{ perspective: "1200px" }}
     >
-      {/* HINT TEXT */}
-      <div className="absolute top-2 right-4 text-xs text-slate-500 z-20">
-        ← Swipe →
-      </div>
-
-      {/* SLIDES TRACK */}
+      {/* TRACK */}
       <div
-        className="flex transition-transform duration-500 h-full"
+        className={`flex h-full ${
+          animating ? "transition-transform duration-300 ease-out" : ""
+        }`}
         style={{
-          transform: `translateX(-${index * 100}%)`,
+          transform: `translateX(calc(-${index * 100}% + ${dragX}px))`,
         }}
       >
-        {masjids.map((m) => (
-          <div key={m._id} className="w-full shrink-0 h-full px-2">
-            <MasjidCard masjid={m} onExpand={onExpand} />
-          </div>
-        ))}
+        {slides.map((m, i) => {
+          const isActive = i === index;
+
+          return (
+            <div
+              key={`${m._id}-${i}`}
+              className="w-full shrink-0 h-full px-2 flex justify-center"
+              style={{
+                transform: isActive
+                  ? `scale(${scale}) rotateY(${rotateY}deg)`
+                  : "scale(0.94)",
+                transition: animating ? "transform 0.3s ease" : "none",
+                transformStyle: "preserve-3d",
+              }}
+            >
+              <MasjidCard masjid={m} onExpand={onExpand} />
+            </div>
+          );
+        })}
       </div>
     </div>
   );

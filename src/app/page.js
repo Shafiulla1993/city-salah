@@ -302,62 +302,65 @@ export default function ClientHome() {
 "
       >
         {/* TOP BAR */}
-        <div className="flex items-center gap-3">
-          {/* SEARCH ICON */}
-          <button
-            onClick={() => setSearchOpen((s) => !s)}
-            className="p-3 rounded-full bg-slate-100 hover:bg-slate-200 shadow-sm"
-            aria-label="Open search"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-              className="w-5 h-5 text-slate-700"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1010.5 18a7.5 7.5 0 006.15-3.35z"
-              />
-            </svg>
-          </button>
-
-          {/* LOCATION PILL */}
-          <div className="flex-1">
+        {/* TOP BAR */}
+        <div className="flex justify-center pt-4">
+          {/* COMPACT SEARCH + LOCATION GROUP */}
+          <div className="relative flex items-center gap-2">
+            {/* LOCATION BAR */}
             <LocationBar
               cityName={cities.find((c) => c._id === selectedCity)?.name || ""}
               areaName={areas.find((a) => a._id === selectedArea)?.name || ""}
               onOpen={() => setSheetOpen(true)}
             />
+
+            {/* SEARCH ICON + DROPDOWN */}
+            <div className="relative">
+              <button
+                onClick={() => setSearchOpen((s) => !s)}
+                className="p-2.5 rounded-full bg-slate-100 hover:bg-slate-200 shadow-sm"
+                aria-label="Search masjid"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className="w-5 h-5 text-slate-700"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1010.5 18a7.5 7.5 0 006.15-3.35z"
+                  />
+                </svg>
+              </button>
+
+              {/* SEARCH DROPDOWN */}
+              {searchOpen && (
+                <div className="absolute right-0 mt-2 w-[320px] z-50">
+                  <MasjidSearchBar
+                    value={searchQuery}
+                    onChange={(val) => {
+                      setSearchQuery(val);
+                      ensureSearchIndex();
+                      setShowSearchResults(true);
+                    }}
+                    onFocus={() => {
+                      ensureSearchIndex();
+                      setShowSearchResults(true);
+                    }}
+                    results={filteredSearchResults}
+                    showResults={showSearchResults}
+                    onSelect={(m) => {
+                      onSelectFromSearchWrapper(m);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
-
-        {/* INLINE SEARCH (dropdown-style) */}
-        {searchOpen && (
-          <div ref={searchContainerRef}>
-            <MasjidSearchBar
-              value={searchQuery}
-              onChange={(val) => {
-                setSearchQuery(val);
-                ensureSearchIndex();
-                setShowSearchResults(true);
-              }}
-              onFocus={() => {
-                ensureSearchIndex();
-                setShowSearchResults(true);
-              }}
-              results={filteredSearchResults}
-              showResults={showSearchResults}
-              onSelect={(m) => {
-                // m is from searchIndex (contains areaId, cityId, etc.)
-                onSelectFromSearchWrapper(m); // wrapper defined below
-              }}
-            />
-          </div>
-        )}
 
         {/* MASJID GRID / CAROUSEL */}
         <div className="mt-4">
@@ -367,9 +370,30 @@ export default function ClientHome() {
             <MasjidGrid
               masjids={masjids}
               onExpand={async (m) => {
-                // load full details and set in store (old behavior)
                 try {
+                  // mark loading
+                  setMasjids((prev) =>
+                    prev.map((x) =>
+                      x._id === m._id ? { ...x, fullDetailsLoading: true } : x
+                    )
+                  );
+
                   const full = await publicAPI.getMasjidById(m._id);
+
+                  // inject fullDetails into masjids list
+                  setMasjids((prev) =>
+                    prev.map((x) =>
+                      x._id === m._id
+                        ? {
+                            ...x,
+                            fullDetails: full,
+                            fullDetailsLoading: false,
+                          }
+                        : x
+                    )
+                  );
+
+                  // optional: keep store in sync
                   setMasjid(full);
                 } catch (e) {
                   console.error(e);
