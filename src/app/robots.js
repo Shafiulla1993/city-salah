@@ -5,11 +5,10 @@ export default function robots() {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
-        disallow: ["/api", "/dashboard", "/login"],
+        allow: ["/", "/_next/", "/_next/image"],
+        disallow: ["/api/", "/dashboard/", "/login/"],
       },
     ],
     sitemap: "https://citysalah.in/sitemap.xml",
   };
 }
-
