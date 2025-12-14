@@ -9,78 +9,109 @@ import usePrayerCountdown, {
 export default function MasjidCardFront({ masjid }) {
   const timings = masjid.prayerTimings?.[0] || {};
 
-  // ✅ derive next & prev correctly
+  // derive next & prev
   const { next, prev } = getPrevAndNextIqaamats(timings);
 
-  // ✅ pass correct arguments to hook
   const { remainingStr, progress } = usePrayerCountdown(next?.time, prev?.time);
 
-  const radius = 22;
+  /* -----------------------------
+     Ring math
+  ----------------------------- */
+  const radius = 26;
   const circumference = 2 * Math.PI * radius;
-  const offset =
-    circumference - circumference * (Number.isFinite(progress) ? progress : 0);
+
+  const safeProgress = Number.isFinite(progress) ? progress : 0;
+  const offset = circumference * (1 - safeProgress);
+
+  /* -----------------------------
+     Dynamic color (light → strong)
+     progress: 0 → 1
+  ----------------------------- */
+  const ringColor =
+    safeProgress < 0.4
+      ? "#86efac" // light green
+      : safeProgress < 0.7
+      ? "#22c55e" // medium green
+      : "#15803d"; // strong green (near time)
 
   return (
-    <div className="w-full h-full bg-white rounded-2xl flex flex-col overflow-hidden">
-      {/* HEADER — 10% */}
-      <div className="h-[10%] flex items-center justify-between px-4">
-        <div className="font-bold text-slate-900 text-lg">{masjid.name}</div>
+    <div className="w-full h-full bg-stone-300 rounded-2xl flex flex-col overflow-hidden shadow-2xl">
+      {/* HEADER */}
+      <div
+        className="
+          flex items-center justify-between
+          px-4 py-2
+          min-h-[48px] max-h-[72px]
+        "
+      >
+        <div className="font-bold text-stone-900 text-sm leading-tight">
+          Masjid e {masjid.name}
+        </div>
 
-        <div className="text-right text-slate-500 text-sm leading-tight">
-          <div>{masjid.area?.name}</div>
-          <div>{masjid.city?.name}</div>
+        <div className="text-right text-black text-sm leading-tight">
+          <div>Area: {masjid.area?.name}</div>
+          <div>City: {masjid.city?.name}</div>
         </div>
       </div>
 
-      {/* IMAGE — 70% */}
-      <div className="h-[70%] w-full bg-slate-100 flex items-center justify-center overflow-hidden">
+      {/* IMAGE */}
+      <div className="w-full aspect-[4/5] bg-stone-300 overflow-hidden">
         <img
           src={masjid.imageUrl || "/Default_Image.png"}
           alt={masjid.name}
-          className="w-full h-full object-contain"
+          className="w-full h-full object-contain p-2 shadow-2xl"
         />
       </div>
 
-      {/* BOTTOM — 20% */}
-      <div className="h-[20%] px-4 py-3 flex items-center justify-between">
+      {/* BOTTOM */}
+      <div className="px-4 py-3 min-h-[96px] flex items-center justify-between">
         <div>
-          <div className="text-xs text-slate-500">Upcoming</div>
-          <div className="font-semibold text-slate-800 uppercase">
+          <div className="text-md text-black font-bold">Upcoming</div>
+          <div className="font-bold text-black uppercase">
             {next?.name || "--"}
           </div>
-          <div className="text-sm font-mono text-slate-600">
+          <div className="text-md font-bold text-black">
             {next?.timeStr || "--:--"}
           </div>
         </div>
 
         {/* Countdown Ring */}
-        <div className="relative w-14 h-14">
-          <svg className="w-full h-full -rotate-90">
+        <div className="relative w-20 h-20">
+          <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
             {/* Background track */}
             <circle
-              cx="28"
-              cy="28"
-              r={radius}
-              stroke="#cbd5e1" // slate-300
-              strokeWidth="6"
-              fill="transparent"
+              cx="50"
+              cy="50"
+              r="42"
+              stroke="#8b5e34"
+              strokeWidth="8"
+              fill="none"
             />
 
             {/* Progress ring */}
             <circle
-              cx="28"
-              cy="28"
-              r={radius}
-              stroke="#16a34a" // strong green
-              strokeWidth="6"
-              strokeDasharray={circumference}
-              strokeDashoffset={offset}
+              cx="50"
+              cy="50"
+              r="42"
+              stroke="#603808"
+              strokeWidth="8"
+              fill="none"
               strokeLinecap="round"
-              fill="transparent"
+              strokeDasharray={2 * Math.PI * 42}
+              strokeDashoffset={
+                2 *
+                Math.PI *
+                42 *
+                (1 - (Number.isFinite(progress) ? progress : 0))
+              }
+              style={{
+                transition: "stroke-dashoffset 1s linear",
+              }}
             />
           </svg>
 
-          <div className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-slate-800 tracking-tigh">
+          {/* Center text */}
+          <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-stone-900">
             {remainingStr}
           </div>
         </div>

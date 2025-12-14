@@ -109,3 +109,21 @@ export function AuqatusTimingsLoader() {
     </div>
   );
 }
+
+// 🔹 Auqatus Timings Skeleton Loader (Pill type location setter)
+export function LocationBarSkeleton() {
+  return (
+    <div className="sticky top-16 z-40 w-full flex justify-center px-4">
+      <div className="flex items-center gap-2 bg-white/90 backdrop-blur border border-slate-300 rounded-full shadow-md px-4 py-2">
+        {/* pin */}
+        <Skeleton className="w-4 h-4 rounded-full" />
+
+        {/* text */}
+        <Skeleton className="h-4 w-36 rounded-md" />
+
+        {/* arrow */}
+        <Skeleton className="w-4 h-4 rounded-full" />
+      </div>
+    </div>
+  );
+}

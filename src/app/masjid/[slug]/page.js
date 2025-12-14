@@ -20,6 +20,26 @@ export async function generateMetadata({ params }) {
     alternates: {
       canonical: `https://citysalah.in/masjid/${masjid.slug}-${masjid._id}`,
     },
+    openGraph: {
+      images: [
+        {
+          url: `https://citysalah.in/api/og/masjid/${
+            masjid._id
+          }?name=${encodeURIComponent(masjid.name)}&area=${encodeURIComponent(
+            masjid.area?.name || ""
+          )}&city=${encodeURIComponent(masjid.city?.name || "")}`,
+          width: 1200,
+          height: 630,
+        },
+      ],
+    },
+
+    twitter: {
+      card: "summary_large_image",
+      title: `${masjid.name} – CitySalah`,
+      description: `Prayer timings for ${masjid.name}`,
+      images: [`https://citysalah.in/api/og/masjid/${masjid._id}`],
+    },
   };
 }
 

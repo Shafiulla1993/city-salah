@@ -2,32 +2,58 @@
 
 "use client";
 
+import { motion, AnimatePresence } from "framer-motion";
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useAuth } from "@/context/AuthContext";
-import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
+import { useRouter, usePathname } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
-export default function ModernNavbar() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [hidden, setHidden] = useState(false);
-  const [lastScroll, setLastScroll] = useState(0);
+import { FiMenu, FiX } from "react-icons/fi";
+
+export default function Navbar() {
   const { loggedIn, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
-  // hide on scroll down
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const [lastScroll, setLastScroll] = useState(0);
+
+  function AnimatedNavItem({ href, label, active, onClick }) {
+    return (
+      <Link
+        href={href}
+        onClick={onClick}
+        className="relative px-3 py-2 text-gray-700 hover:text-gray-900"
+      >
+        <span className="relative z-10">{label}</span>
+
+        {active && (
+          <motion.span
+            layoutId="nav-underline"
+            className="absolute inset-x-1 -bottom-1 h-[2px] bg-white rounded"
+            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+          />
+        )}
+      </Link>
+    );
+  }
+
+  /* ---------------- Hide on scroll ---------------- */
   useEffect(() => {
-    const handleScroll = () => {
+    const onScroll = () => {
       const current = window.scrollY;
       if (current > lastScroll && current > 70) setHidden(true);
       else setHidden(false);
       setLastScroll(current);
     };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
   }, [lastScroll]);
 
+  /* ---------------- Dashboard routing ---------------- */
   const goToDashboard = () => {
     if (!user) return;
     if (user.role === "super_admin") router.push("/dashboard/super-admin");
@@ -37,200 +63,176 @@ export default function ModernNavbar() {
   };
 
   const isActive = (path) =>
-    pathname === path ? "text-white underline font-semibold" : "text-stone-900";
+    pathname === path
+      ? "text-gray-900 underline font-semibold"
+      : "text-gray-700";
 
   return (
-    <div className="group fixed top-0 left-0 right-0 z-50">
-      <header
-        className={`bg-slate-400 shadow-lg transition-transform duration-500 ${
-          hidden ? "-translate-y-full" : "translate-y-0"
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            {/* Back + Logo */}
-            <div className="flex items-center gap-3">
-              {pathname !== "/" && (
-                <button
-                  onClick={() => router.back()}
-                  className="text-white bg-gray-700 px-3 py-1 rounded-lg hover:bg-gray-900 transition"
-                >
-                  ←
-                </button>
-              )}
+    <header
+      className={`sticky top-0 left-0 right-0 z-50 transition-transform duration-500 ${
+        hidden ? "-translate-y-full" : "translate-y-0"
+      } bg-gradient-to-r from-stone-300 to-gray-400 shadow-2xl`}
+    >
+      <div className="max-w-screen-xl mx-auto px-4 font-bold text-heading">
+        <div className="flex items-center justify-between h-16">
+          {/* LOGO + BACK */}
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.push("/")}>
+              <Image
+                src="/Design-logo.png"
+                alt="CitySalah"
+                width={180}
+                height={50}
+                className="h-10 w-auto object-contain"
+                priority
+              />
+            </button>
+          </div>
 
-              <div
-                className="cursor-pointer flex items-center"
-                onClick={() => router.push("/")}
-              >
-                <Image
-                  src="/Design-logo.png"
-                  alt="City Salah Logo"
-                  width={180} // can be any
-                  height={50} // doesn't matter much, we'll control with class
-                  className="h-10 md:h-12 lg:h-14 w-auto object-contain drop-shadow"
-                  priority
-                />
-              </div>
-            </div>
+          {/* MOBILE ICON */}
+          {/* MOBILE PRIMARY TABS */}
+          <div className="flex md:hidden items-center gap-4">
+            <Link
+              href="/updates"
+              className={`text-sm ${
+                pathname === "/updates" ? "underline font-semibold" : ""
+              }`}
+            >
+              Updates
+            </Link>
 
-            {/* ⭐ Mobile — show main 3 links outside hamburger */}
-            <div className="flex md:hidden items-center gap-4">
-              <Link href="/" className={`${isActive("/")} text-sm`}>
-                Home
-              </Link>
+            <Link
+              href="/auqatus-salah"
+              className={`text-sm whitespace-nowrap ${
+                pathname === "/auqatus-salah" ? "underline font-semibold" : ""
+              }`}
+            >
+              Auqatus Salah
+            </Link>
 
-              <Link
-                href="/updates"
-                className={`${isActive("/updates")} text-sm`}
-              >
-                Updates
-              </Link>
+            {/* Hamburger for secondary items */}
+            <button
+              onClick={() => setMobileOpen((v) => !v)}
+              className="text-gray-800"
+            >
+              {mobileOpen ? <FiX size={22} /> : <FiMenu size={22} />}
+            </button>
+          </div>
 
-              <Link
-                href="/auqatus-salah"
-                className={`${isActive(
-                  "/auqatus-salah"
-                )} text-sm whitespace-nowrap`}
-              >
-                Auqaatus Salah
-              </Link>
+          {/* DESKTOP MENU */}
+          <nav className="hidden md:flex items-center space-x-4">
+            <AnimatedNavItem
+              href="/updates"
+              label="Updates"
+              active={pathname === "/updates"}
+            />
 
-              {/* Hamburger for remaining items */}
+            <AnimatedNavItem
+              href="/auqatus-salah"
+              label="Auqatus Salah"
+              active={pathname === "/auqatus-salah"}
+            />
+
+            <AnimatedNavItem
+              href="/contact"
+              label="Contact"
+              active={pathname === "/contact"}
+            />
+
+            {loggedIn && (
               <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="text-white hover:text-gray-200"
+                onClick={goToDashboard}
+                className="px-3 py-2 text-gray-700 hover:text-gray-900"
               >
-                <svg
-                  className="h-6 w-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  {menuOpen ? (
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  ) : (
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M4 6h16M4 12h16M4 18h16"
-                    />
-                  )}
-                </svg>
+                Dashboard
               </button>
-            </div>
+            )}
 
-            {/* Desktop Menu — unchanged */}
-            <nav className="hidden md:flex space-x-6 items-center">
-              <Link
-                href="/"
-                className={`${isActive("/")} hover:text-white transition`}
-              >
-                Home
-              </Link>
-              <Link
-                href="/updates"
-                className={`${isActive(
-                  "/updates"
-                )} hover:text-white transition`}
-              >
-                Updates
-              </Link>
-              <Link
-                href="/auqatus-salah"
-                className={`${isActive(
-                  "/auqatus-salah"
-                )} hover:text-white transition`}
-              >
-                Auqatus Salah
-              </Link>
-
-              <Link
-                href="/contact"
-                className="text-gray-900 hover:text-white transition"
-              >
-                Contact Us
-              </Link>
-
-              {loggedIn && (
-                <button
-                  onClick={goToDashboard}
-                  className="text-gray-900 hover:text-white transition"
-                >
-                  Dashboard
-                </button>
-              )}
-
-              {loggedIn ? (
-                <>
-                  <Link
-                    href="/profile"
-                    className="text-gray-900 hover:text-white transition"
-                  >
-                    Profile
-                  </Link>
-                  <Link
-                    href="/logout"
-                    className="text-red-600 hover:text-red-400 transition"
-                  >
-                    Logout
-                  </Link>
-                </>
-              ) : (
+            {loggedIn ? (
+              <>
                 <Link
-                  href="/login"
-                  className="text-gray-900 hover:text-white transition"
+                  href="/profile"
+                  className="px-3 py-2 text-gray-700 hover:text-gray-900"
                 >
-                  Login
+                  Profile
                 </Link>
-              )}
-            </nav>
-          </div>
+                <Link
+                  href="/logout"
+                  className="px-3 py-2 text-red-600 hover:text-red-400"
+                >
+                  Logout
+                </Link>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className="px-3 py-2 text-gray-700 hover:text-gray-900"
+              >
+                Login
+              </Link>
+            )}
+          </nav>
         </div>
+      </div>
 
-        {/* Mobile Hamburger Dropdown */}
-        {menuOpen && (
-          <div className="md:hidden bg-white shadow-md">
-            <nav className="flex flex-col space-y-2 p-4">
-              <Link
-                href="/contact"
-                onClick={() => setMenuOpen(false)}
-                className="text-gray-700 hover:text-blue-600"
-              >
-                Contact Us
-              </Link>
-
-              {loggedIn && (
-                <button
-                  onClick={() => {
-                    goToDashboard();
-                    setMenuOpen(false);
-                  }}
-                  className="text-gray-700 hover:text-blue-600 text-left"
+      {/* MOBILE MENU */}
+      {/* MOBILE MENU */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="md:hidden bg-neutral-300 border-t shadow"
+          >
+            <nav className="flex flex-col p-4 space-y-3">
+              {/* MAIN LINKS */}
+              {[{ href: "/contact", label: "Contact" }].map((item) => (
+                <motion.div
+                  key={item.href}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.05 }}
                 >
-                  Dashboard
-                </button>
-              )}
+                  <Link
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className="block px-3 py-2 rounded text-gray-800 hover:bg-neutral-400"
+                  >
+                    {item.label}
+                  </Link>
+                </motion.div>
+              ))}
 
+              {/* DIVIDER */}
+              <div className="border-t border-neutral-400 my-2" />
+
+              {/* AUTH / MORE SECTION */}
               {loggedIn ? (
                 <>
+                  <button
+                    onClick={() => {
+                      goToDashboard();
+                      setMobileOpen(false);
+                    }}
+                    className="text-left px-3 py-2 rounded hover:bg-neutral-400"
+                  >
+                    Dashboard
+                  </button>
+
                   <Link
                     href="/profile"
-                    onClick={() => setMenuOpen(false)}
-                    className="text-gray-700 hover:text-blue-600"
+                    onClick={() => setMobileOpen(false)}
+                    className="px-3 py-2 rounded hover:bg-neutral-400"
                   >
                     Profile
                   </Link>
+
                   <Link
                     href="/logout"
-                    onClick={() => setMenuOpen(false)}
-                    className="text-red-600 hover:text-red-400"
+                    onClick={() => setMobileOpen(false)}
+                    className="px-3 py-2 rounded text-red-600 hover:bg-red-100"
                   >
                     Logout
                   </Link>
@@ -238,16 +240,16 @@ export default function ModernNavbar() {
               ) : (
                 <Link
                   href="/login"
-                  onClick={() => setMenuOpen(false)}
-                  className="text-gray-700 hover:text-blue-600"
+                  onClick={() => setMobileOpen(false)}
+                  className="px-3 py-2 rounded hover:bg-neutral-400"
                 >
                   Login
                 </Link>
               )}
             </nav>
-          </div>
+          </motion.div>
         )}
-      </header>
-    </div>
+      </AnimatePresence>
+    </header>
   );
 }

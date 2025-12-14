@@ -1,3 +1,5 @@
+// src/app/page.js
+
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
@@ -13,7 +15,10 @@ import { useMasjidStore } from "@/store/useMasjidStore";
 import { getPrevAndNextIqaamats } from "@/hooks/usePrayerCountdown";
 import { searchItems } from "@/lib/search/searchCore";
 import { SEARCH_PRESETS } from "@/lib/search/searchPresets";
-import { MasjidCardSkeleton } from "@/components/masjid/loaders";
+import {
+  LocationBarSkeleton,
+  MasjidCardSkeleton,
+} from "@/components/masjid/loaders";
 
 /* ---------------- HELPERS ---------------- */
 const computeNextPrayer = (m) => {
@@ -39,7 +44,7 @@ export default function Page() {
     selectedCity,
     selectedArea,
     selectedMasjid,
-    gpsDetected, 
+    gpsDetected,
     setCity,
     setArea,
     setMasjid,
@@ -69,9 +74,12 @@ export default function Page() {
 
   /* ---------------- LOAD CITIES ---------------- */
   useEffect(() => {
-    publicAPI.getCities().then(setCities).catch(() => {
-      toast.error("Failed to load cities");
-    });
+    publicAPI
+      .getCities()
+      .then(setCities)
+      .catch(() => {
+        toast.error("Failed to load cities");
+      });
   }, []);
 
   /* ---------------- LOAD AREAS ---------------- */
@@ -97,10 +105,10 @@ export default function Page() {
   useEffect(() => {
     // 🔒 SINGLE MASJID MODE → BLOCK AREA LOAD
     if (selectedMasjid && !gpsDetected) {
-  // 🔒 true single-masjid mode
-  setMasjids([normalizeMasjid(selectedMasjid)]);
-  return;
-}
+      // 🔒 true single-masjid mode
+      setMasjids([normalizeMasjid(selectedMasjid)]);
+      return;
+    }
 
     if (selectedArea) {
       loadMasjidsByArea(selectedArea);
@@ -149,22 +157,51 @@ export default function Page() {
     }
   };
 
+  useEffect(() => {
+    return () => {
+      if (originalTitleRef.current) {
+        document.title = originalTitleRef.current;
+      }
+    };
+  }, []);
+
+  const originalTitleRef = useRef(null);
+
+  const handleFlipChange = useCallback((flipped, masjid) => {
+    if (!originalTitleRef.current) {
+      originalTitleRef.current = document.title;
+    }
+
+    if (flipped && masjid) {
+      const city = masjid.city?.name || "";
+      const area = masjid.area?.name || "";
+
+      document.title = `${masjid.name} – ${area}, ${city} | CitySalah`;
+    } else {
+      document.title = originalTitleRef.current;
+    }
+  }, []);
+
   /* ---------------- UI ---------------- */
   return (
-    <div className="min-h-screen w-full">
+    <div className="min-h-screen w-screen bg-gradient-to-r from-neutral-200 to-neutral-400">
       <h1 className="sr-only">CitySalah — Prayer Timings & Masjids</h1>
 
       {/* TOP BAR */}
       <div className="flex justify-center pt-4">
         <div className="flex items-center gap-2">
-          <LocationBar
-            cityName={cities.find((c) => c._id === selectedCity)?.name || ""}
-            areaName={areas.find((a) => a._id === selectedArea)?.name || ""}
-            onOpen={() => {
-              ensureSearchIndex();
-              setSheetOpen(true);
-            }}
-          />
+          {loadingLocation || loadingMasjids ? (
+            <LocationBarSkeleton />
+          ) : (
+            <LocationBar
+              cityName={cities.find((c) => c._id === selectedCity)?.name || ""}
+              areaName={areas.find((a) => a._id === selectedArea)?.name || ""}
+              onOpen={() => {
+                ensureSearchIndex();
+                setSheetOpen(true);
+              }}
+            />
+          )}
 
           {/* SEARCH */}
           <div className="relative">
@@ -203,7 +240,7 @@ export default function Page() {
             ))}
           </div>
         ) : masjids.length ? (
-          <MasjidGrid masjids={masjids} />
+          <MasjidGrid masjids={masjids} onFlipChange={handleFlipChange} />
         ) : (
           <div className="text-center py-20 text-slate-600">
             Select city and area

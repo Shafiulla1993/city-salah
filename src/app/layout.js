@@ -38,14 +38,14 @@ export default function RootLayout({ children }) {
       </head>
 
       {/* Use full width with padding; center content but allow wide screens */}
-      <body className="bg-gradient-to-r from-slate-300 to-slate-500 pt-12 min-h-screen">
+      <body>
         <AuthProvider>
           <Navbar />
           <ToastProviderClient />
 
           {/* change: use w-full and horizontal padding, limit to a larger max if you want */}
-          <main className="w-full px-6 md:px-8 lg:px-12 relative">
-            <div className="max-w-[1700px] mx-auto">{children}</div>
+          <main>
+            <div>{children}</div>
 
             <SpeedInsights />
             <Analytics />

@@ -8,22 +8,18 @@ import MasjidCardBack from "./MasjidCardBack";
 import "@/styles/flip.css";
 import { MasjidCardBackSkeleton } from "./loaders";
 
-export default function MasjidCard({ masjid, onExpand }) {
+export default function MasjidCard({ masjid, onExpand, onFlipChange }) {
   const [flipped, setFlipped] = useState(false);
 
   const startY = useRef(0);
   const moved = useRef(false);
 
   /* -----------------------------
-      FIX: DO NOT lock entire body
-      Only block scroll when back
+      Lock scroll only when flipped
   ----------------------------- */
   useEffect(() => {
-    if (flipped) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = flipped ? "hidden" : "";
+    return () => (document.body.style.overflow = "");
   }, [flipped]);
 
   /* -----------------------------
@@ -35,36 +31,49 @@ export default function MasjidCard({ masjid, onExpand }) {
   };
 
   const detectMove = (e) => {
-    const diff = Math.abs(e.clientY - startY.current);
-    if (diff > 10) moved.current = true;
+    if (Math.abs(e.clientY - startY.current) > 10) {
+      moved.current = true;
+    }
   };
 
   const endPointer = () => {
     if (moved.current) return;
 
-    if (!flipped) onExpand?.(masjid);
-    setFlipped((v) => !v);
-  };
+    const nextFlipped = !flipped;
 
-  /* -----------------------------
-      FIX: Wrapper height MUST be fixed
-      Flip inside inner container,
-      NOT on wrapper.
-  ----------------------------- */
-  const FIXED_HEIGHT = "82vh";
+    if (!flipped) onExpand?.(masjid);
+
+    setFlipped(nextFlipped);
+    onFlipChange?.(nextFlipped, masjid);
+  };
 
   return (
     <div
-      className="relative w-full max-w-[420px] mx-auto rounded-2xl overflow-visible"
-      style={{ height: FIXED_HEIGHT }}
+      className="
+        relative
+        w-full
+        max-w-[420px]
+        mx-auto
+        rounded-2xl
+        overflow-visible
+
+        /* 📱 MOBILE */
+        aspect-[3/5]
+        max-h-[70vh]
+
+        /* 🖥 DESKTOP */
+        lg:aspect-auto
+        lg:h-[82vh]
+      "
       onPointerDown={beginPointer}
       onPointerMove={detectMove}
       onPointerUp={endPointer}
     >
       {/* 3D card */}
       <div
-        className={`card-inner w-full h-full rounded-2xl ${flipped ? "card-flipped" : ""
-          }`}
+        className={`card-inner w-full h-full rounded-2xl ${
+          flipped ? "card-flipped" : ""
+        }`}
       >
         {/* FRONT */}
         <div className="card-face card-front w-full h-full rounded-2xl overflow-hidden bg-white">
@@ -85,7 +94,6 @@ export default function MasjidCard({ masjid, onExpand }) {
             <MasjidCardBack masjid={masjid} />
           )}
         </div>
-
       </div>
     </div>
   );

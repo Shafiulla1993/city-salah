@@ -107,7 +107,15 @@ export default function usePrayerCountdown(nextTime, prevTime) {
       let passed = window - remainingMs;
       if (passed < 0) passed = 0;
 
-      const progress = Math.min(1, passed / (window || 1));
+      let rawProgress = Math.min(1, passed / (window || 1));
+
+      // 🔑 Visual acceleration near end
+      let visualProgress =
+        rawProgress < 0.7
+          ? rawProgress * 0.7
+          : 0.7 + ((rawProgress - 0.7) * 1.0) / 0.3;
+
+      visualProgress = Math.min(1, visualProgress);
 
       // Format HH:MM:SS
       const h = String(Math.floor(remainingMs / 3600000)).padStart(2, "0");
@@ -122,7 +130,7 @@ export default function usePrayerCountdown(nextTime, prevTime) {
 
       setState({
         remainingStr: `${h}:${m}:${s}`,
-        progress,
+        progress: visualProgress,
         remainingMs,
       });
     }

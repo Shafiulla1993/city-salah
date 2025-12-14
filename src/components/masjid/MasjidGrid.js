@@ -6,14 +6,18 @@ import React from "react";
 import MasjidCard from "./MasjidCard";
 import MobileCarousel from "./MobileCarousel";
 
-export default function MasjidGrid({ masjids = [], onExpand }) {
+export default function MasjidGrid({ masjids = [], onExpand, onFlipChange }) {
   if (!Array.isArray(masjids)) masjids = [];
 
   return (
     <>
       {/* MOBILE VIEW — CAROUSEL */}
       <div className="block lg:hidden">
-        <MobileCarousel masjids={masjids} onExpand={onExpand} />
+        <MobileCarousel
+          masjids={masjids}
+          onExpand={onExpand}
+          onFlipChange={onFlipChange}
+        />
       </div>
 
       {/* DESKTOP GRID */}
@@ -31,7 +35,11 @@ export default function MasjidGrid({ masjids = [], onExpand }) {
         >
           {masjids.map((m) => (
             <div key={m._id} className="flex justify-center">
-              <MasjidCard masjid={m} onExpand={onExpand} />
+              <MasjidCard
+                masjid={m}
+                onExpand={onExpand}
+                onFlipChange={onFlipChange}
+              />
             </div>
           ))}
         </div>

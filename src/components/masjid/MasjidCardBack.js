@@ -1,5 +1,6 @@
 // src/components/masjid/MasjidCardBack.js
 
+// src/components/masjid/MasjidCardBack.js
 "use client";
 
 import React, { useEffect } from "react";
@@ -7,10 +8,10 @@ import React, { useEffect } from "react";
 /* ---------------- Prayer Card ---------------- */
 function PrayerCard({ title, azan, iqaamat }) {
   return (
-    <div className="p-3 bg-white rounded-xl border shadow-sm">
-      <div className="font-semibold text-slate-800">{title}</div>
-      <div className="text-sm text-slate-600">Azaan: {azan || "--"}</div>
-      <div className="text-sm text-slate-600">Iqaamat: {iqaamat || "--"}</div>
+    <div className="p-3 bg-stone-100 rounded-xl border border-stone-300 shadow-sm">
+      <div className="font-bold text-stone-900 text-sm">{title}</div>
+      <div className="text-xs text-stone-700">Azaan: {azan || "--"}</div>
+      <div className="text-xs text-stone-700">Iqaamat: {iqaamat || "--"}</div>
     </div>
   );
 }
@@ -18,22 +19,15 @@ function PrayerCard({ title, azan, iqaamat }) {
 /* ---------------- Contact Column ---------------- */
 function ContactColumn({ title, contact }) {
   return (
-    <div className="p-4">
-      <div className="font-semibold text-slate-800 mb-1">{title}</div>
-      <div className="text-sm text-slate-700">
-        Name: {contact?.name || "--"}
-      </div>
-      <div className="text-sm text-slate-600">
-        Phone: {contact?.phone || "--"}
-      </div>
+    <div className="p-3">
+      <div className="font-bold text-stone-900 text-sm mb-1">{title}</div>
+      <div className="text-xs text-stone-800">{contact?.name || "--"}</div>
+      <div className="text-xs text-stone-600">{contact?.phone || "--"}</div>
     </div>
   );
 }
 
 export default function MasjidCardBack({ masjid }) {
-  /* -------------------------------------------------
-     🔑 NORMALIZE DATA SOURCE (THIS FIXES YOUR ISSUE)
-  -------------------------------------------------- */
   const data = masjid?.fullDetails || masjid;
 
   const timings = data?.prayerTimings?.[0] || {};
@@ -43,7 +37,6 @@ export default function MasjidCardBack({ masjid }) {
   const mozin = contacts.find((c) => c.role === "mozin");
   const mutawalli = contacts.find((c) => c.role === "mutawalli");
 
-  // coordinates = [lng, lat]
   const lng = data?.location?.coordinates?.[0];
   const lat = data?.location?.coordinates?.[1];
 
@@ -60,19 +53,21 @@ export default function MasjidCardBack({ masjid }) {
   }, [data]);
 
   return (
-    <div className="w-full h-full p-4 overflow-y-auto bg-white rounded-2xl">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="font-bold text-lg">{data?.name}</div>
-        <div className="text-sm text-slate-500 text-right">
+    <div className="w-full h-full p-4 overflow-y-auto bg-stone-300 rounded-2xl">
+      {/* HEADER */}
+      <div className="flex items-start justify-between mb-4">
+        <div className="font-bold text-stone-900 text-base leading-tight">
+          Masjid e {data?.name}
+        </div>
+        <div className="text-xs text-stone-800 text-right leading-tight">
           {data?.area?.name}
           <br />
           {data?.city?.name}
         </div>
       </div>
 
-      {/* Prayer Timings */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
+      {/* PRAYER TIMINGS */}
+      <div className="grid grid-cols-2 gap-3 mb-5">
         <PrayerCard
           title="Fajr"
           azan={timings.fajr?.azan}
@@ -105,60 +100,60 @@ export default function MasjidCardBack({ masjid }) {
         />
       </div>
 
-      {/* Contacts */}
-      <div className="mb-6">
-        <div className="font-semibold text-slate-800 mb-2">Contacts</div>
+      {/* CONTACTS */}
+      <div className="mb-5">
+        <div className="font-bold text-stone-900 text-sm mb-2">Contacts</div>
 
-        <div className="border rounded-xl bg-white overflow-hidden">
-          <div className="grid grid-cols-3 divide-x">
-            <ContactColumn title="Imam" contact={imam} />
-            <ContactColumn title="Mozin" contact={mozin} />
-            <ContactColumn title="Zimmedar" contact={mutawalli} />
-          </div>
+        <div className="grid grid-cols-3 bg-stone-100 rounded-xl divide-x border border-stone-300">
+          <ContactColumn title="Imam" contact={imam} />
+          <ContactColumn title="Mozin" contact={mozin} />
+          <ContactColumn title="Zimmedar" contact={mutawalli} />
         </div>
       </div>
 
-      {/* Address + Map */}
-      <div className="border rounded-xl bg-white p-4">
-        <div className="font-semibold text-slate-800 mb-1">Address</div>
-
-        <div className="text-sm text-slate-700 mb-3">
+      {/* ADDRESS */}
+      <div className="mb-4">
+        <div className="font-bold text-stone-900 text-sm mb-1">Address</div>
+        <div className="text-xs text-stone-800 leading-relaxed">
           {data?.address || "--"}
         </div>
+      </div>
 
+      {/* ACTION BUTTONS */}
+      <div className="flex gap-3 mt-4">
         {mapUrl && (
           <a
             href={mapUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-medium"
+            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-2 px-2 text-center"
           >
-            📍 View on Google Maps
+            <div className="font-bold text-sm">📍 Map</div>
+            <div className="text-[10px] opacity-90">Open in Google Maps</div>
           </a>
         )}
+
         {data?._id && (
           <button
             onClick={() => {
               const shareUrl = `${window.location.origin}/api/og/masjid/${data._id}`;
-
               if (navigator.share) {
                 navigator.share({
                   title: `${data.name} Prayer Timings`,
-                  text: `Iqaamat timings for ${data.name}`,
+                  text: `Prayer timings for ${data.name}`,
                   url: shareUrl,
                 });
               } else {
                 navigator.clipboard.writeText(shareUrl);
-                alert("Masjid prayer timings link copied!");
+                alert("Prayer timings link copied!");
               }
             }}
-            className="mt-4 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg font-semibold"
+            className="flex-1 bg-stone-800 hover:bg-stone-900 text-white rounded-xl py-2 px-2 text-center"
           >
-            📤 Share Prayer Timings
+            <div className="font-bold text-sm">📤 Share</div>
+            <div className="text-[10px] opacity-90">Send prayer timings</div>
           </button>
         )}
-
-
       </div>
     </div>
   );

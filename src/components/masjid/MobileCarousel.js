@@ -5,7 +5,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import MasjidCard from "./MasjidCard";
 
-export default function MobileCarousel({ masjids = [], onExpand }) {
+export default function MobileCarousel({
+  masjids = [],
+  onExpand,
+  onFlipChange,
+}) {
   if (!masjids.length) return null;
 
   const slides = [masjids[masjids.length - 1], ...masjids, masjids[0]];
@@ -72,12 +76,12 @@ export default function MobileCarousel({ masjids = [], onExpand }) {
      3D math
   ----------------------------- */
   const swipeProgress = Math.max(-1, Math.min(1, dragX / 160));
-  const rotateY = swipeProgress * -12; // degrees
+  const rotateY = swipeProgress * -12;
   const scale = 1 - Math.abs(swipeProgress) * 0.06;
 
   return (
     <div
-      className="relative w-full overflow-hidden h-[88vh]"
+      className="relative w-full overflow-hidden"
       onTouchStart={handleStart}
       onTouchMove={handleMove}
       onTouchEnd={handleEnd}
@@ -107,7 +111,11 @@ export default function MobileCarousel({ masjids = [], onExpand }) {
                 transformStyle: "preserve-3d",
               }}
             >
-              <MasjidCard masjid={m} onExpand={onExpand} />
+              <MasjidCard
+                masjid={m}
+                onExpand={onExpand}
+                onFlipChange={onFlipChange}
+              />
             </div>
           );
         })}
