@@ -3,32 +3,37 @@
 import { create } from "zustand";
 import { publicAPI } from "@/lib/api/public";
 
-/* Detect manual browser refresh */
-if (typeof window !== "undefined") {
-  window.addEventListener("beforeunload", () => {
-    sessionStorage.setItem("__MANUAL_REFRESH__", "true");
-  });
-}
-
 export const useMasjidStore = create((set, get) => ({
+  /* ---------------- STATE ---------------- */
   selectedCity: "",
   selectedArea: "",
   selectedMasjid: null,
 
   initialized: false,
+  initializing: true,
   loadingLocation: false,
-  initializing: true, // 🔵 NEW
-  userHasManualSelection: false,
 
-  setInitializing: (v) => set({ initializing: v }), // 🔵 NEW
+  userHasManualSelection: false, // user clicked something
+  urlHydrated: false,            // SEO intent
 
-  /* ---------- MANUAL SETTERS ---------- */
+  /* ---------------- SETTERS ---------------- */
+
+  setContextFromMasjid: (masjid) => {
+  set({
+    selectedCity: masjid.city?._id || "",
+    selectedArea: masjid.area?._id || "",
+    selectedMasjid: masjid,     // 🔒 PRESERVED
+    urlHydrated: true,
+  });
+},
+
   setCity: (cityId) => {
     set({
       selectedCity: cityId,
       selectedArea: "",
       selectedMasjid: null,
       userHasManualSelection: true,
+      urlHydrated: false,
     });
     localStorage.setItem("selectedCityId", cityId);
   },
@@ -38,6 +43,7 @@ export const useMasjidStore = create((set, get) => ({
       selectedArea: areaId,
       selectedMasjid: null,
       userHasManualSelection: true,
+      urlHydrated: false,
     });
     localStorage.setItem("selectedAreaId", areaId);
   },
@@ -46,52 +52,75 @@ export const useMasjidStore = create((set, get) => ({
     set({
       selectedMasjid: masjid,
       userHasManualSelection: true,
+      urlHydrated: false,
     });
-    if (masjid?._id) localStorage.setItem("selectedMasjidId", masjid._id);
+    if (masjid?._id) {
+      localStorage.setItem("selectedMasjidId", masjid._id);
+    }
   },
 
-  /* ---------- INIT ---------- */
+  /* ---------------- INIT ---------------- */
   init: async () => {
-    const { initialized, userHasManualSelection } = get();
+    const { initialized } = get();
     if (initialized) return;
 
     set({ initialized: true, initializing: true });
 
-    const fallbackToSaved = async () => {
-      const savedMasjidId = localStorage.getItem("selectedMasjidId");
-      if (!savedMasjidId) return;
+    /* ---------- 1️⃣ SEO URL HYDRATION ---------- */
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const citySlug = params.get("city");
+      const areaSlug = params.get("area");
 
-      try {
-        const m = await publicAPI.getMasjidById(savedMasjidId);
-        set({
-          selectedCity: m.city?._id || m.city,
-          selectedArea: m.area?._id || m.area,
-          selectedMasjid: m,
-        });
-      } catch (err) {
-        console.error("Fallback saved masjid error", err);
+      if (citySlug) {
+        try {
+          set({ urlHydrated: true });
+
+          const cities = await publicAPI.getCities();
+          const city = cities.find((c) => c.slug === citySlug);
+
+          if (city) {
+            set({
+              selectedCity: city._id,
+              selectedArea: "",
+              selectedMasjid: null,
+            });
+            localStorage.setItem("selectedCityId", city._id);
+
+            if (areaSlug) {
+              const areas = await publicAPI.getAreas(city._id);
+              const area = areas.find(
+                (a) =>
+                  a.name.toLowerCase().replace(/\s+/g, "-") === areaSlug
+              );
+
+              if (area) {
+                set({
+                  selectedArea: area._id,
+                  selectedMasjid: null,
+                });
+                localStorage.setItem("selectedAreaId", area._id);
+              }
+            }
+          }
+
+          set({ initializing: false });
+          return; // ⛔ SEO wins → NO GPS
+        } catch (err) {
+          console.error("SEO hydration failed", err);
+        }
       }
-    };
-
-    // Detect refresh reliably
-    const wasRefresh = sessionStorage.getItem("__MANUAL_REFRESH__") === "true";
-    if (wasRefresh) {
-      sessionStorage.removeItem("__MANUAL_REFRESH__");
-      window.__MASJID_LOCATION_DONE = false;
     }
 
-    // If reopened in same tab, do NOT run GPS again
-    if (window.__MASJID_LOCATION_DONE) {
-      await fallbackToSaved();
-      set({ initializing: false }); // 🔵 END LOADING
+    /* ---------- 2️⃣ GPS DETECTION ---------- */
+    const { userHasManualSelection, urlHydrated } = get();
+    if (userHasManualSelection || urlHydrated) {
+      set({ initializing: false });
       return;
     }
-    window.__MASJID_LOCATION_DONE = true;
 
-    // Geolocation detection
     if (!navigator.geolocation) {
-      await fallbackToSaved();
-      set({ initializing: false }); // 🔵 END LOADING
+      set({ initializing: false });
       return;
     }
 
@@ -106,16 +135,10 @@ export const useMasjidStore = create((set, get) => ({
             limit: 1,
           });
 
-          if (!nearest?.length) {
-            await fallbackToSaved();
-            return;
-          }
+          if (!nearest?.length) return;
 
           const m = nearest[0];
           const full = await publicAPI.getMasjidById(m._id);
-
-          // Don't override if user already selected manually
-          if (userHasManualSelection) return;
 
           set({
             selectedCity: m.city?._id || m.city,
@@ -127,16 +150,15 @@ export const useMasjidStore = create((set, get) => ({
           localStorage.setItem("selectedAreaId", m.area?._id || m.area);
           localStorage.setItem("selectedMasjidId", m._id);
         } catch (err) {
-          console.error("Nearest detection error", err);
-          await fallbackToSaved();
+          console.error("GPS detection failed", err);
         } finally {
-          set({ loadingLocation: false, initializing: false }); // 🔵 END LOADING
+          set({ loadingLocation: false, initializing: false });
         }
       },
-      async () => {
-        await fallbackToSaved();
-        set({ loadingLocation: false, initializing: false }); // 🔵 END LOADING
-      }
+      () => {
+        set({ loadingLocation: false, initializing: false });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
     );
   },
 }));
