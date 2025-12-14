@@ -13,44 +13,64 @@ export const useMasjidStore = create((set, get) => ({
   initializing: true,
   loadingLocation: false,
 
-  userHasManualSelection: false, // user clicked something
-  urlHydrated: false,            // SEO intent
+  userHasManualSelection: false, // user clicked city/area/masjid manually
+  urlHydrated: false,            // SEO city/area hydration
+  gpsDetected: false,            // 🔑 GPS intent (AREA MODE, not single)
 
   /* ---------------- SETTERS ---------------- */
 
+  /**
+   * Used ONLY for /masjid/[slug]
+   * Must NOT block GPS permanently
+   * Must preserve single-masjid mode
+   */
   setContextFromMasjid: (masjid) => {
-  set({
-    selectedCity: masjid.city?._id || "",
-    selectedArea: masjid.area?._id || "",
-    selectedMasjid: masjid,     // 🔒 PRESERVED
-    urlHydrated: true,
-  });
-},
+    set({
+      selectedCity: masjid.city?._id || "",
+      selectedArea: masjid.area?._id || "",
+      selectedMasjid: masjid,
+      gpsDetected: false,        // ❗ ensure single mode
+      userHasManualSelection: true,
+      urlHydrated: false,
+    });
+  },
 
+  /**
+   * Normal city selection (AREA MODE)
+   */
   setCity: (cityId) => {
     set({
       selectedCity: cityId,
       selectedArea: "",
       selectedMasjid: null,
+      gpsDetected: false,
       userHasManualSelection: true,
       urlHydrated: false,
     });
     localStorage.setItem("selectedCityId", cityId);
   },
 
+  /**
+   * Normal area selection (AREA MODE)
+   */
   setArea: (areaId) => {
     set({
       selectedArea: areaId,
       selectedMasjid: null,
+      gpsDetected: false,
       userHasManualSelection: true,
       urlHydrated: false,
     });
     localStorage.setItem("selectedAreaId", areaId);
   },
 
+  /**
+   * Explicit masjid click from UI (SINGLE MODE)
+   */
   setMasjid: (masjid) => {
     set({
       selectedMasjid: masjid,
+      gpsDetected: false,
       userHasManualSelection: true,
       urlHydrated: false,
     });
@@ -66,7 +86,7 @@ export const useMasjidStore = create((set, get) => ({
 
     set({ initialized: true, initializing: true });
 
-    /* ---------- 1️⃣ SEO URL HYDRATION ---------- */
+    /* ---------- 1️⃣ SEO URL HYDRATION (city/area only) ---------- */
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const citySlug = params.get("city");
@@ -84,6 +104,7 @@ export const useMasjidStore = create((set, get) => ({
               selectedCity: city._id,
               selectedArea: "",
               selectedMasjid: null,
+              gpsDetected: false,
             });
             localStorage.setItem("selectedCityId", city._id);
 
@@ -98,6 +119,7 @@ export const useMasjidStore = create((set, get) => ({
                 set({
                   selectedArea: area._id,
                   selectedMasjid: null,
+                  gpsDetected: false,
                 });
                 localStorage.setItem("selectedAreaId", area._id);
               }
@@ -143,7 +165,8 @@ export const useMasjidStore = create((set, get) => ({
           set({
             selectedCity: m.city?._id || m.city,
             selectedArea: m.area?._id || m.area,
-            selectedMasjid: full,
+            selectedMasjid: full,   // highlight nearest
+            gpsDetected: true,      // 🔑 AREA MODE
           });
 
           localStorage.setItem("selectedCityId", m.city?._id || m.city);

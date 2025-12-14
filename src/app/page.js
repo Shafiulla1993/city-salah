@@ -39,6 +39,7 @@ export default function Page() {
     selectedCity,
     selectedArea,
     selectedMasjid,
+    gpsDetected, 
     setCity,
     setArea,
     setMasjid,
@@ -95,10 +96,11 @@ export default function Page() {
 
   useEffect(() => {
     // 🔒 SINGLE MASJID MODE → BLOCK AREA LOAD
-    if (selectedMasjid) {
-      setMasjids([normalizeMasjid(selectedMasjid)]);
-      return;
-    }
+    if (selectedMasjid && !gpsDetected) {
+  // 🔒 true single-masjid mode
+  setMasjids([normalizeMasjid(selectedMasjid)]);
+  return;
+}
 
     if (selectedArea) {
       loadMasjidsByArea(selectedArea);
