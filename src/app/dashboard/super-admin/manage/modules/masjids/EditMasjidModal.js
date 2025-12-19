@@ -10,7 +10,7 @@ import PrayerRulesForm from "./PrayerRulesForm";
 import MasjidLocationPicker from "./MasjidLocationPicker";
 import { notify } from "@/lib/toast";
 import { uploadMasjidImage } from "@/lib/helpers/uploads";
-import { mAdminAPI } from "@/lib/api/mAdmin/index";
+import { adminAPI } from "@/lib/api/sAdmin";
 
 export default function EditMasjidModal({
   open,
@@ -48,7 +48,7 @@ export default function EditMasjidModal({
     async function load() {
       setLoading(true);
       try {
-        const res = await mAdminAPI.getMasjidById(masjidId);
+        const res = await adminAPI.getMasjidById(masjidId);
         const m = res?.data;
         if (!m) return;
 
@@ -135,7 +135,7 @@ export default function EditMasjidModal({
         prayerRules: form.prayerRules, // 🔑 BATCH
       };
 
-      const res = await mAdminAPI.updateMasjid(masjidId, payload);
+      const res = await adminAPI.updateMasjid(masjidId, payload);
       if (!res?.success) throw new Error(res.message);
 
       notify.success("Masjid updated");
