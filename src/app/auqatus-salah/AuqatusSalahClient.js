@@ -77,7 +77,7 @@ export default function AuqatusSalahClient() {
       { label: "Ishraq", start: map.ishraq_start, end: map.ishraq_end },
       { label: "Chasht", start: map.chasht_start, end: map.chasht_end },
       { label: "Zawaal", start: map.zawaal_start, end: map.zawaal_end },
-      { label: "Zohar", start: map.zohar_start, end: map.zohar_end },
+      { label: "zohar", start: map.zohar_start, end: map.zohar_end },
       {
         label: "Asr (Shafi)",
         start: map.asar_shafi_start,

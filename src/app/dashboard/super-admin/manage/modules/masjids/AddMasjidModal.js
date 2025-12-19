@@ -1,131 +1,157 @@
 // src/app/dashboard/super-admin/manage/modules/masjids/AddMasjidModal.js
+
 "use client";
 
 import { useEffect, useState } from "react";
 import Modal from "@/components/admin/Modal";
 import { Input } from "@/components/form/Input";
 import { adminAPI } from "@/lib/api/sAdmin";
-import PrayerTimingsForm from "./PrayerTimingsForm";
 import ContactPersonsForm from "./ContactPersonsForm";
-import { notify } from "@/lib/toast";
+import PrayerRulesForm from "./PrayerRulesForm";
 import MasjidLocationPicker from "./MasjidLocationPicker";
+import { notify } from "@/lib/toast";
+import { uploadMasjidImage } from "@/lib/helpers/uploads";
 
 export default function AddMasjidModal({ open, onClose, onCreated }) {
   const [loading, setLoading] = useState(false);
   const [cities, setCities] = useState([]);
   const [areas, setAreas] = useState([]);
   const [mapOpen, setMapOpen] = useState(false);
+  const [prayerRules, setPrayerRules] = useState({});
 
-  const initialFormState = {
+  const [form, setForm] = useState({
     name: "",
     address: "",
     city: "",
     area: "",
-    locationLat: "",
-    locationLng: "",
-    image: null,
+    lat: "",
+    lng: "",
     contacts: {},
-    prayerTimings: {},
     description: "",
-    timezone: "",
-  };
+    timezone: "Asia/Kolkata",
+  });
 
-  const [form, setForm] = useState(initialFormState);
+  const [image, setImage] = useState({
+    url: "",
+    publicId: "",
+  });
 
-  const update = (key, value) => setForm((s) => ({ ...s, [key]: value }));
+  const update = (k, v) => setForm((s) => ({ ...s, [k]: v }));
 
-  async function loadLists() {
-    const [c, a] = await Promise.all([
-      adminAPI.getCities(),
-      adminAPI.getAreas("?limit=2000"),
-    ]);
-    setCities(c?.data || []);
-    setAreas(a?.data || []);
-  }
-
+  /* -------- load city/area -------- */
   useEffect(() => {
-    if (open) loadLists();
+    if (!open) return;
+
+    Promise.all([
+      adminAPI.getCities("?limit=1000"),
+      adminAPI.getAreas("?limit=2000"),
+    ]).then(([c, a]) => {
+      setCities(c?.data || []);
+      setAreas(a?.data || []);
+    });
   }, [open]);
 
   const filteredAreas = areas.filter(
     (a) => !form.city || a.city?._id === form.city
   );
 
-  function resetForm() {
-    setForm(initialFormState);
-    setMapOpen(false);
+  /* -------- image upload -------- */
+  async function onImageSelect(file) {
+    if (!file) return;
+
+    try {
+      setLoading(true);
+
+      const res = await uploadMasjidImage(file);
+
+      // 🔥 THIS IS THE KEY LINE
+      setImage({
+        file,
+        url: res.imageUrl,
+        publicId: res.imagePublicId,
+      });
+
+      notify.success("Image uploaded successfully");
+    } catch (err) {
+      console.error(err);
+      notify.error("Image upload failed");
+    } finally {
+      setLoading(false);
+    }
   }
 
+  /* -------- submit -------- */
   async function submit(e) {
     e.preventDefault();
 
-    // VALIDATION
     if (!form.name.trim()) return notify.error("Masjid name is required");
     if (!form.city) return notify.error("City is required");
     if (!form.area) return notify.error("Area is required");
-    if (!form.locationLat || !form.locationLng)
-      return notify.error("Masjid location is required");
+    if (!form.lat || !form.lng)
+      return notify.error("Latitude & Longitude required");
 
     setLoading(true);
+
     try {
+      /* ---------- 1️⃣ CREATE MASJID ---------- */
       const payload = {
-        name: form.name,
-        address: form.address,
+        name: form.name.trim(),
+        address: form.address || "",
         city: form.city,
         area: form.area,
         description: form.description || "",
-        timezone: form.timezone || "",
+        timezone: form.timezone || "Asia/Kolkata",
         location: {
           type: "Point",
-          coordinates: [
-            parseFloat(form.locationLng), // lng
-            parseFloat(form.locationLat), // lat
-          ],
+          coordinates: [Number(form.lng), Number(form.lat)],
         },
-        contacts: [
-          ...(form.contacts.imam?.name
-            ? [{ role: "imam", ...form.contacts.imam }]
-            : []),
-          ...(form.contacts.mozin?.name
-            ? [{ role: "mozin", ...form.contacts.mozin }]
-            : []),
-          ...(form.contacts.mutawalli?.name
-            ? [{ role: "mutawalli", ...form.contacts.mutawalli }]
-            : []),
-        ],
-        prayerTimings: [form.prayerTimings],
+        contacts: Object.entries(form.contacts)
+          .filter(([, v]) => v?.name)
+          .map(([role, v]) => ({ role, ...v })),
+
+        imageUrl: image.url || "",
+        imagePublicId: image.publicId || "",
       };
 
-      let res;
+      console.log("IMAGE STATE BEFORE SUBMIT:", image);
 
-      if (form.image) {
-        // FormData only when image selected
-        const fd = new FormData();
-        fd.append("name", payload.name);
-        fd.append("address", payload.address);
-        fd.append("city", payload.city);
-        fd.append("area", payload.area);
-        fd.append("description", payload.description);
-        fd.append("timezone", payload.timezone);
-        fd.append("location", JSON.stringify(payload.location));
-        fd.append("contacts", JSON.stringify(payload.contacts));
-        fd.append("prayerTimings", JSON.stringify(payload.prayerTimings));
-        fd.append("image", form.image);
-        res = await adminAPI.createMasjid(fd);
-      } else {
-        res = await adminAPI.createMasjid(payload); // JSON
+      const res = await adminAPI.createMasjid(payload);
+      if (!res?.success) throw new Error(res.message);
+
+      const masjidId = res.data._id;
+
+      /* ---------- 2️⃣ SAVE PRAYER RULES ---------- */
+      for (const [prayer, data] of Object.entries(prayerRules)) {
+        if (!data) continue;
+
+        if (prayer === "maghrib") {
+          await adminAPI.upsertMasjidPrayerRule(masjidId, {
+            prayer: "maghrib",
+            mode: "auto",
+            auto: {
+              source: "auqatus_salah",
+              azan_offset_minutes: Number(data.azanOffset || 0),
+              iqaamat_offset_minutes: Number(data.iqaamatOffset || 0),
+            },
+          });
+        } else {
+          await adminAPI.upsertMasjidPrayerRule(masjidId, {
+            prayer,
+            mode: "manual",
+            manual: {
+              azan: data.azan || "",
+              iqaamat: data.iqaamat || "",
+            },
+          });
+        }
       }
 
-      if (res?.success) {
-        notify.success("Masjid added successfully");
-        onCreated?.(res.data);
-        resetForm();
-        onClose();
-      } else {
-        notify.error(res?.message || "Failed");
-      }
-    } catch {
-      notify.error("Failed to add masjid");
+      notify.success("Masjid created successfully");
+      onCreated?.(res.data);
+      onClose();
+    } catch (err) {
+      console.error(err);
+      notify.error(err.message || "Create failed");
     } finally {
       setLoading(false);
     }
@@ -133,130 +159,106 @@ export default function AddMasjidModal({ open, onClose, onCreated }) {
 
   return (
     <>
-      <Modal
-        open={open}
-        onClose={() => {
-          resetForm();
-          onClose();
-        }}
-        title="Add Masjid"
-        size="2xl"
-      >
+      <Modal open={open} onClose={onClose} title="Add Masjid" size="2xl">
         <form onSubmit={submit} className="space-y-6">
-          {/* BASIC INFO */}
+          <Input
+            label="Masjid Name *"
+            value={form.name}
+            onChange={(e) => update("name", e.target.value)}
+          />
+
+          <Input
+            label="Address"
+            value={form.address}
+            onChange={(e) => update("address", e.target.value)}
+          />
+
+          {/* IMAGE */}
+          <div>
+            <label className="block mb-1 font-medium">Masjid Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => onImageSelect(e.target.files?.[0])}
+            />
+
+            {image.url && (
+              <img
+                src={image.url}
+                className="mt-2 w-full max-h-40 object-cover rounded"
+              />
+            )}
+          </div>
+
+          {/* CITY / AREA */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Name *"
-              value={form.name}
-              onChange={(e) => update("name", e.target.value)}
-            />
-            <Input
-              label="Address"
-              value={form.address}
-              onChange={(e) => update("address", e.target.value)}
-            />
+            <select
+              className="border px-3 py-2 rounded"
+              value={form.city}
+              onChange={(e) => update("city", e.target.value)}
+            >
+              <option value="">Select City</option>
+              {cities.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
 
-            <div>
-              <label className="block mb-1 font-medium">City *</label>
-              <select
-                className="border w-full px-3 py-2 rounded-lg"
-                value={form.city}
-                onChange={(e) => update("city", e.target.value)}
-              >
-                <option value="">Select</option>
-                {cities.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              className="border px-3 py-2 rounded"
+              value={form.area}
+              onChange={(e) => update("area", e.target.value)}
+            >
+              <option value="">Select Area</option>
+              {filteredAreas.map((a) => (
+                <option key={a._id} value={a._id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-            <div>
-              <label className="block mb-1 font-medium">Area *</label>
-              <select
-                className="border w-full px-3 py-2 rounded-lg"
-                value={form.area}
-                onChange={(e) => update("area", e.target.value)}
-              >
-                <option value="">Select</option>
-                {filteredAreas.map((a) => (
-                  <option key={a._id} value={a._id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
+          {/* LAT / LNG */}
+          <div className="grid grid-cols-2 gap-4">
             <Input
               label="Latitude *"
-              value={form.locationLat}
-              onChange={(e) => update("locationLat", e.target.value)}
+              value={form.lat}
+              onChange={(e) => update("lat", e.target.value)}
             />
             <Input
               label="Longitude *"
-              value={form.locationLng}
-              onChange={(e) => update("locationLng", e.target.value)}
-            />
-
-            <button
-              type="button"
-              onClick={() => setMapOpen(true)}
-              className="border bg-blue-600 text-white py-2 rounded-lg col-span-1 md:col-span-2"
-            >
-              Pick Location on Map
-            </button>
-
-            <Input
-              label="Timezone"
-              value={form.timezone}
-              onChange={(e) => update("timezone", e.target.value)}
-            />
-            <Input
-              label="Description"
-              value={form.description}
-              onChange={(e) => update("description", e.target.value)}
+              value={form.lng}
+              onChange={(e) => update("lng", e.target.value)}
             />
           </div>
 
-          {/* CONTACT INFO */}
+          <button
+            type="button"
+            onClick={() => setMapOpen(true)}
+            className="bg-blue-600 text-white py-2 rounded w-full"
+          >
+            Pick Location on Map
+          </button>
+
           <ContactPersonsForm
             contacts={form.contacts}
             onChange={(v) => update("contacts", v)}
           />
 
-          {/* PRAYER TIMES */}
-          <PrayerTimingsForm
-            value={form.prayerTimings}
-            onChange={(v) => update("prayerTimings", v)}
-          />
+          <PrayerRulesForm value={prayerRules} onChange={setPrayerRules} />
 
-          {/* IMAGE */}
-          <div>
-            <label className="block mb-1 font-medium">Image</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => update("image", e.target.files?.[0] || null)}
-            />
-          </div>
-
-          {/* SUBMIT */}
           <div className="flex justify-end gap-3">
             <button
               type="button"
-              onClick={() => {
-                resetForm();
-                onClose();
-              }}
-              className="border px-4 py-2 rounded-lg"
+              onClick={onClose}
+              className="border px-4 py-2 rounded"
             >
               Cancel
             </button>
             <button
-              type="submit"
               disabled={loading}
-              className="bg-slate-700 text-white px-4 py-2 rounded-lg"
+              className="bg-slate-700 text-white px-4 py-2 rounded"
             >
               {loading ? "Saving..." : "Add Masjid"}
             </button>
@@ -267,11 +269,11 @@ export default function AddMasjidModal({ open, onClose, onCreated }) {
       <MasjidLocationPicker
         open={mapOpen}
         onClose={() => setMapOpen(false)}
-        lat={form.locationLat}
-        lng={form.locationLng}
+        lat={form.lat}
+        lng={form.lng}
         onSelect={(lat, lng) => {
-          update("locationLat", lat);
-          update("locationLng", lng);
+          update("lat", lat);
+          update("lng", lng);
         }}
       />
     </>

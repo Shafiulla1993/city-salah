@@ -2,6 +2,6 @@
 import { withAuth } from "@/lib/middleware/withAuth";
 import { getMyMasjidsController } from "@/server/controllers/masjidAdmin/masjids.controller";
 
-export const GET = withAuth("masjid_admin", async (request, context) => {
-  return await getMyMasjidsController({ user: context.user });
+export const GET = withAuth("masjid_admin", async (req, ctx) => {
+  return await getMyMasjidsController({ user: ctx.user });
 });

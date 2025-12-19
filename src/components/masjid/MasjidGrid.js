@@ -6,7 +6,12 @@ import React from "react";
 import MasjidCard from "./MasjidCard";
 import MobileCarousel from "./MobileCarousel";
 
-export default function MasjidGrid({ masjids = [], onExpand, onFlipChange }) {
+export default function MasjidGrid({
+  masjids = [],
+  onExpand,
+  onFlipChange,
+  onUpdateMasjid, // 👈 NEW (just passthrough)
+}) {
   if (!Array.isArray(masjids)) masjids = [];
 
   return (
@@ -17,6 +22,7 @@ export default function MasjidGrid({ masjids = [], onExpand, onFlipChange }) {
           masjids={masjids}
           onExpand={onExpand}
           onFlipChange={onFlipChange}
+          onUpdateMasjid={onUpdateMasjid}
         />
       </div>
 
@@ -24,14 +30,14 @@ export default function MasjidGrid({ masjids = [], onExpand, onFlipChange }) {
       <div className="hidden lg:block w-full">
         <div
           className="
-      grid
-      mx-auto
-      justify-center
-      gap-6
-      grid-cols-[repeat(auto-fit,minmax(320px,1fr))]
-      xl:grid-cols-[repeat(auto-fit,minmax(360px,1fr))]
-      max-w-[1280px]
-    "
+            grid
+            mx-auto
+            justify-center
+            gap-6
+            grid-cols-[repeat(auto-fit,minmax(320px,1fr))]
+            xl:grid-cols-[repeat(auto-fit,minmax(360px,1fr))]
+            max-w-[1280px]
+          "
         >
           {masjids.map((m) => (
             <div key={m._id} className="flex justify-center">
@@ -39,6 +45,7 @@ export default function MasjidGrid({ masjids = [], onExpand, onFlipChange }) {
                 masjid={m}
                 onExpand={onExpand}
                 onFlipChange={onFlipChange}
+                onUpdateMasjid={onUpdateMasjid}
               />
             </div>
           ))}

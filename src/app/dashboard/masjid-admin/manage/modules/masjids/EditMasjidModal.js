@@ -1,3 +1,5 @@
+// src/app/dashboard/masjid-admin/manage/modules/masjids/EditMasjidModal.js
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -5,7 +7,8 @@ import Modal from "@/components/admin/Modal";
 import { mAdminAPI } from "@/lib/api/mAdmin";
 import { notify } from "@/lib/toast";
 import ContactPersonsForm from "./ContactPersonsForm";
-import PrayerTimingsForm from "./PrayerTimingsForm";
+import PrayerRulesForm from "./PrayerRulesForm";
+import { uploadMasjidImage } from "@/lib/helpers/uploads";
 
 export default function EditMasjidModal({
   open,
@@ -15,109 +18,106 @@ export default function EditMasjidModal({
 }) {
   const [loading, setLoading] = useState(false);
 
-  const initialState = {
-    image: null,
+  const [form, setForm] = useState({
     imageUrl: "",
+    imagePublicId: "",
     contacts: {},
-    prayerTimings: {},
-  };
-
-  const [form, setForm] = useState(initialState);
-  const [hasChanges, setHasChanges] = useState(false);
+    prayerRules: {},
+  });
 
   function update(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  // ------------ LOAD MASJID DETAILS ------------
-  async function loadMasjid() {
-    if (!masjidId) return;
-    setLoading(true);
-    try {
-      const res = await mAdminAPI.getMasjidById(masjidId);
-      const m = res?.data;
-      if (!m) return;
+  /* ---------- LOAD MASJID ---------- */
+  useEffect(() => {
+    if (!open || !masjidId) return;
 
-      setForm({
-        image: null,
-        imageUrl: m.imageUrl || "",
-        contacts: {
-          imam: m.contacts?.find((c) => c.role === "imam") || {},
-          mozin: m.contacts?.find((c) => c.role === "mozin") || {},
-          mutawalli: m.contacts?.find((c) => c.role === "mutawalli") || {},
-        },
-        prayerTimings: m.prayerTimings?.[0] || {},
-      });
-    } catch {
-      notify.error("Failed to load masjid");
+    setLoading(true);
+    mAdminAPI
+      .getMasjidById(masjidId)
+      .then((res) => {
+        const m = res?.data;
+        if (!m) return;
+
+        setForm({
+          imageUrl: m.imageUrl || "",
+          imagePublicId: m.imagePublicId || "",
+          contacts: {
+            imam: m.contacts?.find((c) => c.role === "imam") || {},
+            mozin: m.contacts?.find((c) => c.role === "mozin") || {},
+            mutawalli: m.contacts?.find((c) => c.role === "mutawalli") || {},
+          },
+          prayerRules: m.prayerTimings?.[0] || {}, // ✅ NOW WORKS
+        });
+      })
+      .catch(() => notify.error("Failed to load masjid"))
+      .finally(() => setLoading(false));
+  }, [open, masjidId]);
+
+  /* ---------- IMAGE ---------- */
+  async function onImageSelect(file) {
+    if (!file) return;
+
+    try {
+      setLoading(true);
+
+      // 1️⃣ Upload (multipart)
+      const uploaded = await mAdminAPI.uploadMasjidImage(file);
+
+      console.log("Uploaded image:", uploaded); // 🔍 DEBUG
+
+      // 🔴 IMPORTANT: uploaded MUST contain imageUrl
+      if (!uploaded?.data?.imageUrl) {
+        throw new Error("Upload did not return imageUrl");
+      }
+
+      const payload = {
+        imageUrl: uploaded.data.imageUrl,
+        imagePublicId: uploaded.data.imagePublicId,
+      };
+
+      console.log("Saving image payload:", payload); // 🔍 DEBUG
+
+      // 2️⃣ Save (JSON)
+      await mAdminAPI.updateMasjidImage(masjidId, payload);
+
+      // 3️⃣ Update local state (preview + submit)
+      setForm((prev) => ({
+        ...prev,
+        imageUrl: payload.imageUrl,
+        imagePublicId: payload.imagePublicId,
+      }));
+
+      notify.success("Image updated");
+    } catch (err) {
+      console.error(err);
+      notify.error(err.message || "Image update failed");
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    if (open) loadMasjid();
-  }, [open, masjidId]);
-
-  // ------------ AUTO NORMALIZE TIME FORMAT ------------
-  function normalizeTime(raw, prayer) {
-    if (!raw) return "";
-    let str = raw.toString().toUpperCase().trim();
-    str = str.replace(/\./g, ":").replace(/AM|PM/g, "").trim();
-    let [hh, mm] = str.split(":");
-    if (!mm) mm = "00";
-
-    let h = parseInt(hh) || 0;
-    let m = parseInt(mm) || 0;
-
-    if (h <= 0) h = 12;
-    if (h > 12) h = h % 12 || 12;
-    if (m < 0) m = 0;
-    if (m > 59) m = m % 60;
-
-    const hhFmt = String(h).padStart(2, "0");
-    const mmFmt = String(m).padStart(2, "0");
-    const suffix = prayer === "fajr" ? "AM" : "PM";
-    return `${hhFmt}:${mmFmt} ${suffix}`;
-  }
-
+  /* ---------- SUBMIT ---------- */
   async function submit(e) {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const formData = new FormData();
+      const payload = {
+        imageUrl: form.imageUrl,
+        imagePublicId: form.imagePublicId,
+        contacts: Object.entries(form.contacts)
+          .filter(([, v]) => v?.name)
+          .map(([role, v]) => ({ role, ...v })),
+        prayerRules: form.prayerRules,
+      };
 
-      // 🔹 Image upload (if changed)
-      if (form.image) {
-        formData.append("image", form.image);
-      }
+      const res = await mAdminAPI.updateMasjid(masjidId, payload);
+      if (!res?.success) throw new Error(res.message);
 
-      // 🔹 Contacts [imam, mozin, mutawalli]
-      const contactsArray = [
-        form.contacts.imam?.name
-          ? { role: "imam", ...form.contacts.imam }
-          : null,
-        form.contacts.mozin?.name
-          ? { role: "mozin", ...form.contacts.mozin }
-          : null,
-        form.contacts.mutawalli?.name
-          ? { role: "mutawalli", ...form.contacts.mutawalli }
-          : null,
-      ].filter(Boolean);
-      formData.append("contacts", JSON.stringify(contactsArray));
-
-      console.log("IMAGE FILE:", form.image);
-
-      // 🔹 Prayer timings (backend will normalize automatically)
-      formData.append("prayerTimings", JSON.stringify([form.prayerTimings]));
-
-      const res = await mAdminAPI.updateMasjid(masjidId, formData);
-
-      if (!res.success) throw new Error(res.message);
-      notify.success("Masjid updated successfully");
-
-      onUpdated?.(res.data); // Refresh table
+      notify.success("Masjid updated");
+      onUpdated?.(res.data);
       onClose();
     } catch (err) {
       notify.error(err.message || "Update failed");
@@ -126,64 +126,15 @@ export default function EditMasjidModal({
     }
   }
 
-  // ------------ SUBMIT ------------
-  function detectChanges(loaded, current) {
-    // image changed
-    if (current.image) return true;
-
-    // contacts changed
-    const cOld = JSON.stringify([
-      ...(loaded.contacts.imam?.name
-        ? [{ role: "imam", ...loaded.contacts.imam }]
-        : []),
-      ...(loaded.contacts.mozin?.name
-        ? [{ role: "mozin", ...loaded.contacts.mozin }]
-        : []),
-      ...(loaded.contacts.mutawalli?.name
-        ? [{ role: "mutawalli", ...loaded.contacts.mutawalli }]
-        : []),
-    ]);
-
-    const cNew = JSON.stringify([
-      ...(current.contacts.imam?.name
-        ? [{ role: "imam", ...current.contacts.imam }]
-        : []),
-      ...(current.contacts.mozin?.name
-        ? [{ role: "mozin", ...current.contacts.mozin }]
-        : []),
-      ...(current.contacts.mutawalli?.name
-        ? [{ role: "mutawalli", ...current.contacts.mutawalli }]
-        : []),
-    ]);
-
-    if (cOld !== cNew) return true;
-
-    // timings changed
-    const clean = (pt) =>
-      JSON.stringify({
-        fajr: pt.fajr || {},
-        Zohar: pt.Zohar || {},
-        asr: pt.asr || {},
-        maghrib: pt.maghrib || {},
-        isha: pt.isha || {},
-        juma: pt.juma || {},
-      });
-
-    if (clean(loaded.prayerTimings) !== clean(current.prayerTimings))
-      return true;
-
-    return false;
-  }
-
   return (
     <Modal open={open} onClose={onClose} title="Edit Masjid" size="2xl">
-      {!open || loading ? (
+      {loading ? (
         <p className="text-center py-10">Loading...</p>
       ) : (
         <form onSubmit={submit} className="space-y-6">
           {/* IMAGE */}
           <div>
-            <label className="mb-1 font-medium block">Image</label>
+            <label className="block mb-1 font-medium">Masjid Image</label>
             {form.imageUrl && (
               <img
                 src={form.imageUrl}
@@ -193,7 +144,7 @@ export default function EditMasjidModal({
             <input
               type="file"
               accept="image/*"
-              onChange={(e) => update("image", e.target.files?.[0] || null)}
+              onChange={(e) => onImageSelect(e.target.files?.[0])}
             />
           </div>
 
@@ -203,26 +154,23 @@ export default function EditMasjidModal({
             onChange={(v) => update("contacts", v)}
           />
 
-          {/* PRAYER TIMINGS */}
-          <PrayerTimingsForm
-            value={form.prayerTimings}
-            onChange={(v) => update("prayerTimings", v)}
+          {/* PRAYERS */}
+
+          <PrayerRulesForm
+            value={form.prayerRules}
+            onChange={(v) => update("prayerRules", v)}
           />
 
-          {/* BUTTONS */}
           <div className="flex justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="border px-4 py-2 rounded-lg"
+              className="border px-4 py-2 rounded"
             >
               Cancel
             </button>
-            <button
-              disabled={loading}
-              className="bg-slate-700 text-white px-4 py-2 rounded-lg"
-            >
-              {loading ? "Saving..." : "Save Changes"}
+            <button className="bg-slate-700 text-white px-4 py-2 rounded">
+              Save Changes
             </button>
           </div>
         </form>

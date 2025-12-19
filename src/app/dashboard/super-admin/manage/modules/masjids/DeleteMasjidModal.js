@@ -1,4 +1,4 @@
-"use client";
+// src/app/dashboard/super-admin/manage/modules/masjids/DeleteMasjideModal.js
 
 "use client";
 

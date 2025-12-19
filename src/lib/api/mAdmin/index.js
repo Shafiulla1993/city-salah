@@ -2,32 +2,66 @@
 
 import { httpFetch } from "@/lib/http/fetchClient";
 
-const BASE = "";
-
 /**
- * Smart wrapper — JSON or FormData auto handling
+ * Smart wrapper — same pattern as super-admin
  */
-function send(url, method, data) {
+function send(url, method, data = {}) {
   const isForm = data instanceof FormData;
-  return httpFetch(`${BASE}${url}`, {
+
+  return httpFetch(url, {
     method,
+    headers: isForm
+      ? undefined
+      : {
+          "Content-Type": "application/json",
+        },
     body: isForm ? data : JSON.stringify(data),
   });
 }
 
+/**
+ * Masjid Admin API
+ * JSON-first (except upload)
+ */
 export const mAdminAPI = {
-  /** ------------------- MASJIDS ------------------- **/
-  getMyMasjids: () => httpFetch(`/masjid-admin/masjids`),
+  /* ---------------- MASJIDS ---------------- */
+
+  /** Get masjids assigned to logged-in masjid admin */
+  getMyMasjids: () => httpFetch("/masjid-admin/masjids"),
+
+  /** Get single masjid (permission enforced backend) */
   getMasjidById: (id) => httpFetch(`/masjid-admin/masjids/${id}`),
 
+  /**
+   * Update masjid (image, contacts, prayerRules)
+   * JSON ONLY
+   */
   updateMasjid: (id, data) =>
     send(`/masjid-admin/masjids/${id}/update`, "PUT", data),
 
-  /** ------------------- ANNOUNCEMENTS ------------------- **/
+  /* ---------------- IMAGE ---------------- */
+
+  /** Upload image (ONLY multipart endpoint) */
+  uploadMasjidImage: (file) => {
+    const fd = new FormData();
+    fd.append("image", file);
+
+    return send(`/masjid-admin/masjids/upload-image`, "POST", fd);
+  },
+
+  /** Attach / replace image (JSON only) */
+  updateMasjidImage: (id, data) =>
+    send(`/masjid-admin/masjids/${id}/image`, "PUT", data),
+
+  /** Remove image */
+  deleteMasjidImage: (id) =>
+    send(`/masjid-admin/masjids/${id}/delete-image`, "POST"),
+
+  /* ---------------- ANNOUNCEMENTS ---------------- */
+
   getAnnouncements: (masjidId) =>
     httpFetch(`/masjid-admin/masjids/${masjidId}/announcements`),
 
-  /** 🔥 Missing earlier — now added */
   getAnnouncementById: (announcementId) =>
     httpFetch(`/masjid-admin/announcements/${announcementId}`),
 

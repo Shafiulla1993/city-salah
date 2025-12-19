@@ -5,34 +5,23 @@ import React from "react";
 import usePrayerCountdown, {
   getPrevAndNextIqaamats,
 } from "@/hooks/usePrayerCountdown";
+import { normalizePrayerTimings } from "@/lib/helpers/normalizePrayerTimings";
 
 export default function MasjidCardFront({ masjid }) {
-  const timings = masjid.prayerTimings?.[0] || {};
+  /* -----------------------------
+     NEW BACKEND SAFE TIMINGS
+  ----------------------------- */
+  const raw = masjid?.prayerTimings?.[0] || {};
+  const timings = normalizePrayerTimings(raw);
 
-  // derive next & prev
+  // derive next & prev (same logic as old)
   const { next, prev } = getPrevAndNextIqaamats(timings);
-
   const { remainingStr, progress } = usePrayerCountdown(next?.time, prev?.time);
 
   /* -----------------------------
-     Ring math
+     OLD RING MATH (RESTORED)
   ----------------------------- */
-  const radius = 26;
-  const circumference = 2 * Math.PI * radius;
-
   const safeProgress = Number.isFinite(progress) ? progress : 0;
-  const offset = circumference * (1 - safeProgress);
-
-  /* -----------------------------
-     Dynamic color (light → strong)
-     progress: 0 → 1
-  ----------------------------- */
-  const ringColor =
-    safeProgress < 0.4
-      ? "#86efac" // light green
-      : safeProgress < 0.7
-      ? "#22c55e" // medium green
-      : "#15803d"; // strong green (near time)
 
   return (
     <div className="w-full h-full bg-stone-300 rounded-2xl flex flex-col overflow-hidden shadow-2xl">
@@ -75,7 +64,7 @@ export default function MasjidCardFront({ masjid }) {
           </div>
         </div>
 
-        {/* Countdown Ring */}
+        {/* COUNTDOWN RING — EXACT OLD VERSION */}
         <div className="relative w-20 h-20">
           <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
             {/* Background track */}
@@ -98,12 +87,7 @@ export default function MasjidCardFront({ masjid }) {
               fill="none"
               strokeLinecap="round"
               strokeDasharray={2 * Math.PI * 42}
-              strokeDashoffset={
-                2 *
-                Math.PI *
-                42 *
-                (1 - (Number.isFinite(progress) ? progress : 0))
-              }
+              strokeDashoffset={2 * Math.PI * 42 * (1 - safeProgress)}
               style={{
                 transition: "stroke-dashoffset 1s linear",
               }}

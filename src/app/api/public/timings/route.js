@@ -1,59 +1,47 @@
-import { NextResponse } from "next/server";
-import moment from "moment-timezone";
-import connectDB from "@/lib/db";
-import GeneralPrayerTiming from "@/models/GeneralPrayerTiming";
+// src/app/api/public/timings/route.js
 
-export async function POST(request) {
+import { NextResponse } from "next/server";
+import connectDB from "@/lib/db";
+import MasjidPrayerConfig from "@/models/MasjidPrayerConfig";
+import { resolvePrayerTimings } from "@/server/services/prayerResolver";
+import mongoose from "mongoose";
+
+export async function GET(req) {
   try {
     await connectDB();
-    const { cityId, areaId, madhab = "shafi" } = await request.json();
 
-    if (!cityId || !areaId)
+    const { searchParams } = new URL(req.url);
+    const masjidId = searchParams.get("masjidId");
+
+    if (!masjidId || !mongoose.isValidObjectId(masjidId)) {
       return NextResponse.json(
-        { message: "cityId and areaId are required" },
+        { success: false, message: "Invalid masjidId" },
         { status: 400 }
       );
-
-    const timezone = "Asia/Kolkata";
-    const todayDate = moment().tz(timezone).format("YYYY-MM-DD");
-    const dayOfWeek = moment().tz(timezone).day();
-
-    let timing = await GeneralPrayerTiming.findOne({
-      area: areaId,
-      city: cityId,
-      date: todayDate,
-      madhab,
-    })
-      .populate("area", "name")
-      .populate("city", "name");
-
-    if (!timing) {
-      timing = await GeneralPrayerTiming.findOne({
-        area: areaId,
-        city: cityId,
-        dayOfWeek,
-        type: "weekly",
-        madhab,
-      })
-        .populate("area", "name")
-        .populate("city", "name");
     }
 
-    if (!timing)
-      return NextResponse.json(
-        { message: "No prayer timings found" },
-        { status: 404 }
-      );
+    const config = await MasjidPrayerConfig.findOne({
+      masjid: masjidId,
+    }).lean();
+
+    if (!config) {
+      return NextResponse.json({
+        success: true,
+        data: {},
+      });
+    }
+
+    const timings = resolvePrayerTimings({ config });
 
     return NextResponse.json({
-      city: timing.city.name,
-      area: timing.area.name,
-      madhab: timing.madhab,
-      date: timing.date || todayDate,
-      prayers: timing.prayers,
+      success: true,
+      data: timings,
     });
   } catch (err) {
-    console.error("Prayer timings error:", err);
-    return NextResponse.json({ message: err.message }, { status: 500 });
+    console.error("Public timings error:", err);
+    return NextResponse.json(
+      { success: false, message: "Failed to load prayer timings" },
+      { status: 500 }
+    );
   }
 }

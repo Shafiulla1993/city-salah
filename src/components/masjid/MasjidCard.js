@@ -6,45 +6,56 @@ import { useState, useRef, useEffect } from "react";
 import MasjidCardFront from "./MasjidCardFront";
 import MasjidCardBack from "./MasjidCardBack";
 import "@/styles/flip.css";
-import { MasjidCardBackSkeleton } from "./loaders";
+import { publicAPI } from "@/lib/api/public";
 
-export default function MasjidCard({ masjid, onExpand, onFlipChange }) {
+export default function MasjidCard({
+  masjid,
+  onExpand,
+  onFlipChange,
+  onUpdateMasjid,
+}) {
   const [flipped, setFlipped] = useState(false);
 
   const startY = useRef(0);
   const moved = useRef(false);
 
-  /* -----------------------------
-      Lock scroll only when flipped
-  ----------------------------- */
   useEffect(() => {
     document.body.style.overflow = flipped ? "hidden" : "";
     return () => (document.body.style.overflow = "");
   }, [flipped]);
 
-  /* -----------------------------
-      Tap / Scroll detection
-  ----------------------------- */
   const beginPointer = (e) => {
     startY.current = e.clientY;
     moved.current = false;
   };
 
   const detectMove = (e) => {
-    if (Math.abs(e.clientY - startY.current) > 10) {
-      moved.current = true;
-    }
+    if (Math.abs(e.clientY - startY.current) > 10) moved.current = true;
   };
 
-  const endPointer = () => {
+  const endPointer = async () => {
     if (moved.current) return;
 
-    const nextFlipped = !flipped;
+    const next = !flipped;
 
-    if (!flipped) onExpand?.(masjid);
+    // 🔥 LOAD PRAYER TIMINGS ON FIRST FLIP
+    if (!flipped && masjid.prayerTimings?.length === 0) {
+      try {
+        const res = await publicAPI.getPrayerTimings(masjid._id);
 
-    setFlipped(nextFlipped);
-    onFlipChange?.(nextFlipped, masjid);
+        if (res?.success && res.data) {
+          onUpdateMasjid?.({
+            ...masjid,
+            prayerTimings: [res.data],
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load timings", err);
+      }
+    }
+
+    setFlipped(next);
+    onFlipChange?.(next, masjid);
   };
 
   return (
@@ -88,11 +99,7 @@ export default function MasjidCard({ masjid, onExpand, onFlipChange }) {
             scrollbarWidth: "none",
           }}
         >
-          {masjid?.fullDetailsLoading ? (
-            <MasjidCardBackSkeleton />
-          ) : (
-            <MasjidCardBack masjid={masjid} />
-          )}
+          <MasjidCardBack masjid={masjid} />
         </div>
       </div>
     </div>

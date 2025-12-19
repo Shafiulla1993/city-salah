@@ -9,6 +9,7 @@ export default function MobileCarousel({
   masjids = [],
   onExpand,
   onFlipChange,
+  onUpdateMasjid,
 }) {
   if (!masjids.length) return null;
 
@@ -115,6 +116,7 @@ export default function MobileCarousel({
                 masjid={m}
                 onExpand={onExpand}
                 onFlipChange={onFlipChange}
+                onUpdateMasjid={onUpdateMasjid}
               />
             </div>
           );

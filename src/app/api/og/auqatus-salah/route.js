@@ -20,7 +20,7 @@ export async function GET(req) {
     fajr: "Fajr",
     ishraq: "Ishraq",
     chasht: "Chasht",
-    zohar: "Zohar",
+    zohar: "zohar",
     asar_shafi: "Asar (Shafi)",
     asar_hanafi: "Asar (Hanafi)",
     maghrib: "Maghrib",
@@ -30,9 +30,7 @@ export async function GET(req) {
   const rows = Object.keys(labels)
     .map((key) => {
       const time = searchParams.get(key);
-      return time
-        ? { name: labels[key], time: to12Hour(time) }
-        : null;
+      return time ? { name: labels[key], time: to12Hour(time) } : null;
     })
     .filter(Boolean);
 
@@ -61,9 +59,7 @@ export async function GET(req) {
             marginBottom: 36,
           }}
         >
-          <div style={{ fontSize: 54, fontWeight: 700 }}>
-            Auqatus Salah
-          </div>
+          <div style={{ fontSize: 54, fontWeight: 700 }}>Auqatus Salah</div>
           <div
             style={{
               fontSize: 26,
@@ -98,12 +94,8 @@ export async function GET(req) {
                 fontSize: 28,
               }}
             >
-              <span style={{ fontWeight: 500 }}>
-                {r.name}
-              </span>
-              <span style={{ fontWeight: 600 }}>
-                {r.time}
-              </span>
+              <span style={{ fontWeight: 500 }}>{r.name}</span>
+              <span style={{ fontWeight: 600 }}>{r.time}</span>
             </div>
           ))}
         </div>

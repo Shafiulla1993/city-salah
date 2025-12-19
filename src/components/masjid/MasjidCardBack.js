@@ -1,11 +1,10 @@
 // src/components/masjid/MasjidCardBack.js
 
-// src/components/masjid/MasjidCardBack.js
 "use client";
 
 import React, { useEffect } from "react";
+import { normalizePrayerTimings } from "@/lib/helpers/normalizePrayerTimings";
 
-/* ---------------- Prayer Card ---------------- */
 function PrayerCard({ title, azan, iqaamat }) {
   return (
     <div className="p-3 bg-stone-100 rounded-xl border border-stone-300 shadow-sm">
@@ -16,7 +15,6 @@ function PrayerCard({ title, azan, iqaamat }) {
   );
 }
 
-/* ---------------- Contact Column ---------------- */
 function ContactColumn({ title, contact }) {
   return (
     <div className="p-3">
@@ -28,82 +26,55 @@ function ContactColumn({ title, contact }) {
 }
 
 export default function MasjidCardBack({ masjid }) {
-  const data = masjid?.fullDetails || masjid;
+  const raw = masjid?.prayerTimings?.[0] || {};
+  const timings = normalizePrayerTimings(raw);
 
-  const timings = data?.prayerTimings?.[0] || {};
-  const contacts = data?.contacts || [];
-
+  const contacts = masjid?.contacts || [];
   const imam = contacts.find((c) => c.role === "imam");
   const mozin = contacts.find((c) => c.role === "mozin");
   const mutawalli = contacts.find((c) => c.role === "mutawalli");
 
-  const lng = data?.location?.coordinates?.[0];
-  const lat = data?.location?.coordinates?.[1];
+  const lng = masjid?.location?.coordinates?.[0];
+  const lat = masjid?.location?.coordinates?.[1];
 
   const mapUrl =
     typeof lat === "number" && typeof lng === "number"
       ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
       : null;
 
-  /* ---------------- SEO ---------------- */
   useEffect(() => {
-    if (data?.name) {
-      document.title = `${data.name} – ${data.area?.name}, ${data.city?.name} | Prayer Timings`;
+    if (masjid?.name) {
+      document.title = `${masjid.name} – ${masjid.area?.name}, ${masjid.city?.name} | CitySalah`;
     }
-  }, [data]);
+  }, [masjid]);
 
   return (
     <div className="w-full h-full p-4 overflow-y-auto bg-stone-300 rounded-2xl">
       {/* HEADER */}
       <div className="flex items-start justify-between mb-4">
         <div className="font-bold text-stone-900 text-base leading-tight">
-          Masjid e {data?.name}
+          Masjid e {masjid?.name}
         </div>
         <div className="text-xs text-stone-800 text-right leading-tight">
-          {data?.area?.name}
+          {masjid?.area?.name}
           <br />
-          {data?.city?.name}
+          {masjid?.city?.name}
         </div>
       </div>
 
-      {/* PRAYER TIMINGS */}
+      {/* PRAYERS */}
       <div className="grid grid-cols-2 gap-3 mb-5">
-        <PrayerCard
-          title="Fajr"
-          azan={timings.fajr?.azan}
-          iqaamat={timings.fajr?.iqaamat}
-        />
-        <PrayerCard
-          title="Zohar"
-          azan={timings.Zohar?.azan}
-          iqaamat={timings.Zohar?.iqaamat}
-        />
-        <PrayerCard
-          title="Asr"
-          azan={timings.asr?.azan}
-          iqaamat={timings.asr?.iqaamat}
-        />
-        <PrayerCard
-          title="Maghrib"
-          azan={timings.maghrib?.azan}
-          iqaamat={timings.maghrib?.iqaamat}
-        />
-        <PrayerCard
-          title="Isha"
-          azan={timings.isha?.azan}
-          iqaamat={timings.isha?.iqaamat}
-        />
-        <PrayerCard
-          title="Juma"
-          azan={timings.juma?.azan}
-          iqaamat={timings.juma?.iqaamat}
-        />
+        <PrayerCard title="Fajr" {...timings.fajr} />
+        <PrayerCard title="Zohar" {...timings.zohar} />
+        <PrayerCard title="Asr" {...timings.asr} />
+        <PrayerCard title="Maghrib" {...timings.maghrib} />
+        <PrayerCard title="Isha" {...timings.isha} />
+        <PrayerCard title="Juma" {...timings.juma} />
       </div>
 
       {/* CONTACTS */}
       <div className="mb-5">
         <div className="font-bold text-stone-900 text-sm mb-2">Contacts</div>
-
         <div className="grid grid-cols-3 bg-stone-100 rounded-xl divide-x border border-stone-300">
           <ContactColumn title="Imam" contact={imam} />
           <ContactColumn title="Mozin" contact={mozin} />
@@ -115,43 +86,33 @@ export default function MasjidCardBack({ masjid }) {
       <div className="mb-4">
         <div className="font-bold text-stone-900 text-sm mb-1">Address</div>
         <div className="text-xs text-stone-800 leading-relaxed">
-          {data?.address || "--"}
+          {masjid?.address || "--"}
         </div>
       </div>
 
-      {/* ACTION BUTTONS */}
+      {/* ACTIONS */}
       <div className="flex gap-3 mt-4">
         {mapUrl && (
           <a
             href={mapUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl py-2 px-2 text-center"
+            className="flex-1 bg-emerald-600 text-white rounded-xl py-2 text-center"
           >
-            <div className="font-bold text-sm">📍 Map</div>
-            <div className="text-[10px] opacity-90">Open in Google Maps</div>
+            📍 Map
           </a>
         )}
 
-        {data?._id && (
+        {masjid?._id && (
           <button
             onClick={() => {
-              const shareUrl = `${window.location.origin}/api/og/masjid/${data._id}`;
-              if (navigator.share) {
-                navigator.share({
-                  title: `${data.name} Prayer Timings`,
-                  text: `Prayer timings for ${data.name}`,
-                  url: shareUrl,
-                });
-              } else {
-                navigator.clipboard.writeText(shareUrl);
-                alert("Prayer timings link copied!");
-              }
+              const shareUrl = `${window.location.origin}/api/og/masjid/${masjid._id}`;
+              navigator.clipboard.writeText(shareUrl);
+              alert("Prayer timings link copied!");
             }}
-            className="flex-1 bg-stone-800 hover:bg-stone-900 text-white rounded-xl py-2 px-2 text-center"
+            className="flex-1 bg-stone-800 text-white rounded-xl py-2 text-center"
           >
-            <div className="font-bold text-sm">📤 Share</div>
-            <div className="text-[10px] opacity-90">Send prayer timings</div>
+            📤 Share
           </button>
         )}
       </div>

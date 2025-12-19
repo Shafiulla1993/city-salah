@@ -21,10 +21,6 @@ import {
 } from "@/components/masjid/loaders";
 
 /* ---------------- HELPERS ---------------- */
-const computeNextPrayer = (m) => {
-  const timings = m.prayerTimings?.[0] || m.prayerTimings || {};
-  return getPrevAndNextIqaamats(timings).next || null;
-};
 
 const normalizeMasjid = (m) => ({
   _id: m._id,
@@ -33,10 +29,13 @@ const normalizeMasjid = (m) => ({
   city: m.city,
   imageUrl: m.imageUrl || "/Default_Image.png",
   address: m.address || "",
-  prayerTimings: m.prayerTimings || [],
-  nextPrayer: computeNextPrayer(m),
-  fullDetails: m,
-  fullDetailsLoading: false,
+  contacts: Array.isArray(m.contacts) ? m.contacts : [],
+  location: m.location || null,
+
+  // timings loaded separately
+  prayerTimings: Array.isArray(m.prayerTimings) ? m.prayerTimings : [],
+
+  timingsLoading: false,
 });
 
 export default function Page() {
@@ -149,7 +148,7 @@ export default function Page() {
   const onSelectFromLocationSheet = async (m) => {
     setSheetOpen(false);
     try {
-      const full = await publicAPI.getMasjidByIdentifier(m.slug, m.areaId);
+      const full = await publicAPI.getMasjidById(m.slug);
       setMasjid(full);
       setMasjids([normalizeMasjid(full)]);
     } catch {
@@ -180,6 +179,12 @@ export default function Page() {
     } else {
       document.title = originalTitleRef.current;
     }
+  }, []);
+
+  const updateMasjid = useCallback((updated) => {
+    setMasjids((prev) =>
+      prev.map((m) => (m._id === updated._id ? updated : m))
+    );
   }, []);
 
   /* ---------------- UI ---------------- */
@@ -240,7 +245,11 @@ export default function Page() {
             ))}
           </div>
         ) : masjids.length ? (
-          <MasjidGrid masjids={masjids} onFlipChange={handleFlipChange} />
+          <MasjidGrid
+            masjids={masjids}
+            onFlipChange={handleFlipChange}
+            onUpdateMasjid={updateMasjid}
+          />
         ) : (
           <div className="text-center py-20 text-slate-600">
             Select city and area

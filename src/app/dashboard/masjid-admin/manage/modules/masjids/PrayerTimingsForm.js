@@ -1,49 +1,55 @@
 // src/app/dashboard/masjid-admin/manage/modules/masjids/PrayerTimingsForm.js
-
 "use client";
 
-export default function PrayerTimingsForm({ value = {}, onChange }) {
-  const prayers = ["fajr", "Zohar", "asr", "maghrib", "isha", "juma"];
+const PRAYERS = ["fajr", "zohar", "asr", "isha", "maghrib", "juma"];
 
-  function update(prayer, field, fieldValue) {
-    const updated = {
-      ...value,
-      [prayer]: {
-        ...value[prayer],
-        [field]: fieldValue,
-      },
-    };
-    onChange(updated);
+export default function PrayerTimingsForm({ value = {}, onChange }) {
+  function update(prayer, field, val) {
+    const next = { ...value, [prayer]: { ...value[prayer], [field]: val } };
+    onChange(next);
   }
 
   return (
-    <div className="space-y-3 border rounded-lg p-4 bg-slate-50">
-      <h3 className="text-sm font-semibold text-slate-700">
-        Prayer Timings (Azaan / Iqaamat)
-      </h3>
+    <div className="space-y-4 border rounded-xl p-4 bg-slate-50">
+      <h3 className="font-semibold">Prayer Timings</h3>
 
-      {prayers.map((p) => (
-        <div
-          key={p}
-          className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center"
-        >
+      {PRAYERS.map((p) => (
+        <div key={p} className="space-y-2">
           <div className="capitalize font-medium">{p}</div>
 
-          <input
-            type="text"
-            className="border px-3 py-2 rounded-lg"
-            placeholder="Azaan e.g. 5:30"
-            value={value[p]?.azan || ""}
-            onChange={(e) => update(p, "azan", e.target.value)}
-          />
-
-          <input
-            type="text"
-            className="border px-3 py-2 rounded-lg"
-            placeholder="Iqaamat e.g. 5:45"
-            value={value[p]?.iqaamat || ""}
-            onChange={(e) => update(p, "iqaamat", e.target.value)}
-          />
+          {p === "maghrib" ? (
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                placeholder="Azan offset (min)"
+                value={value[p]?.azanOffset ?? ""}
+                onChange={(e) => update(p, "azanOffset", e.target.value)}
+                className="border px-2 py-1 rounded"
+              />
+              <input
+                type="number"
+                placeholder="Iqaamat offset (min)"
+                value={value[p]?.iqaamatOffset ?? ""}
+                onChange={(e) => update(p, "iqaamatOffset", e.target.value)}
+                className="border px-2 py-1 rounded"
+              />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                placeholder="Azan"
+                value={value[p]?.azan || ""}
+                onChange={(e) => update(p, "azan", e.target.value)}
+                className="border px-2 py-1 rounded"
+              />
+              <input
+                placeholder="Iqaamat"
+                value={value[p]?.iqaamat || ""}
+                onChange={(e) => update(p, "iqaamat", e.target.value)}
+                className="border px-2 py-1 rounded"
+              />
+            </div>
+          )}
         </div>
       ))}
     </div>

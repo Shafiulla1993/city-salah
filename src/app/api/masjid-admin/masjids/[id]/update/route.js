@@ -11,73 +11,14 @@ import { updateMasjidController } from "@/server/controllers/masjidAdmin/masjids
 
 export const PUT = withAuth("masjid_admin", async (req, ctx) => {
   const { id } = await ctx.params;
+  const body = await req.json();
 
-  // parse multipart
-  const { fields, files } = await parseMultipart(req).catch(() => ({
-    fields: {},
-    files: {},
-  }));
-
-  let body = { ...fields };
-
-  // Normalize simple fields (array -> first) BUT we usually don't need those here.
-  Object.keys(body).forEach((key) => {
-    if (
-      Array.isArray(body[key]) &&
-      key !== "contacts" &&
-      key !== "prayerTimings"
-    ) {
-      body[key] = body[key][0];
-    }
-  });
-
-  // Parse JSON for contacts/prayerTimings
-  ["contacts", "prayerTimings"].forEach((k) => {
-    try {
-      if (Array.isArray(body[k])) body[k] = body[k][0];
-      if (typeof body[k] === "string") body[k] = JSON.parse(body[k]);
-      // ensure arrays
-      if (k === "prayerTimings" && body[k] && !Array.isArray(body[k])) {
-        body[k] = [body[k]];
-      }
-      if (k === "contacts" && body[k] && !Array.isArray(body[k])) {
-        body[k] = [body[k]];
-      }
-    } catch {
-      body[k] = undefined;
-    }
-  });
-
-  // Image upload
-  let file = Array.isArray(files?.image) ? files.image[0] : files?.image;
-  let imageUrl = null;
-  let imagePublicId = null;
-
-  if (file) {
-    const tmp = file.filepath;
-    await connectDB();
-    const old = await Masjid.findById(id).select("imagePublicId");
-
-    try {
-      const uploaded = await uploadFileToCloudinary(tmp, "masjids");
-      imageUrl = uploaded.secure_url || uploaded.url;
-      imagePublicId = uploaded.public_id;
-
-      if (old?.imagePublicId) {
-        cloudinary.uploader.destroy(old.imagePublicId).catch(() => {});
-      }
-    } finally {
-      await fs.unlink(tmp).catch(() => {});
-    }
-  }
-
-  // Pass only allowed fields to masjid-admin controller. If not provided, they will be undefined.
   return await updateMasjidController({
     id,
+    imageUrl: body.imageUrl,
+    imagePublicId: body.imagePublicId,
     contacts: body.contacts,
-    prayerTimings: body.prayerTimings,
-    imageUrl,
-    imagePublicId,
+    prayerRules: body.prayerRules,
     user: ctx.user,
   });
 });

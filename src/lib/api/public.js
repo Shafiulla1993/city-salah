@@ -1,78 +1,87 @@
-// src/lib/api/public.ja
+// src/lib/api/public.js
 
 import { httpFetch } from "../http/fetchClient";
 
 const BASE = "/public";
 
 export const publicAPI = {
-  /** -----------------ALL CITIES ----------------- **/
+  /* =======================
+     CITIES
+  ======================= */
   getCities: () => httpFetch(`${BASE}/cities`),
 
-  /** -----------------ALL CITIES ----------------- **/
   getCity: (cityId) => httpFetch(`${BASE}/cities/${cityId}`),
 
-  /** ----------------- AREAS ----------------- **/
+  /* =======================
+     AREAS
+  ======================= */
   getAreas: (cityId) => httpFetch(`${BASE}/areas?cityId=${cityId}`),
 
-  /** ----------------- MASJIDS ----------------- **/
-  getMasjids: ({ cityId, areaId, search }) => {
+  /* =======================
+     MASJIDS (METADATA ONLY)
+  ======================= */
+  getMasjids: ({ cityId, areaId, search } = {}) => {
     const params = new URLSearchParams();
     if (cityId) params.append("cityId", cityId);
     if (areaId) params.append("areaId", areaId);
     if (search) params.append("search", search);
 
-    return httpFetch(`${BASE}/masjids?${params.toString()}`);
+    const qs = params.toString();
+    return httpFetch(`${BASE}/masjids${qs ? `?${qs}` : ""}`);
   },
 
-  /** ----------------- NEAREST ----------------- **/
+  getMasjidById: (idOrSlug) => httpFetch(`${BASE}/masjids/${idOrSlug}`),
+
+  /* =======================
+     NEAREST MASJIDS
+  ======================= */
   getNearestMasjids: ({ lat, lng, limit = 5 }) =>
     httpFetch(`${BASE}/masjids/nearest?lat=${lat}&lng=${lng}&limit=${limit}`),
 
- /** ----------------- Masjid by ID or slug ----------------- **/
-    getMasjidById: (id) =>
-    httpFetch(`${BASE}/masjids/${id}`),
-
-  getMasjidByIdentifier: (slug, areaId) => {
-  const qs = areaId ? `?areaId=${areaId}` : "";
-  return httpFetch(`${BASE}/masjids/${slug}${qs}`);
-},
-
-  /** ---------------- PRAYER TIMINGS ---------------- **/
+  /* =======================
+     PRAYER TIMINGS (NEW SOURCE OF TRUTH)
+  ======================= */
   getPrayerTimings: (masjidId) =>
     httpFetch(`${BASE}/timings?masjidId=${masjidId}`),
 
-  /** ---------------- CONTACTS ---------------- **/
-  getContacts: (masjidId) => httpFetch(`${BASE}/masjids/${masjidId}`),
-
-  /** ---------------- ANNOUNCEMENTS ---------------- **/
+  /* =======================
+     ANNOUNCEMENTS
+  ======================= */
   getGeneralAnnouncements: ({ cityId, areaId, masjidId } = {}) => {
     const params = new URLSearchParams();
     if (masjidId) params.append("masjidId", masjidId);
     else if (areaId) params.append("areaId", areaId);
     else if (cityId) params.append("cityId", cityId);
 
+    const qs = params.toString();
     return httpFetch(
-      `${BASE}/general-announcements${
-        params.toString() ? `?${params.toString()}` : ""
-      }`
+      `${BASE}/general-announcements${qs ? `?${qs}` : ""}`
     ).catch(() => []);
   },
 
   getMasjidAnnouncements: (masjidId) =>
     httpFetch(`${BASE}/masjid-announcements?masjidId=${masjidId}`),
 
-  /** ---------------- THOUGHT OF DAY ---------------- **/
+  /* =======================
+     THOUGHT OF THE DAY
+  ======================= */
   getThoughtOfDay: () => httpFetch(`${BASE}/thought-of-day`).catch(() => []),
 
-  /** ---------------- General Prayer Timings ---------------- **/
-  getGeneralTimings: ({ cityId, areaId, date }) => {
+  /* =======================
+     GENERAL (CITY / AREA) TIMINGS
+  ======================= */
+  getGeneralTimings: ({ cityId, areaId, date } = {}) => {
     const params = new URLSearchParams();
     if (cityId) params.append("cityId", cityId);
     if (areaId) params.append("areaId", areaId);
     if (date) params.append("date", date);
-    return httpFetch(`/public/general-timings?${params.toString()}`);
+
+    const qs = params.toString();
+    return httpFetch(`${BASE}/general-timings${qs ? `?${qs}` : ""}`);
   },
 
-  /** ----------------- MASJID SEARCH INDEX (LIGHTWEIGHT) ----------------- **/
+  /* =======================
+     SEARCH INDEX (LIGHTWEIGHT)
+  ======================= */
   getAllMasjidIndex: () => httpFetch(`${BASE}/masjids/index`),
 };

@@ -21,7 +21,7 @@ export async function GET(request) {
     const masjids = await Masjid.find(filter)
       .populate("city", "name timezone")
       .populate("area", "name")
-      .select("name slug imageUrl contacts location prayerTimings");
+      .select("name slug imageUrl contacts location ");
 
     return NextResponse.json(masjids);
   } catch (err) {

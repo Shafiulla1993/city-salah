@@ -4,13 +4,13 @@ import mongoose from "mongoose";
 import Masjid from "@/models/Masjid";
 import City from "@/models/City";
 import Area from "@/models/Area";
-import { generateSlug } from "@/lib/helpers/slugHelper";
+import MasjidPrayerConfig from "@/models/MasjidPrayerConfig";
 import { paginate } from "@/server/utils/paginate";
+import { resolvePrayerTimings } from "@/server/services/prayerResolver";
 
-/**
- * Helper: resolve city/area if caller passed a string name instead of ObjectId.
- * Returns { cityId, areaId } (may be same as input if already ObjectIds)
- */
+/* ------------------------------------
+ * Helper: Resolve City & Area
+ * ------------------------------------ */
 async function resolveCityAreaIds({ city, area }) {
   let cityId = city;
   let areaId = area;
@@ -24,10 +24,9 @@ async function resolveCityAreaIds({ city, area }) {
   }
 
   if (area && typeof area === "string" && !mongoose.isValidObjectId(area)) {
-    // try by name within resolved city if possible
-    const areaQuery = { name: { $regex: `^${area}$`, $options: "i" } };
-    if (cityId) areaQuery.city = cityId;
-    const foundArea = await Area.findOne(areaQuery);
+    const query = { name: { $regex: `^${area}$`, $options: "i" } };
+    if (cityId) query.city = cityId;
+    const foundArea = await Area.findOne(query);
     if (!foundArea) throw new Error(`Area not found: ${area}`);
     areaId = foundArea._id;
   }
@@ -35,81 +34,21 @@ async function resolveCityAreaIds({ city, area }) {
   return { cityId, areaId };
 }
 
-/**
- * Normalize time (e.g. "5:20" → "05:20 AM/PM")
- * - Fajr  => AM
- * - Zohar, asr, maghrib, isha => PM
- */
-function normalizeTime(raw, prayer) {
-  if (!raw) return "";
-
-  let str = raw.toString().toUpperCase().trim();
-  str = str.replace(/\./g, ":"); // allow 5.30 → 5:30
-  str = str.replace(/AM|PM/g, "").trim(); // strip user AM/PM, we enforce
-
-  let [hh, mm] = str.split(":");
-
-  // hour only → assume :00
-  if (!mm) mm = "00";
-
-  hh = hh.replace(/\D/g, "");
-  mm = mm.replace(/\D/g, "");
-
-  // convert to valid 12-hour
-  let h = parseInt(hh, 10) || 0;
-  let m = parseInt(mm, 10) || 0;
-
-  if (h <= 0) h = 12;
-  if (h > 12) h = h % 12 || 12;
-  if (m < 0 || Number.isNaN(m)) m = 0;
-  if (m > 59) m = m % 60;
-
-  const hhFmt = String(h).padStart(2, "0");
-  const mmFmt = String(m).padStart(2, "0");
-
-  const suffix = prayer === "fajr" ? "AM" : "PM";
-  return `${hhFmt}:${mmFmt} ${suffix}`;
-}
-
-async function findMasjidById(id) {
-  if (!mongoose.isValidObjectId(id)) {
-    return {
-      status: 400,
-      json: { success: false, message: "Invalid Masjid ID" },
-    };
-  }
-  const masjid = await Masjid.findById(id);
-  if (!masjid) {
-    return {
-      status: 404,
-      json: { success: false, message: "Masjid not found" },
-    };
-  }
-  return { masjid };
-}
-
-
+/* ------------------------------------
+ * CREATE MASJID
+ * ------------------------------------ */
 export async function createMasjidController({ body = {}, user }) {
   try {
     const b = { ...body };
 
-    /* ------------------------------------
-     * 1️⃣ Resolve City & Area
-     * ------------------------------------ */
-    try {
-      const resolved = await resolveCityAreaIds({
-        city: b.city,
-        area: b.area,
-      });
-      b.city = resolved.cityId;
-      b.area = resolved.areaId;
-    } catch (err) {
-      return { status: 404, json: { success: false, message: err.message } };
-    }
+    // Resolve city & area
+    const { cityId, areaId } = await resolveCityAreaIds({
+      city: b.city,
+      area: b.area,
+    });
+    b.city = cityId;
+    b.area = areaId;
 
-    /* ------------------------------------
-     * 2️⃣ Validations
-     * ------------------------------------ */
     if (!b.name?.trim())
       return {
         status: 400,
@@ -119,7 +58,7 @@ export async function createMasjidController({ body = {}, user }) {
     if (!b.city || !b.area)
       return {
         status: 400,
-        json: { success: false, message: "City and Area are required" },
+        json: { success: false, message: "City & Area required" },
       };
 
     if (
@@ -130,16 +69,14 @@ export async function createMasjidController({ body = {}, user }) {
         status: 400,
         json: {
           success: false,
-          message: "`location.coordinates` must be [lng, lat]",
+          message: "location.coordinates must be [lng, lat]",
         },
       };
 
-    /* ------------------------------------
-     * 3️⃣ Contacts
-     * ------------------------------------ */
-    b.contacts = Array.isArray(b.contacts)
+    // Normalize contacts
+    const contacts = Array.isArray(b.contacts)
       ? b.contacts
-          .filter((c) => c?.role && c?.name?.trim())
+          .filter((c) => c?.role && c?.name)
           .map((c) => ({
             role: c.role,
             name: c.name.trim(),
@@ -149,64 +86,63 @@ export async function createMasjidController({ body = {}, user }) {
           }))
       : [];
 
-    /* ------------------------------------
-     * 4️⃣ Prayer Timings
-     * ------------------------------------ */
-    const EMPTY = {
-      fajr: { azan: "", iqaamat: "" },
-      Zohar: { azan: "", iqaamat: "" },
-      asr: { azan: "", iqaamat: "" },
-      maghrib: { azan: "", iqaamat: "" },
-      isha: { azan: "", iqaamat: "" },
-      juma: { azan: "", iqaamat: "" },
-    };
+    // Create masjid
+    const masjid = await Masjid.create({
+      name: b.name.trim(),
+      address: b.address || "",
+      city: b.city,
+      area: b.area,
+      location: b.location,
+      contacts,
+      imageUrl: b.imageUrl || "",
+      imagePublicId: b.imagePublicId || "",
+      timezone: b.timezone || "Asia/Kolkata",
+      createdBy: user?._id,
+    });
 
-    let finalTimings = { ...EMPTY };
-
-    if (Array.isArray(b.prayerTimings) && b.prayerTimings[0]) {
-      for (const key of Object.keys(EMPTY)) {
-        if (b.prayerTimings[0][key]) {
-          finalTimings[key] = {
-            azan: normalizeTime(b.prayerTimings[0][key].azan, key),
-            iqaamat: normalizeTime(b.prayerTimings[0][key].iqaamat, key),
-          };
-        }
-      }
-    }
-
-    b.prayerTimings = [finalTimings];
-
-    /* ------------------------------------
-     * 5️⃣ Create (DB enforces uniqueness)
-     * ------------------------------------ */
-    try {
-      const masjid = await Masjid.create({
-        ...b,
-        createdBy: user?._id,
-      });
-
-      return {
-        status: 201,
-        json: {
-          success: true,
-          message: "Masjid created successfully",
-          data: masjid,
-        },
-      };
-    } catch (err) {
-      if (err.code === 11000) {
-        return {
-          status: 400,
-          json: {
-            success: false,
-            message: "A masjid with this name already exists in this area",
+    // Create prayer config (1:1)
+    await MasjidPrayerConfig.create({
+      masjid: masjid._id,
+      rules: [
+        { prayer: "fajr", mode: "manual", manual: { azan: "", iqaamat: "" } },
+        { prayer: "zohar", mode: "manual", manual: { azan: "", iqaamat: "" } },
+        { prayer: "asr", mode: "manual", manual: { azan: "", iqaamat: "" } },
+        {
+          prayer: "maghrib",
+          mode: "auto",
+          auto: {
+            source: "auqatus_salah",
+            azan_offset_minutes: 2,
+            iqaamat_offset_minutes: 4,
           },
-        };
-      }
-      throw err;
-    }
+          lastComputed: {
+            azan: "",
+            iqaamat: "",
+            syncedAt: null,
+          },
+        },
+        { prayer: "isha", mode: "manual", manual: { azan: "", iqaamat: "" } },
+        { prayer: "juma", mode: "manual", manual: { azan: "", iqaamat: "" } },
+      ],
+    });
+
+    return {
+      status: 201,
+      json: {
+        success: true,
+        message: "Masjid created successfully",
+        data: masjid,
+      },
+    };
   } catch (err) {
-    console.error("createMasjidController error:", err);
+    if (err.code === 11000) {
+      return {
+        status: 400,
+        json: { success: false, message: "Masjid already exists in this area" },
+      };
+    }
+
+    console.error(err);
     return {
       status: 500,
       json: {
@@ -218,230 +154,124 @@ export async function createMasjidController({ body = {}, user }) {
   }
 }
 
-
-/**
- * Get paginated list of masjids
- * Supports: page, limit, search, cityId, areaId
- */
+/* ------------------------------------
+ * GET ALL MASJIDS (PAGINATED)
+ * ------------------------------------ */
 export async function getAllMasjidsController({ query } = {}) {
-  try {
-    const { page, limit, search, cityId, areaId } = query || {};
-    const filter = {};
+  const { page, limit, search, cityId, areaId } = query || {};
+  const filter = {};
 
-    if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { address: { $regex: search, $options: "i" } },
-      ];
-    }
-
-    if (cityId && mongoose.isValidObjectId(cityId)) filter.city = cityId;
-    if (areaId && mongoose.isValidObjectId(areaId)) filter.area = areaId;
-
-    // Use populate so frontend receives city/area objects (name + _id)
-    const result = await paginate(Masjid, {
-      page,
-      limit,
-      filter,
-      populate: [
-        { path: "city", select: "name" },
-        { path: "area", select: "name" },
-      ],
-      sort: { createdAt: -1, _id: -1 },
-    });
-
-    // Optionally flatten some fields for list convenience (maintain full object in data)
-    // We'll keep data as-is (populated objects) so frontend can show both id and name.
-    return result;
-  } catch (err) {
-    console.error("getAllMasjidsController error:", err);
-    return {
-      status: 500,
-      json: { success: false, message: "Server error", error: err.message },
-    };
+  if (search) {
+    filter.$or = [
+      { name: { $regex: search, $options: "i" } },
+      { address: { $regex: search, $options: "i" } },
+    ];
   }
+
+  if (mongoose.isValidObjectId(cityId)) filter.city = cityId;
+  if (mongoose.isValidObjectId(areaId)) filter.area = areaId;
+
+  return paginate(Masjid, {
+    page,
+    limit,
+    filter,
+    populate: [
+      { path: "city", select: "name timezone" },
+      { path: "area", select: "name" },
+    ],
+    sort: { createdAt: -1 },
+  });
 }
 
-/**
- * Get single masjid (populated)
- */
+/* ------------------------------------
+ * GET SINGLE MASJID (COMPOSED)
+ * ------------------------------------ */
 export async function getMasjidController({ id }) {
-  try {
-    if (!mongoose.isValidObjectId(id)) {
-      return {
-        status: 400,
-        json: { success: false, message: "Invalid Masjid ID" },
-      };
-    }
+  if (!mongoose.isValidObjectId(id))
+    return { status: 400, json: { success: false, message: "Invalid ID" } };
 
-    const masjid = await Masjid.findById(id).populate("city area");
-    if (!masjid)
-      return {
-        status: 404,
-        json: { success: false, message: "Masjid not found" },
-      };
-
-    return { status: 200, json: { success: true, data: masjid } };
-  } catch (err) {
-    console.error("getMasjidController error:", err);
+  const masjid = await Masjid.findById(id).populate("city area");
+  if (!masjid)
     return {
-      status: 500,
-      json: { success: false, message: "Server error", error: err.message },
-    };
-  }
-}
-
-/**
- * Update masjid (JSON)
- */
-export async function updateMasjidController({ id, body = {} }) {
-  try {
-    const found = await findMasjidById(id);
-    if (!found.masjid) return found;
-    const masjid = found.masjid;
-    const existing = masjid.toObject();
-    const b = { ...body };
-
-    // Resolve city/area if provided (names -> ids)
-    if (b.city || b.area) {
-      try {
-        const resolved = await resolveCityAreaIds({
-          city: b.city,
-          area: b.area,
-        });
-        if (resolved.cityId) b.city = resolved.cityId;
-        if (resolved.areaId) b.area = resolved.areaId;
-      } catch (err) {
-        return { status: 404, json: { success: false, message: err.message } };
-      }
-    }
-
-    // Helper: apply only when field present in body.
-    // For super-admin: explicit empty string "" means "clear" (so set it).
-    const applyIfSent = (field) => {
-      if (!Object.prototype.hasOwnProperty.call(b, field)) return;
-      // b[field] can be "", null, object, array etc — we set exactly what's provided
-      masjid[field] = b[field];
+      status: 404,
+      json: { success: false, message: "Masjid not found" },
     };
 
-    // Simple fields (apply only when present in body)
-    [
-      "name",
-      "address",
-      "city",
-      "area",
-      "location",
-      "timezone",
-      "description",
-    ].forEach((f) => applyIfSent(f));
+  const config = await MasjidPrayerConfig.findOne({ masjid: id });
 
-    // If name changed and present → update slug
-    if (
-      Object.prototype.hasOwnProperty.call(b, "name") &&
-      b.name !== existing.name
-    ) {
-      masjid.slug = (b.name || "").toLowerCase().replace(/\s+/g, "-");
-    }
+  const prayerTimings = resolvePrayerTimings({ config });
 
-    // Contacts: if provided (even empty names), overwrite exactly as sent
-    if (Object.prototype.hasOwnProperty.call(b, "contacts")) {
-      // ensure array
-      let incomingContacts = b.contacts;
-      if (!Array.isArray(incomingContacts)) {
-        incomingContacts = incomingContacts ? [incomingContacts] : [];
-      }
-      // Normalize shape: role + name (allow empty name)
-      masjid.contacts = incomingContacts.map((c) => ({
-        role: c.role,
-        name: c.name ?? "",
-        phone: c.phone ?? "",
-        email: c.email ?? "",
-        note: c.note ?? "",
-      }));
-    }
-
-    // PrayerTimings: super-admin overwrite behavior (Option B)
-    if (Object.prototype.hasOwnProperty.call(b, "prayerTimings")) {
-      let incoming = b.prayerTimings;
-      if (!Array.isArray(incoming)) incoming = incoming ? [incoming] : [];
-      const p = incoming[0] || {};
-      const keys = ["fajr", "Zohar", "asr", "maghrib", "isha", "juma"];
-      const out = {};
-      keys.forEach((k) => {
-        const entry = p[k] || {};
-        // For super-admin, empty string is an explicit clear.
-        out[k] = {
-          azan: normalizeTime(entry.azan, k),
-          iqaamat: normalizeTime(entry.iqaamat, k),
-        };
-      });
-      masjid.prayerTimings = [out];
-    }
-
-    // Image: if provided in body, set; explicit clearing by sending "" is supported
-    if (Object.prototype.hasOwnProperty.call(b, "imageUrl")) {
-      // Remove old public id if changing to new id
-      if (
-        existing.imagePublicId &&
-        b.imagePublicId &&
-        b.imagePublicId !== existing.imagePublicId
-      ) {
-        cloudinary.uploader.destroy(existing.imagePublicId).catch(() => {});
-      }
-      masjid.imageUrl = b.imageUrl;
-      masjid.imagePublicId = b.imagePublicId;
-    }
-
-    masjid.updatedAt = new Date();
-    await masjid.save();
-
-    const populated = await Masjid.findById(id).populate("city area");
-    return {
-      status: 200,
-      json: {
-        success: true,
-        message: "Masjid updated successfully",
-        data: populated,
+  return {
+    status: 200,
+    json: {
+      success: true,
+      data: {
+        ...masjid.toObject(),
+        prayerTimings: [prayerTimings],
       },
-    };
-  } catch (err) {
-    console.error("super-admin update error:", err);
-    return {
-      status: 500,
-      json: { success: false, message: "Update failed", error: err.message },
-    };
-  }
+    },
+  };
 }
 
-/**
- * Delete masjid
- */
-export async function deleteMasjidController({ id }) {
-  try {
-    if (!mongoose.isValidObjectId(id))
-      return {
-        status: 400,
-        json: { success: false, message: "Invalid Masjid ID" },
-      };
+/* ------------------------------------
+ * UPDATE MASJID (METADATA ONLY)
+ * ------------------------------------ */
+export async function updateMasjidController({ id, body = {} }) {
+  if (!mongoose.isValidObjectId(id))
+    return { status: 400, json: { success: false, message: "Invalid ID" } };
 
-    const masjid = await Masjid.findById(id);
-    if (!masjid)
-      return {
-        status: 404,
-        json: { success: false, message: "Masjid not found" },
-      };
-
-    await Masjid.findByIdAndDelete(id);
-
+  const masjid = await Masjid.findById(id);
+  if (!masjid)
     return {
-      status: 200,
-      json: { success: true, message: "Masjid deleted successfully" },
+      status: 404,
+      json: { success: false, message: "Masjid not found" },
     };
-  } catch (err) {
-    console.error("deleteMasjidController error:", err);
-    return {
-      status: 500,
-      json: { success: false, message: "Server error", error: err.message },
-    };
+
+  const b = { ...body };
+
+  if (b.city || b.area) {
+    const resolved = await resolveCityAreaIds(b);
+    if (resolved.cityId) b.city = resolved.cityId;
+    if (resolved.areaId) b.area = resolved.areaId;
   }
+
+  ["name", "address", "city", "area", "location", "timezone"].forEach((f) => {
+    if (Object.prototype.hasOwnProperty.call(b, f)) {
+      masjid[f] = b[f];
+    }
+  });
+
+  if (Object.prototype.hasOwnProperty.call(b, "contacts")) {
+    masjid.contacts = Array.isArray(b.contacts) ? b.contacts : [];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(b, "imageUrl")) {
+    masjid.imageUrl = b.imageUrl || "";
+    masjid.imagePublicId = b.imagePublicId || "";
+  }
+
+  await masjid.save();
+
+  const populated = await Masjid.findById(id).populate("city area");
+
+  return {
+    status: 200,
+    json: { success: true, message: "Masjid updated", data: populated },
+  };
+}
+
+/* ------------------------------------
+ * DELETE MASJID
+ * ------------------------------------ */
+export async function deleteMasjidController({ id }) {
+  if (!mongoose.isValidObjectId(id))
+    return { status: 400, json: { success: false, message: "Invalid ID" } };
+
+  await Masjid.findByIdAndDelete(id);
+  await MasjidPrayerConfig.deleteOne({ masjid: id });
+
+  return {
+    status: 200,
+    json: { success: true, message: "Masjid deleted" },
+  };
 }

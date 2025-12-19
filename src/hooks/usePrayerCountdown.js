@@ -41,7 +41,7 @@ export function getPrevAndNextIqaamats(prayerTimings = {}) {
     return { next: null, prev: null };
   }
 
-  const order = ["fajr", "Zohar", "asr", "maghrib", "isha"];
+  const order = ["fajr", "zohar", "asr", "maghrib", "isha"];
 
   const now = new Date();
 

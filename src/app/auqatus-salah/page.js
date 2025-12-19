@@ -5,7 +5,7 @@ import AuqatusSalahClient from "./AuqatusSalahClient";
 export const metadata = {
   title: "Auqatus Salah (Prayer Times) | CitySalah",
   description:
-    "View accurate Auqatus Salah prayer timings for your city and nearby areas including Sehri, Fajr, Zohar, Asar, Maghrib, and Isha.",
+    "View accurate Auqatus Salah prayer timings for your city and nearby areas including Sehri, Fajr, zohar, Asar, Maghrib, and Isha.",
   alternates: {
     canonical: "https://citysalah.in/auqatus-salah",
   },
@@ -40,7 +40,7 @@ export default function AuqatusSalahPage() {
     "@type": "WebPage",
     name: "Auqatus Salah (Prayer Times)",
     description:
-      "Daily Auqatus Salah prayer timings including Sehri, Fajr, Zohar, Asar, Maghrib, and Isha.",
+      "Daily Auqatus Salah prayer timings including Sehri, Fajr, zohar, Asar, Maghrib, and Isha.",
     url: "https://citysalah.in/auqatus-salah",
     isPartOf: {
       "@type": "WebSite",
