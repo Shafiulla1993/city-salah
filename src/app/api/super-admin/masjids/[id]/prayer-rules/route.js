@@ -21,7 +21,7 @@ export const GET = withAuth("super_admin", async (req, ctx) => {
  *   prayer: "fajr" | "zohar" | "asr" | "isha" | "maghrib",
  *   mode: "manual" | "auto",
  *   manual?: { azan, iqaamat },
- *   auto?: { azanOffset, iqaamatOffset }
+ *   auto?: { azan_offset_minutes, iqaamat_offset_minutes }
  * }
  */
 export const PUT = withAuth("super_admin", async (req, ctx) => {

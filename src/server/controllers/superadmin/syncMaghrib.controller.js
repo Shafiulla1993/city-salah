@@ -1,8 +1,8 @@
 // src/server/controllers/superadmin/syncMaghrib.controller.js
 
 import MasjidPrayerConfig from "@/models/MasjidPrayerConfig";
-import GeneralTimingTemplate from "@/models/GeneralTimingTemplate";
 import GeneralTimingMapping from "@/models/GeneralTimingMapping";
+import "@/models/GeneralTimingTemplate";
 
 function minutesToTime(mins) {
   mins = ((mins % 1440) + 1440) % 1440;
@@ -17,7 +17,7 @@ function minutesToTime(mins) {
 }
 
 export async function syncMaghribController({ cityId, date }) {
-  // 1️⃣ Get template
+  /* ---------------- Fetch template mapping ---------------- */
   const mapping = await GeneralTimingMapping.findOne({
     city: cityId,
     area: null,
@@ -32,11 +32,9 @@ export async function syncMaghribController({ cityId, date }) {
     };
   }
 
+  /* ---------------- Resolve dateKey ---------------- */
   const dateKey = new Date(date)
-    .toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "short",
-    })
+    .toLocaleDateString("en-GB", { day: "numeric", month: "short" })
     .replace(" ", "-");
 
   const day = mapping.template.days.find((d) => d.dateKey === dateKey);
@@ -55,27 +53,44 @@ export async function syncMaghribController({ cityId, date }) {
     };
   }
 
-  // 2️⃣ Fetch configs for this city
+  /* ---------------- Fetch masjid configs ---------------- */
   const configs = await MasjidPrayerConfig.find().populate({
     path: "masjid",
     match: { city: cityId },
-    select: "_id",
+    select: "_id name",
   });
 
-  const now = new Date();
   let updated = 0;
+  let skipped = 0;
+  const skippedMasjids = [];
+  const now = new Date();
 
   for (const config of configs) {
     if (!config.masjid) continue;
 
     const rule = config.rules.find((r) => r.prayer === "maghrib");
-    if (!rule || rule.mode !== "auto") continue;
+    if (!rule || rule.mode !== "auto" || !rule.auto) {
+      skipped++;
+      skippedMasjids.push(config.masjid.name);
+      continue;
+    }
 
-    const azanMinutes =
-      maghribSlot.time + (rule.auto?.azan_offset_minutes || 0);
+    /* 🔐 SAFETY CHECK (FIX 3) */
+    if (
+      rule.auto.azan_offset_minutes == null ||
+      rule.auto.iqaamat_offset_minutes == null
+    ) {
+      console.warn(
+        `[Maghrib Sync] Missing offsets for masjid ${config.masjid.name}`
+      );
+      skipped++;
+      skippedMasjids.push(config.masjid.name);
+      continue;
+    }
 
-    const iqaamatMinutes =
-      azanMinutes + (rule.auto?.iqaamat_offset_minutes || 0);
+    const azanMinutes = maghribSlot.time + rule.auto.azan_offset_minutes;
+
+    const iqaamatMinutes = azanMinutes + rule.auto.iqaamat_offset_minutes;
 
     rule.lastComputed = {
       azan: minutesToTime(azanMinutes),
@@ -92,8 +107,13 @@ export async function syncMaghribController({ cityId, date }) {
     json: {
       success: true,
       updated,
+      skipped,
+      skippedMasjids,
       syncedAt: now,
-      message: "Maghrib synced successfully",
+      message:
+        skipped > 0
+          ? "Maghrib synced with warnings"
+          : "Maghrib synced successfully",
     },
   };
 }

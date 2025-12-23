@@ -34,7 +34,7 @@ export async function GET(request) {
     })
       .limit(limit)
       .populate("city area", "name")
-      .select("name imageUrl contacts location ");
+      .select("name imageUrl contacts location ladiesPrayerFacility");
 
     return NextResponse.json(masjids);
   } catch (err) {

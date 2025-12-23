@@ -10,7 +10,6 @@ import ContactPersonsForm from "./ContactPersonsForm";
 import PrayerRulesForm from "./PrayerRulesForm";
 import MasjidLocationPicker from "./MasjidLocationPicker";
 import { notify } from "@/lib/toast";
-import { uploadMasjidImage } from "@/lib/helpers/uploads";
 
 export default function AddMasjidModal({ open, onClose, onCreated }) {
   const [loading, setLoading] = useState(false);
@@ -29,6 +28,7 @@ export default function AddMasjidModal({ open, onClose, onCreated }) {
     contacts: {},
     description: "",
     timezone: "Asia/Kolkata",
+    ladiesPrayerFacility: false,
   });
 
   const [image, setImage] = useState({
@@ -62,19 +62,24 @@ export default function AddMasjidModal({ open, onClose, onCreated }) {
     try {
       setLoading(true);
 
-      const res = await uploadMasjidImage(file);
+      const fd = new FormData();
+      fd.append("image", file);
 
-      // 🔥 THIS IS THE KEY LINE
+      const uploaded = await adminAPI.uploadMasjidImage(fd);
+
+      if (!uploaded?.data?.imageUrl) {
+        throw new Error("Image upload failed");
+      }
+
       setImage({
-        file,
-        url: res.imageUrl,
-        publicId: res.imagePublicId,
+        url: uploaded.data.imageUrl,
+        publicId: uploaded.data.imagePublicId,
       });
 
       notify.success("Image uploaded successfully");
     } catch (err) {
       console.error(err);
-      notify.error("Image upload failed");
+      notify.error(err.message || "Image upload failed");
     } finally {
       setLoading(false);
     }
@@ -101,10 +106,12 @@ export default function AddMasjidModal({ open, onClose, onCreated }) {
         area: form.area,
         description: form.description || "",
         timezone: form.timezone || "Asia/Kolkata",
+        ladiesPrayerFacility: form.ladiesPrayerFacility,
         location: {
           type: "Point",
           coordinates: [Number(form.lng), Number(form.lat)],
         },
+
         contacts: Object.entries(form.contacts)
           .filter(([, v]) => v?.name)
           .map(([role, v]) => ({ role, ...v })),
@@ -121,29 +128,23 @@ export default function AddMasjidModal({ open, onClose, onCreated }) {
       const masjidId = res.data._id;
 
       /* ---------- 2️⃣ SAVE PRAYER RULES ---------- */
-      for (const [prayer, data] of Object.entries(prayerRules)) {
-        if (!data) continue;
+      for (const [prayer, rule] of Object.entries(prayerRules)) {
+        if (!rule?.mode) continue;
 
         if (prayer === "maghrib") {
           await adminAPI.upsertMasjidPrayerRule(masjidId, {
-            prayer: "maghrib",
-            mode: "auto",
-            auto: {
-              source: "auqatus_salah",
-              azan_offset_minutes: Number(data.azanOffset || 0),
-              iqaamat_offset_minutes: Number(data.iqaamatOffset || 0),
-            },
-          });
-        } else {
-          await adminAPI.upsertMasjidPrayerRule(masjidId, {
             prayer,
-            mode: "manual",
-            manual: {
-              azan: data.azan || "",
-              iqaamat: data.iqaamat || "",
-            },
+            mode: "auto",
+            auto: rule.auto,
           });
+          continue;
         }
+
+        await adminAPI.upsertMasjidPrayerRule(masjidId, {
+          prayer,
+          mode: "manual",
+          manual: rule.manual,
+        });
       }
 
       notify.success("Masjid created successfully");
@@ -217,6 +218,23 @@ export default function AddMasjidModal({ open, onClose, onCreated }) {
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* LADIES PRAYER FACILITY */}
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="ladiesPrayerFacility"
+              checked={form.ladiesPrayerFacility}
+              onChange={(e) => update("ladiesPrayerFacility", e.target.checked)}
+              className="h-4 w-4"
+            />
+            <label
+              htmlFor="ladiesPrayerFacility"
+              className="text-sm font-medium"
+            >
+              Ladies prayer facility available
+            </label>
           </div>
 
           {/* LAT / LNG */}

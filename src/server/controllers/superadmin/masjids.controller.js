@@ -92,6 +92,7 @@ export async function createMasjidController({ body = {}, user }) {
       address: b.address || "",
       city: b.city,
       area: b.area,
+      ladiesPrayerFacility: Boolean(b.ladiesPrayerFacility),
       location: b.location,
       contacts,
       imageUrl: b.imageUrl || "",
@@ -235,7 +236,15 @@ export async function updateMasjidController({ id, body = {} }) {
     if (resolved.areaId) b.area = resolved.areaId;
   }
 
-  ["name", "address", "city", "area", "location", "timezone"].forEach((f) => {
+  [
+    "name",
+    "address",
+    "city",
+    "area",
+    "location",
+    "timezone",
+    "ladiesPrayerFacility",
+  ].forEach((f) => {
     if (Object.prototype.hasOwnProperty.call(b, f)) {
       masjid[f] = b[f];
     }
@@ -252,11 +261,15 @@ export async function updateMasjidController({ id, body = {} }) {
 
   await masjid.save();
 
-  const populated = await Masjid.findById(id).populate("city area");
+  const populated = await Masjid.findById(id).populate("city area").lean();
 
   return {
     status: 200,
-    json: { success: true, message: "Masjid updated", data: populated },
+    json: {
+      success: true,
+      message: "Masjid updated",
+      data: populated,
+    },
   };
 }
 

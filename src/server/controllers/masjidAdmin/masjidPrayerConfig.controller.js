@@ -57,8 +57,8 @@ export async function upsertMasjidAdminPrayerRuleController({
           mode: "auto",
           auto: {
             source: "auqatus_salah",
-            azan_offset_minutes: Number(auto?.azanOffset || 0),
-            iqaamat_offset_minutes: Number(auto?.iqaamatOffset || 0),
+            azan_offset_minutes: Number(auto?.azan_offset_minutes || 0),
+            iqaamat_offset_minutes: Number(auto?.iqaamat_offset_minutes || 0),
           },
         }
       : {

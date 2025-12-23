@@ -125,15 +125,18 @@ export async function updateMasjidController({
 
   await masjid.save();
 
-  /* ---------------- PRAYER CONFIG ---------------- */
+  /* ---------------- PRAYER CONFIG (MERGE SAFE) ---------------- */
   if (prayerRules && typeof prayerRules === "object") {
     const config =
       (await MasjidPrayerConfig.findOne({ masjid: id })) ||
       (await MasjidPrayerConfig.create({ masjid: id, rules: [] }));
 
     for (const [prayer, rule] of Object.entries(prayerRules)) {
+      if (!rule) continue;
+
       const idx = config.rules.findIndex((r) => r.prayer === prayer);
 
+      // Build next rule
       const next =
         prayer === "maghrib"
           ? {
@@ -141,21 +144,33 @@ export async function updateMasjidController({
               mode: "auto",
               auto: {
                 source: "auqatus_salah",
-                azan_offset_minutes: Number(rule.azanOffset || 0),
-                iqaamat_offset_minutes: Number(rule.iqaamatOffset || 0),
+                azan_offset_minutes: Number(
+                  rule.auto?.azan_offset_minutes ?? 0
+                ),
+                iqaamat_offset_minutes: Number(
+                  rule.auto?.iqaamat_offset_minutes ?? 0
+                ),
               },
             }
           : {
               prayer,
               mode: "manual",
               manual: {
-                azan: rule.azan || "",
-                iqaamat: rule.iqaamat || "",
+                azan: normalizeTime(rule.manual?.azan, prayer),
+                iqaamat: normalizeTime(rule.manual?.iqaamat, prayer),
               },
             };
 
-      if (idx >= 0) config.rules[idx] = next;
-      else config.rules.push(next);
+      if (idx >= 0) {
+        // ✅ update existing prayer only
+        config.rules[idx] = {
+          ...config.rules[idx],
+          ...next,
+        };
+      } else {
+        // ✅ add new prayer
+        config.rules.push(next);
+      }
     }
 
     await config.save();

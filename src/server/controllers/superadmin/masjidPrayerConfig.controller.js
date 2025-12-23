@@ -114,8 +114,9 @@ export async function upsertMasjidPrayerRuleController({
    * ----------------------------- */
   if (mode === "auto") {
     rule.auto = {
-      azanOffset: Number(auto?.azanOffset || 0),
-      iqaamatOffset: Number(auto?.iqaamatOffset || 0),
+      azan_offset_minutes: Number(auto?.azan_offset_minutes || 0),
+      iqaamat_offset_minutes: Number(auto?.iqaamat_offset_minutes || 0),
+      source: "auqatus_salah",
     };
   }
 

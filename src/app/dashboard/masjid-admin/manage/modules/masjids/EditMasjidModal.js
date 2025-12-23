@@ -7,8 +7,7 @@ import Modal from "@/components/admin/Modal";
 import { mAdminAPI } from "@/lib/api/mAdmin";
 import { notify } from "@/lib/toast";
 import ContactPersonsForm from "./ContactPersonsForm";
-import PrayerRulesForm from "./PrayerRulesForm";
-import { uploadMasjidImage } from "@/lib/helpers/uploads";
+import PrayerRulesForm from "@/app/dashboard/super-admin/manage/modules/masjids/PrayerRulesForm";
 
 export default function EditMasjidModal({
   open,
@@ -33,12 +32,40 @@ export default function EditMasjidModal({
   useEffect(() => {
     if (!open || !masjidId) return;
 
-    setLoading(true);
-    mAdminAPI
-      .getMasjidById(masjidId)
-      .then((res) => {
+    async function load() {
+      setLoading(true);
+      try {
+        const res = await mAdminAPI.getMasjidById(masjidId);
         const m = res?.data;
-        if (!m) return;
+        if (!m) throw new Error("No masjid data");
+
+        /**
+         * Convert prayerTimings → editable rules shape
+         */
+        const timings = m.prayerTimings?.[0] || {};
+        const normalizedRules = {};
+
+        Object.entries(timings).forEach(([prayer, data]) => {
+          if (!data) return;
+
+          if (prayer === "maghrib") {
+            normalizedRules.maghrib = {
+              mode: "auto",
+              auto: {
+                azan_offset_minutes: data.azan === "AUTO" ? 0 : 0,
+                iqaamat_offset_minutes: data.iqaamat === "AUTO" ? 0 : 0,
+              },
+            };
+          } else {
+            normalizedRules[prayer] = {
+              mode: "manual",
+              manual: {
+                azan: data.azan || "",
+                iqaamat: data.iqaamat || "",
+              },
+            };
+          }
+        });
 
         setForm({
           imageUrl: m.imageUrl || "",
@@ -48,11 +75,17 @@ export default function EditMasjidModal({
             mozin: m.contacts?.find((c) => c.role === "mozin") || {},
             mutawalli: m.contacts?.find((c) => c.role === "mutawalli") || {},
           },
-          prayerRules: m.prayerTimings?.[0] || {}, // ✅ NOW WORKS
+          prayerRules: normalizedRules,
         });
-      })
-      .catch(() => notify.error("Failed to load masjid"))
-      .finally(() => setLoading(false));
+      } catch (err) {
+        console.error("EditMasjidModal load error:", err);
+        notify.error("Failed to load masjid");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
   }, [open, masjidId]);
 
   /* ---------- IMAGE ---------- */

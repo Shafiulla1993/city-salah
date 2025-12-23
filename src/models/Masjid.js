@@ -34,18 +34,22 @@ const MasjidSchema = new Schema(
       coordinates: { type: [Number], required: true },
     },
 
-    code: {
-      type: String,
-      unique: true,
-      sparse: true,
-    },
-
     contacts: [ContactSchema],
 
     imageUrl: String,
     imagePublicId: String,
 
     timezone: { type: String, default: "Asia/Kolkata" },
+
+    ladiesPrayerFacility: {
+      type: Boolean,
+      default: false,
+    },
+
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
 
     status: {
       type: String,
@@ -59,6 +63,7 @@ const MasjidSchema = new Schema(
 /* Indexes */
 MasjidSchema.index({ location: "2dsphere" });
 MasjidSchema.index({ slug: 1, area: 1 }, { unique: true });
+MasjidSchema.index({ ladiesPrayerFacility: 1 });
 
 MasjidSchema.pre("validate", function (next) {
   if (!this.slug && this.name) this.slug = generateSlug(this.name);

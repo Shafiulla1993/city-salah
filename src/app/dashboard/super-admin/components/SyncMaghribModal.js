@@ -50,10 +50,14 @@ export default function SyncMaghribModal({ open, onClose }) {
       });
 
       if (res?.success) {
-        notify.success(`Maghrib synced for ${res.count} masjids`);
+        if (res.skipped > 0) {
+          notify.warning(
+            `Synced ${res.updated}. Skipped ${res.skipped} masjids (missing offsets)`
+          );
+        } else {
+          notify.success(`Maghrib synced for ${res.updated} masjids`);
+        }
         onClose();
-      } else {
-        notify.error(res?.message || "Sync failed");
       }
     } catch {
       notify.error("Failed to sync Maghrib timings");
@@ -84,13 +88,12 @@ export default function SyncMaghribModal({ open, onClose }) {
 
         {/* City */}
         <div>
-          <label className="block text-sm mb-1">City (optional)</label>
+          <label className="block text-sm mb-1">City</label>
           <select
             value={cityId}
             onChange={(e) => setCityId(e.target.value)}
             className="border rounded-lg px-3 py-2 w-full"
           >
-            <option value="">All Cities</option>
             {cities.map((c) => (
               <option key={c._id} value={c._id}>
                 {c.name}

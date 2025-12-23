@@ -1,12 +1,18 @@
 // src/lib/helpers/normalizePrayerTimings.js
-
 export function normalizePrayerTimings(raw = {}) {
-  return {
-    fajr: raw.fajr || {},
-    zohar: raw.zohar || raw.Zohar || {}, // ✅ FIX
-    asr: raw.asr || {},
-    maghrib: raw.maghrib || {},
-    isha: raw.isha || {},
-    juma: raw.juma || {},
-  };
+  const PRAYERS = ["fajr", "zohar", "asr", "maghrib", "isha", "juma"];
+  const out = {};
+
+  for (const p of PRAYERS) {
+    const r = raw[p] || {};
+
+    out[p] = {
+      azan: r.azan || "",
+      iqaamat: r.iqaamat || "",
+      syncedAt: r.syncedAt || null,
+      source: r.source || null,
+    };
+  }
+
+  return out;
 }
