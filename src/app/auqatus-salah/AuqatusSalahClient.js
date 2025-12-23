@@ -7,6 +7,7 @@ import { publicAPI } from "@/lib/api/public";
 import { toast } from "react-toastify";
 import AuqatusCards from "@/components/auqatus/AuqatusCards";
 import { AuqatusTimingsLoader } from "@/components/masjid/loaders";
+import { normalizeGeneralTimings } from "@/lib/helpers/normalizeGeneralTimings";
 
 export default function AuqatusSalahClient() {
   const [cities, setCities] = useState([]);
@@ -61,37 +62,7 @@ export default function AuqatusSalahClient() {
   }, [cityId, areaId, date]);
 
   /* ---------------- Transform slots ---------------- */
-  const slots = (() => {
-    if (!timings?.slots) return [];
-
-    const map = Object.fromEntries(timings.slots.map((s) => [s.name, s.time]));
-
-    return [
-      { label: "Sehri", start: map.sehri_start, end: map.sehri_end },
-      {
-        label: "Fajr",
-        start: map.fajr_start,
-        end: map.fajr_end,
-        highlight: true,
-      },
-      { label: "Ishraq", start: map.ishraq_start, end: map.ishraq_end },
-      { label: "Chasht", start: map.chasht_start, end: map.chasht_end },
-      { label: "Zawaal", start: map.zawaal_start, end: map.zawaal_end },
-      { label: "zohar", start: map.zohar_start, end: map.zohar_end },
-      {
-        label: "Asr (Shafi)",
-        start: map.asar_shafi_start,
-        end: map.asar_shafi_end,
-      },
-      {
-        label: "Asr (Hanafi)",
-        start: map.asar_hanafi_start,
-        end: map.asar_hanafi_end,
-      },
-      { label: "Maghrib", start: map.maghrib_start, end: map.maghrib_end },
-      { label: "Isha", start: map.isha_start, end: map.isha_end },
-    ].filter((s) => s.start !== undefined || s.end !== undefined);
-  })();
+  const slots = normalizeGeneralTimings(timings);
 
   const shareAuqatus = () => {
     const shareUrl = "https://citysalah.in/auqatus-salah";

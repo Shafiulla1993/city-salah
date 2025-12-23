@@ -37,43 +37,51 @@ function parseTimeString(str) {
 }
 
 export function getPrevAndNextIqaamats(prayerTimings = {}) {
-  if (!prayerTimings || typeof prayerTimings !== "object") {
-    return { next: null, prev: null };
-  }
-
   const order = ["fajr", "zohar", "asr", "maghrib", "isha"];
 
   const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+
+  function toClockMinutes(str) {
+    if (!str) return null;
+
+    // parse WITHOUT date rollover
+    const [time, meridian] = str.trim().split(" ");
+    let [h, m] = time.split(":").map(Number);
+
+    if (meridian === "PM" && h !== 12) h += 12;
+    if (meridian === "AM" && h === 12) h = 0;
+
+    return h * 60 + m;
+  }
 
   const list = order
-    .map((p) => {
-      const iq = prayerTimings[p]?.iqaamat;
-      const dt = parseTimeString(iq);
-      return dt ? { name: p, time: dt, timeStr: iq } : null;
+    .map((name) => {
+      const iq = prayerTimings[name]?.iqaamat;
+      const mins = toClockMinutes(iq);
+      return mins !== null ? { name, mins, timeStr: iq } : null;
     })
     .filter(Boolean)
-    .sort((a, b) => a.time - b.time);
+    .sort((a, b) => a.mins - b.mins);
 
   if (!list.length) return { next: null, prev: null };
 
-  let next = list.find((t) => t.time > now) || null;
-  let prev = null;
+  // NEXT prayer (cyclic)
+  let next = list.find((p) => p.mins > nowMin);
+  if (!next) next = list[0]; // tomorrow Fajr
 
-  for (let i = list.length - 1; i >= 0; i--) {
-    if (list[i].time <= now) {
-      prev = list[i];
-      break;
-    }
-  }
+  // PREVIOUS prayer
+  let prev =
+    [...list].reverse().find((p) => p.mins <= nowMin) || list[list.length - 1];
 
-  // If no upcoming today → tomorrow fajr
-  if (!next) {
-    const fajr = prayerTimings.fajr?.iqaamat || null;
-    const dt = parseTimeString(fajr);
-    if (dt) next = { name: "fajr", time: dt, timeStr: fajr };
-  }
+  // Convert to Date ONLY for countdown
+  const nextDate = parseTimeString(next.timeStr);
+  const prevDate = parseTimeString(prev.timeStr);
 
-  return { next, prev };
+  return {
+    next: { ...next, time: nextDate },
+    prev: { ...prev, time: prevDate },
+  };
 }
 
 export default function usePrayerCountdown(nextTime, prevTime) {
