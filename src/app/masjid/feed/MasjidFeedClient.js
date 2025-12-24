@@ -1,4 +1,4 @@
-// src/app/masjid/feed/MasjidFeedClient.js
+// src/app/masjid/feed/MasjidFeedClient
 
 "use client";
 
@@ -16,7 +16,6 @@ export default function MasjidFeedClient() {
         <MasjidCardLite key={m._id} masjid={m} />
       ))}
 
-      {/* 👇 Sentinel */}
       {hasMore && <div ref={setObserver} className="col-span-full h-12" />}
 
       {loading && (
