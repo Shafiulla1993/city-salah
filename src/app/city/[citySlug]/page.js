@@ -1,31 +1,80 @@
 // src/app/city/[citySlug]/page.js
 
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { serverFetch } from "@/lib/http/serverFetch";
+import MasjidCardLite from "@/components/masjid/MasjidCardLite";
 
+/* --------------------------------
+   SEO METADATA
+--------------------------------- */
 export async function generateMetadata({ params }) {
-  const { citySlug } = await params;
-
+  const { citySlug } = await params; // ✅ FIX
   const cityName = citySlug.replace(/-/g, " ");
 
   return {
-    title: `${cityName} Masjids & Prayer Timings | CitySalah`,
-    description: `Find masjids and prayer timings in ${cityName}.`,
+    title: `Masjids in ${cityName} | CitySalah`,
+    description: `Find masjids in ${cityName}. Browse mosques by area and view prayer details.`,
     alternates: {
       canonical: `https://citysalah.in/city/${citySlug}`,
     },
   };
 }
 
+/* --------------------------------
+   PAGE
+--------------------------------- */
 export default async function CityPage({ params }) {
-  const { citySlug } = await params;
+  const { citySlug } = await params; // ✅ FIX
 
-  // 🔒 Validate city exists (important for SEO correctness)
+  /* 1️⃣ Validate City */
   const cities = await serverFetch("/api/public/cities");
   const city = cities.find((c) => c.slug === citySlug);
 
   if (!city) notFound();
 
-  // ✅ SOFT REDIRECT (UX only)
-  redirect(`/?city=${citySlug}`);
+  /* 2️⃣ Fetch Areas */
+  const areas = await serverFetch(`/api/public/areas?cityId=${city._id}`);
+
+  /* 3️⃣ Fetch Masjids */
+  const masjids = await serverFetch(
+    `/api/public/masjids/index?city=${city._id}`
+  );
+
+  return (
+    <main className="px-4 py-6 max-w-7xl mx-auto">
+      <h1 className="text-xl font-bold mb-2">Masjids in {city.name}</h1>
+
+      <p className="text-sm text-slate-600 mb-6">
+        Browse masjids located across different areas of {city.name}.
+      </p>
+
+      {/* AREA LINKS */}
+      {areas?.length > 0 && (
+        <div className="mb-6 flex flex-wrap gap-2">
+          {areas.map((area) => (
+            <a
+              key={area._id}
+              href={`/city/${city.slug}/area/${area.slug}`}
+              className="text-xs px-3 py-1 rounded-full bg-slate-100 border"
+            >
+              {area.name}
+            </a>
+          ))}
+        </div>
+      )}
+
+      {/* MASJID LIST */}
+      {masjids?.length > 0 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {masjids.map((masjid) => (
+            <MasjidCardLite key={masjid._id} masjid={masjid} />
+          ))}
+        </div>
+      ) : (
+        <div className="py-20 text-center text-slate-500">
+          No masjids found in {city.name}.
+        </div>
+      )}
+    </main>
+  );
 }

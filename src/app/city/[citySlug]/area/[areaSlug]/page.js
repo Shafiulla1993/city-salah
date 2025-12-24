@@ -1,17 +1,21 @@
 // src/app/city/[citySlug]/area/[areaSlug]/page.js
 
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { serverFetch } from "@/lib/http/serverFetch";
+import MasjidCardLite from "@/components/masjid/MasjidCardLite";
 
 export async function generateMetadata({ params }) {
   const { citySlug, areaSlug } = await params;
 
-  const city = citySlug.replace(/-/g, " ");
-  const area = areaSlug.replace(/-/g, " ");
-
   return {
-    title: `Masjids in ${area}, ${city} | CitySalah`,
-    description: `Find masjids and prayer timings in ${area}, ${city}.`,
+    title: `Masjids in ${areaSlug.replace(/-/g, " ")}, ${citySlug.replace(
+      /-/g,
+      " "
+    )} | CitySalah`,
+    description: `Find masjids in ${areaSlug.replace(
+      /-/g,
+      " "
+    )}, ${citySlug.replace(/-/g, " ")}.`,
     alternates: {
       canonical: `https://citysalah.in/city/${citySlug}/area/${areaSlug}`,
     },
@@ -21,17 +25,42 @@ export async function generateMetadata({ params }) {
 export default async function AreaPage({ params }) {
   const { citySlug, areaSlug } = await params;
 
-  // 🔒 Validate area exists (keeps Google happy)
-  const areas = await serverFetch("/api/public/allareas");
+  /* 1️⃣ Resolve City */
+  const cities = await serverFetch("/api/public/cities");
+  const city = cities.find((c) => c.slug === citySlug);
+  if (!city) notFound();
 
-  const area = areas.find(
-    (a) =>
-      a.city.toLowerCase().replace(/\s+/g, "-") === citySlug &&
-      a.name.toLowerCase().replace(/\s+/g, "-") === areaSlug
-  );
-
+  /* 2️⃣ Resolve Area */
+  const areas = await serverFetch(`/api/public/areas?cityId=${city._id}`);
+  const area = areas.find((a) => a.slug === areaSlug);
   if (!area) notFound();
 
-  // ✅ SOFT REDIRECT (UX only)
-  redirect(`/?city=${citySlug}&area=${areaSlug}`);
+  /* 3️⃣ Masjids */
+  const masjids = await serverFetch(
+    `/api/public/masjids/index?city=${city._id}`
+  );
+
+  const areaMasjids = masjids.filter(
+    (m) => String(m.areaId) === String(area._id)
+  );
+
+  return (
+    <main className="px-4 py-6 max-w-7xl mx-auto">
+      <h1 className="text-xl font-bold mb-2">
+        Masjids in {area.name}, {city.name}
+      </h1>
+
+      {areaMasjids.length ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {areaMasjids.map((m) => (
+            <MasjidCardLite key={m._id} masjid={m} />
+          ))}
+        </div>
+      ) : (
+        <p className="py-20 text-center text-slate-500">
+          No masjids found in this area yet.
+        </p>
+      )}
+    </main>
+  );
 }

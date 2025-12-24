@@ -5,8 +5,13 @@
 import usePrayerCountdown, {
   getPrevAndNextIqaamats,
 } from "@/hooks/usePrayerCountdown";
-import { normalizePrayerTimings } from "@/lib/helpers/normalizePrayerTimings";
-import AuqatusCards from "@/components/auqatus/AuqatusCards";
+
+import dynamic from "next/dynamic";
+
+const AuqatusCards = dynamic(
+  () => import("@/components/auqatus/AuqatusCards"),
+  { ssr: false }
+);
 
 /* ---------------- UI helpers ---------------- */
 
@@ -60,12 +65,9 @@ export default function MasjidDetailsLayout({
   masjidTimings,
   generalTimings,
 }) {
-  const normalizedMasjidTimings = masjidTimings
-    ? normalizePrayerTimings(masjidTimings)
-    : null;
-
-  const { next, prev } = normalizedMasjidTimings
-    ? getPrevAndNextIqaamats(normalizedMasjidTimings)
+  // masjidTimings is ALREADY normalized
+  const { next, prev } = masjidTimings
+    ? getPrevAndNextIqaamats(masjidTimings)
     : {};
 
   const { remainingStr, progress } = usePrayerCountdown(next?.time, prev?.time);
@@ -160,45 +162,17 @@ export default function MasjidDetailsLayout({
           )}
 
           {/* MASJID PRAYER TIMINGS */}
-          {normalizedMasjidTimings && (
+          {masjidTimings && (
             <GlassCard>
               <h3 className="font-bold mb-3">Masjid Prayer Timings</h3>
+
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <SmallPrayerCard
-                  title="Fajr"
-                  {...normalizedMasjidTimings.fajr}
-                  highlight={next?.name === "Fajr"}
-                />
-
-                <SmallPrayerCard
-                  title="Zohar"
-                  {...normalizedMasjidTimings.zohar}
-                  highlight={next?.name === "Zohar"}
-                />
-
-                <SmallPrayerCard
-                  title="Asr"
-                  {...normalizedMasjidTimings.asr}
-                  highlight={next?.name === "Asr"}
-                />
-
-                <SmallPrayerCard
-                  title="Maghrib"
-                  {...normalizedMasjidTimings.maghrib}
-                  highlight={next?.name === "Maghrib"}
-                />
-
-                <SmallPrayerCard
-                  title="Isha"
-                  {...normalizedMasjidTimings.isha}
-                  highlight={next?.name === "Isha"}
-                />
-
-                <SmallPrayerCard
-                  title="Juma"
-                  {...normalizedMasjidTimings.juma}
-                  highlight={next?.name === "Juma"}
-                />
+                <SmallPrayerCard title="Fajr" {...masjidTimings.fajr} />
+                <SmallPrayerCard title="Zohar" {...masjidTimings.zohar} />
+                <SmallPrayerCard title="Asr" {...masjidTimings.asr} />
+                <SmallPrayerCard title="Maghrib" {...masjidTimings.maghrib} />
+                <SmallPrayerCard title="Isha" {...masjidTimings.isha} />
+                <SmallPrayerCard title="Juma" {...masjidTimings.juma} />
               </div>
             </GlassCard>
           )}

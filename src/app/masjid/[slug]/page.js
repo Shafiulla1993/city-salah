@@ -1,14 +1,25 @@
 // src/app/masjid/[slug]/page.js
 
 import { notFound } from "next/navigation";
+
 import { serverFetch } from "@/lib/http/serverFetch";
-import ClientMasjidRedirect from "./ClientMasjidRedirect";
+import MasjidDetailsLayout from "@/components/masjid/MasjidDetailsLayout";
 
+import { normalizePrayerTimings } from "@/lib/helpers/normalizePrayerTimings";
+import { normalizeGeneralTimings } from "@/lib/helpers/normalizeGeneralTimings";
+
+/* --------------------------------
+   SEO METADATA
+--------------------------------- */
 export async function generateMetadata({ params }) {
-  const { slug } = await params; // ✅ REQUIRED in Next 16
-  const id = slug.split("-").pop();
+  const { slug } = await params;
 
-  const masjid = await serverFetch(`/api/public/masjids/${id}`);
+  if (!slug) return {};
+
+  const masjid = await serverFetch(`/api/public/masjids/${slug}`).catch(
+    () => null
+  );
+
   if (!masjid) return {};
 
   const city = masjid.city?.name || "";
@@ -16,39 +27,61 @@ export async function generateMetadata({ params }) {
 
   return {
     title: `${masjid.name}, ${area}, ${city} – Prayer Timings | CitySalah`,
-    description: `View prayer timings, Jummah details, and contact information for ${masjid.name} in ${area}, ${city}.`,
+    description: `View prayer timings, address, and contact details for ${masjid.name} in ${area}, ${city}.`,
     alternates: {
-      canonical: `https://citysalah.in/masjid/${masjid.slug}-${masjid._id}`,
-    },
-    openGraph: {
-      images: [
-        {
-          url: `https://citysalah.in/api/og/masjid/${
-            masjid._id
-          }?name=${encodeURIComponent(masjid.name)}&area=${encodeURIComponent(
-            masjid.area?.name || ""
-          )}&city=${encodeURIComponent(masjid.city?.name || "")}`,
-          width: 1200,
-          height: 630,
-        },
-      ],
-    },
-
-    twitter: {
-      card: "summary_large_image",
-      title: `${masjid.name} – CitySalah`,
-      description: `Prayer timings for ${masjid.name}`,
-      images: [`https://citysalah.in/api/og/masjid/${masjid._id}`],
+      canonical: `https://citysalah.in/masjid/${slug}`,
     },
   };
 }
 
+/* --------------------------------
+   PAGE
+--------------------------------- */
 export default async function MasjidPage({ params }) {
-  const { slug } = await params; // ✅ REQUIRED in Next 16
-  const id = slug.split("-").pop();
+  const { slug } = await params;
 
-  const masjid = await serverFetch(`/api/public/masjids/${id}`);
+  if (!slug) notFound();
+
+  /* -----------------------------
+     1️⃣ Fetch FULL masjid
+  ------------------------------ */
+  const masjid = await serverFetch(`/api/public/masjids/${slug}`).catch(
+    () => null
+  );
+
   if (!masjid) notFound();
 
-  return <ClientMasjidRedirect masjid={masjid} />;
+  const today = new Date().toISOString().slice(0, 10);
+
+  /* -----------------------------
+     2️⃣ Fetch timings in parallel
+  ------------------------------ */
+  const [rawMasjidTimings, rawGeneralTimings] = await Promise.all([
+    serverFetch(`/api/public/timings?masjidId=${masjid._id}`).catch(() => null),
+    serverFetch(
+      `/api/public/general-timings?cityId=${masjid.city?._id}&areaId=${masjid.area?._id}&date=${today}`
+    ).catch(() => null),
+  ]);
+
+  /* -----------------------------
+     3️⃣ Normalize ONCE
+  ------------------------------ */
+  const masjidTimings = rawMasjidTimings?.data
+    ? normalizePrayerTimings(rawMasjidTimings.data)
+    : null;
+
+  const generalTimings = rawGeneralTimings?.data
+    ? normalizeGeneralTimings(rawGeneralTimings.data)
+    : [];
+
+  /* -----------------------------
+     4️⃣ Render SEO-FIRST layout
+  ------------------------------ */
+  return (
+    <MasjidDetailsLayout
+      masjid={masjid}
+      masjidTimings={masjidTimings}
+      generalTimings={generalTimings}
+    />
+  );
 }

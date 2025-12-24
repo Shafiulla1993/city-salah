@@ -13,7 +13,7 @@ const features = [
   {
     title: "Search Masjid",
     description: "Search for any masjid in your city.",
-    href: "/masjids",
+    href: "/masjid",
     icon: "/icons/search-masjid.svg",
   },
   {

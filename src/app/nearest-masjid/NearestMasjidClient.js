@@ -8,6 +8,14 @@ import MasjidDetailsLayout from "@/components/masjid/MasjidDetailsLayout";
 import { MasjidCardSkeleton } from "@/components/masjid/loaders";
 import { normalizeGeneralTimings } from "@/lib/helpers/normalizeGeneralTimings";
 
+/**
+ * Error codes:
+ * - GPS_UNSUPPORTED
+ * - GPS_DENIED
+ * - NO_NEARBY_MASJID
+ * - FETCH_FAILED
+ */
+
 export default function NearestMasjidClient() {
   const [loading, setLoading] = useState(true);
   const [masjid, setMasjid] = useState(null);
@@ -17,7 +25,7 @@ export default function NearestMasjidClient() {
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      setError("Location not supported on this device.");
+      setError("GPS_UNSUPPORTED");
       setLoading(false);
       return;
     }
@@ -34,12 +42,12 @@ export default function NearestMasjidClient() {
             limit: 1,
           });
 
-          if (!nearest?.length) {
-            setError("No nearby masjid found.");
+          if (!nearest || nearest.length === 0) {
+            setError("NO_NEARBY_MASJID");
             return;
           }
 
-          /* 2️⃣ Fetch FULL masjid document */
+          /* 2️⃣ Fetch full masjid */
           const fullMasjid = await publicAPI.getMasjidById(nearest[0]._id);
           setMasjid(fullMasjid);
 
@@ -61,23 +69,25 @@ export default function NearestMasjidClient() {
                 res?.success ? normalizeGeneralTimings(res.data) : []
               )
             )
-
             .catch(() => setGeneralTimings(null));
         } catch (err) {
           console.error(err);
-          setError("Failed to load nearest masjid.");
+          setError("FETCH_FAILED");
         } finally {
           setLoading(false);
         }
       },
       () => {
-        setError("Please allow location access.");
+        setError("GPS_DENIED");
         setLoading(false);
       },
       { enableHighAccuracy: true, timeout: 12000 }
     );
   }, []);
 
+  /* -----------------------------
+     LOADING STATE
+  ------------------------------ */
   if (loading) {
     return (
       <section className="px-4 py-12 flex justify-center">
@@ -86,17 +96,49 @@ export default function NearestMasjidClient() {
     );
   }
 
+  /* -----------------------------
+     ERROR STATES (HUMAN UX)
+  ------------------------------ */
   if (error) {
+    const messageMap = {
+      GPS_UNSUPPORTED: {
+        title: "Location not supported",
+        desc: "Your device does not support location services. You can still search masjids manually.",
+      },
+      GPS_DENIED: {
+        title: "Location access denied",
+        desc: "You can search masjids by city or area without enabling location.",
+      },
+      NO_NEARBY_MASJID: {
+        title: "No nearby masjid found",
+        desc: "We’re actively expanding our masjid database. You can search masjids manually for now.",
+      },
+      FETCH_FAILED: {
+        title: "Unable to load nearby masjid",
+        desc: "Something went wrong while finding nearby masjids. Please try manual search.",
+      },
+    };
+
+    const msg = messageMap[error];
+
     return (
-      <section className="px-4 py-20 text-center text-white">
-        <p className="mb-2">{error}</p>
-        <p className="text-sm opacity-80">
-          Enable location access or search manually.
-        </p>
+      <section className="px-4 py-20 text-center text-white max-w-md mx-auto">
+        <h2 className="text-lg font-semibold mb-2">{msg.title}</h2>
+        <p className="text-sm opacity-80 mb-6">{msg.desc}</p>
+
+        <a
+          href="/masjids"
+          className="inline-block px-6 py-2.5 rounded-full bg-white text-slate-900 text-sm font-semibold shadow"
+        >
+          Search Masjids
+        </a>
       </section>
     );
   }
 
+  /* -----------------------------
+     SUCCESS STATE
+  ------------------------------ */
   return (
     <section className="px-4 py-10">
       <MasjidDetailsLayout
