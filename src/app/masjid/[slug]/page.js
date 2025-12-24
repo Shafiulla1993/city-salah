@@ -1,12 +1,15 @@
 // src/app/masjid/[slug]/page.js
 
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { serverFetch } from "@/lib/http/serverFetch";
 import MasjidDetailsLayout from "@/components/masjid/MasjidDetailsLayout";
+import { MasjidDetailsLayoutSkeleton } from "@/components/masjid/loaders";
 
 import { normalizePrayerTimings } from "@/lib/helpers/normalizePrayerTimings";
 import { normalizeGeneralTimings } from "@/lib/helpers/normalizeGeneralTimings";
+import { buildBreadcrumbJsonLd } from "@/lib/seo/breadcrumbs";
 
 /* --------------------------------
    SEO METADATA
@@ -14,22 +17,17 @@ import { normalizeGeneralTimings } from "@/lib/helpers/normalizeGeneralTimings";
 export async function generateMetadata({ params }) {
   const { slug } = await params;
 
-  if (!slug) return {};
-
   const masjid = await serverFetch(`/api/public/masjids/${slug}`).catch(
     () => null
   );
 
   if (!masjid) return {};
 
-  const city = masjid.city?.name || "";
-  const area = masjid.area?.name || "";
-
   return {
-    title: `${masjid.name}, ${area}, ${city} – Prayer Timings | CitySalah`,
-    description: `View prayer timings, address, and contact details for ${masjid.name} in ${area}, ${city}.`,
+    title: `${masjid.name}, ${masjid.area?.name}, ${masjid.city?.name} | CitySalah`,
+    description: `Prayer timings and details for ${masjid.name}.`,
     alternates: {
-      canonical: `https://citysalah.in/masjid/${slug}`,
+      canonical: `https://citysalah.in/masjid/${masjid.slug}-${masjid._id}`,
     },
   };
 }
@@ -37,14 +35,9 @@ export async function generateMetadata({ params }) {
 /* --------------------------------
    PAGE
 --------------------------------- */
-export default async function MasjidPage({ params }) {
-  const { slug } = await params;
+export default async function MasjidPage(props) {
+  const { slug } = await props.params; // ✅ REQUIRED in Next 16
 
-  if (!slug) notFound();
-
-  /* -----------------------------
-     1️⃣ Fetch FULL masjid
-  ------------------------------ */
   const masjid = await serverFetch(`/api/public/masjids/${slug}`).catch(
     () => null
   );
@@ -53,9 +46,6 @@ export default async function MasjidPage({ params }) {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  /* -----------------------------
-     2️⃣ Fetch timings in parallel
-  ------------------------------ */
   const [rawMasjidTimings, rawGeneralTimings] = await Promise.all([
     serverFetch(`/api/public/timings?masjidId=${masjid._id}`).catch(() => null),
     serverFetch(
@@ -63,9 +53,6 @@ export default async function MasjidPage({ params }) {
     ).catch(() => null),
   ]);
 
-  /* -----------------------------
-     3️⃣ Normalize ONCE
-  ------------------------------ */
   const masjidTimings = rawMasjidTimings?.data
     ? normalizePrayerTimings(rawMasjidTimings.data)
     : null;
@@ -74,14 +61,39 @@ export default async function MasjidPage({ params }) {
     ? normalizeGeneralTimings(rawGeneralTimings.data)
     : [];
 
-  /* -----------------------------
-     4️⃣ Render SEO-FIRST layout
-  ------------------------------ */
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "Home", url: "https://citysalah.in" },
+    {
+      name: masjid.city.name,
+      url: `https://citysalah.in/city/${masjid.city.slug}`,
+    },
+    {
+      name: masjid.area.name,
+      url: `https://citysalah.in/city/${masjid.city.slug}/area/${masjid.area.slug}`,
+    },
+    {
+      name: masjid.name,
+      url: `https://citysalah.in/masjid/${slug}`,
+    },
+  ]);
+
   return (
-    <MasjidDetailsLayout
-      masjid={masjid}
-      masjidTimings={masjidTimings}
-      generalTimings={generalTimings}
-    />
+    <>
+      {/* BREADCRUMB SCHEMA */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd),
+        }}
+      />
+
+      <Suspense fallback={<MasjidDetailsLayoutSkeleton />}>
+        <MasjidDetailsLayout
+          masjid={masjid}
+          masjidTimings={masjidTimings}
+          generalTimings={generalTimings}
+        />
+      </Suspense>
+    </>
   );
 }

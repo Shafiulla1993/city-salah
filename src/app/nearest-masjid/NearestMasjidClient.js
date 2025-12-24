@@ -1,11 +1,11 @@
-// src/app/nearest-masjid/NearestMasjidClient.js
-
 "use client";
 
 import { useEffect, useState } from "react";
 import { publicAPI } from "@/lib/api/public";
+
 import MasjidDetailsLayout from "@/components/masjid/MasjidDetailsLayout";
-import { MasjidCardSkeleton } from "@/components/masjid/loaders";
+import { MasjidDetailsLayoutSkeleton } from "@/components/masjid/loaders";
+
 import { normalizeGeneralTimings } from "@/lib/helpers/normalizeGeneralTimings";
 
 /**
@@ -57,7 +57,7 @@ export default function NearestMasjidClient() {
             .then((res) => setMasjidTimings(res?.data || null))
             .catch(() => setMasjidTimings(null));
 
-          /* 4️⃣ Fetch general timings (city + area + date) */
+          /* 4️⃣ Fetch general timings */
           publicAPI
             .getGeneralTimings({
               cityId: fullMasjid.city?._id,
@@ -86,18 +86,18 @@ export default function NearestMasjidClient() {
   }, []);
 
   /* -----------------------------
-     LOADING STATE
+     LOADING STATE (MATCH LAYOUT)
   ------------------------------ */
   if (loading) {
     return (
-      <section className="px-4 py-12 flex justify-center">
-        <MasjidCardSkeleton />
+      <section className="px-4 py-10">
+        <MasjidDetailsLayoutSkeleton />
       </section>
     );
   }
 
   /* -----------------------------
-     ERROR STATES (HUMAN UX)
+     ERROR STATES
   ------------------------------ */
   if (error) {
     const messageMap = {
@@ -127,7 +127,7 @@ export default function NearestMasjidClient() {
         <p className="text-sm opacity-80 mb-6">{msg.desc}</p>
 
         <a
-          href="/masjids"
+          href="/masjid"
           className="inline-block px-6 py-2.5 rounded-full bg-white text-slate-900 text-sm font-semibold shadow"
         >
           Search Masjids

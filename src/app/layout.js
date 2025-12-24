@@ -81,11 +81,9 @@ export default function RootLayout({ children }) {
           <ToastProviderClient />
 
           {/* MAIN CONTENT */}
-          <main className="flex-1 flex flex-col">
-            {children}
-            <Footer />
-          </main>
+          <main className="flex-1 flex flex-col">{children}</main>
 
+          <Footer />
           {/* FLOATING HOME BUTTON (MOBILE FIRST) */}
           <HomeButtonClientOnly />
 

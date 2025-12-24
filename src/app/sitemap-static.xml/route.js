@@ -1,16 +1,16 @@
 // src/app/sitemap-static.xml/route.js
-
 import { NextResponse } from "next/server";
 
 export async function GET() {
   const base = "https://citysalah.in";
+  const now = new Date().toISOString();
 
   const urls = [
-    "/",
-    "/updates",
-    "/login",
-    "/register",
+    "/", // Home
+    "/masjid", // Masjid search page
+    "/nearest-masjid",
     "/auqatus-salah",
+    "/updates",
     "/contact",
   ];
 
@@ -21,7 +21,9 @@ export async function GET() {
       (u) => `
   <url>
     <loc>${base}${u}</loc>
-    <lastmod>${new Date().toISOString()}</lastmod>
+    <lastmod>${now}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
   </url>`
     )
     .join("")}

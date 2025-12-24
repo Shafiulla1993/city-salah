@@ -13,9 +13,9 @@ import { SEARCH_PRESETS } from "@/lib/search/searchPresets";
 export default function LocationSheet({
   open,
   onClose,
-  cities,
-  areas,
-  searchIndex = [], // [{ slug, name, areaId, areaName, cityId, cityName }]
+  cities = [],
+  areas = [],
+  searchIndex = [],
   selectedCity,
   selectedArea,
   setSelectedCity,
@@ -23,7 +23,6 @@ export default function LocationSheet({
   onSelectMasjid,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
-
 
   /* --------------------------
      City / Area handlers
@@ -46,43 +45,38 @@ export default function LocationSheet({
      city + area
   ---------------------------*/
   const scopedMasjids = useMemo(() => {
-  if (!selectedCity || !searchIndex.length) return [];
+    if (!selectedCity || !searchIndex.length) return [];
 
-  // City only
-  if (selectedCity && !selectedArea) {
+    // City only
+    if (selectedCity && !selectedArea) {
+      return searchIndex.filter(
+        (m) => String(m.cityId) === String(selectedCity)
+      );
+    }
+
+    // City + Area
     return searchIndex.filter(
-      (m) => String(m.cityId) === String(selectedCity)
+      (m) =>
+        String(m.cityId) === String(selectedCity) &&
+        String(m.areaId) === String(selectedArea)
     );
-  }
-
-  // City + Area
-  return searchIndex.filter(
-    (m) =>
-      String(m.cityId) === String(selectedCity) &&
-      String(m.areaId) === String(selectedArea)
-  );
-}, [searchIndex, selectedCity, selectedArea]);
-
-
-
+  }, [searchIndex, selectedCity, selectedArea]);
 
   /* --------------------------
      Centralized search
   ---------------------------*/
   const searchResults = useMemo(() => {
-  console.log("scopedMasjids:", scopedMasjids);
-  console.log("searchQuery:", searchQuery);
+    console.log("scopedMasjids:", scopedMasjids);
+    console.log("searchQuery:", searchQuery);
 
-  if (!searchQuery.trim()) return scopedMasjids;
+    if (!searchQuery.trim()) return scopedMasjids;
 
-  return searchItems({
-    data: scopedMasjids,
-    query: searchQuery,
-    fields: SEARCH_PRESETS.MASJID_PUBLIC,
-  });
-}, [scopedMasjids, searchQuery]);
-
-
+    return searchItems({
+      data: scopedMasjids,
+      query: searchQuery,
+      fields: SEARCH_PRESETS.MASJID_PUBLIC,
+    });
+  }, [scopedMasjids, searchQuery]);
 
   return (
     <AnimatePresence>
@@ -126,11 +120,12 @@ export default function LocationSheet({
               className="w-full mt-1 mb-4 px-3 py-2 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">Select City</option>
-              {cities.map((c) => (
-                <option key={c._id} value={c._id}>
-                  {c.name}
-                </option>
-              ))}
+              {Array.isArray(cities) &&
+                cities.map((c) => (
+                  <option key={c._id} value={c._id}>
+                    {c.name}
+                  </option>
+                ))}
             </select>
 
             {/* AREA */}
@@ -165,9 +160,7 @@ export default function LocationSheet({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 disabled={!selectedArea}
                 placeholder={
-                  selectedArea
-                    ? "Search masjid..."
-                    : "Select area first"
+                  selectedArea ? "Search masjid..." : "Select area first"
                 }
                 className={`w-full px-4 py-2 rounded-xl border ${
                   selectedArea

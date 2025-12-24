@@ -1,5 +1,4 @@
 // src/app/sitemap-cities.xml/route.js
-
 import { serverFetch } from "@/lib/http/serverFetch";
 
 export async function GET() {
@@ -11,21 +10,20 @@ export async function GET() {
   const urls = cities
     .map(
       (c) => `
-    <url>
-      <loc>${base}/city/${c.slug}</loc>
-      <lastmod>${now}</lastmod>
-      <changefreq>weekly</changefreq>
-      <priority>0.9</priority>
-    </url>
-  `
+  <url>
+    <loc>${base}/city/${c.slug}</loc>
+    <lastmod>${now}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`
     )
     .join("");
 
   return new Response(
     `<?xml version="1.0" encoding="UTF-8"?>
-     <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-       ${urls}
-     </urlset>`,
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  ${urls}
+</urlset>`,
     { headers: { "Content-Type": "application/xml" } }
   );
 }

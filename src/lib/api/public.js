@@ -20,14 +20,17 @@ export const publicAPI = {
   /* =======================
      MASJIDS (METADATA ONLY)
   ======================= */
-  getMasjids: ({ cityId, areaId, search } = {}) => {
+  getMasjids: ({ page = 1, limit = 12, cityId, areaId, search } = {}) => {
     const params = new URLSearchParams();
+
+    params.append("page", page);
+    params.append("limit", limit);
+
     if (cityId) params.append("cityId", cityId);
     if (areaId) params.append("areaId", areaId);
     if (search) params.append("search", search);
 
-    const qs = params.toString();
-    return httpFetch(`${BASE}/masjids${qs ? `?${qs}` : ""}`);
+    return httpFetch(`/public/masjids?${params.toString()}`);
   },
 
   getMasjidById: (idOrSlug) => httpFetch(`${BASE}/masjids/${idOrSlug}`),
@@ -43,6 +46,19 @@ export const publicAPI = {
   ======================= */
   getPrayerTimings: (masjidId) =>
     httpFetch(`${BASE}/timings?masjidId=${masjidId}`),
+
+  /* =======================
+     Search Masjid
+  ======================= */
+  getMasjidFeed: ({ page = 1, limit = 12, cityId, areaId } = {}) => {
+    const params = new URLSearchParams();
+    params.append("page", page);
+    params.append("limit", limit);
+    if (cityId) params.append("cityId", cityId);
+    if (areaId) params.append("areaId", areaId);
+
+    return httpFetch(`/public/masjids/feed?${params.toString()}`);
+  },
 
   /* =======================
      ANNOUNCEMENTS

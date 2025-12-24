@@ -4,83 +4,119 @@
 import Skeleton from "@/components/ui/Skeleton";
 
 /* ===============================
-   FRONT CARD SKELETON
+   MASJID DETAILS (MOBILE)
 ================================ */
-export function MasjidCardSkeleton() {
+export function MasjidDetailsSkeleton() {
   return (
-    <div
-      className="relative w-full max-w-[420px] mx-auto rounded-2xl bg-white overflow-hidden shadow"
-      style={{ height: "82vh" }}
-    >
-      {/* Header */}
-      <div className="h-[10%] flex items-center justify-between px-4">
-        <Skeleton className="h-5 w-40" />
-        <div className="space-y-1">
-          <Skeleton className="h-3 w-20" />
-          <Skeleton className="h-3 w-16" />
+    <div className="space-y-6">
+      {/* HERO */}
+      <div className="rounded-2xl bg-white/80 shadow-xl p-4">
+        <div className="w-full aspect-[4/5] bg-slate-200 rounded-xl" />
+        <div className="mt-4 space-y-2">
+          <Skeleton className="h-6 w-56" />
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-4 w-52" />
         </div>
       </div>
 
-      {/* Image */}
-      <div className="h-[70%] flex items-center justify-center bg-slate-100">
-        <Skeleton className="h-[90%] w-[90%] rounded-xl" />
-      </div>
-
-      {/* Bottom */}
-      <div className="h-[20%] px-4 py-3 flex items-center justify-between">
-        <div className="space-y-1">
-          <Skeleton className="h-3 w-16" />
+      {/* NEXT PRAYER */}
+      <div className="rounded-2xl bg-white/80 shadow-xl p-6 flex justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-6 w-32" />
           <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-3 w-20" />
         </div>
+        <Skeleton className="w-20 h-20 rounded-full" />
+      </div>
 
-        <Skeleton className="w-14 h-14 rounded-full" />
+      {/* PRAYER TIMINGS */}
+      <div className="rounded-2xl bg-white/80 shadow-xl p-6">
+        <Skeleton className="h-5 w-40 mb-4" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="p-3 bg-white rounded-xl border space-y-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ADDRESS */}
+      <div className="rounded-2xl bg-white/80 shadow-xl p-6 space-y-2">
+        <Skeleton className="h-5 w-24" />
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-5/6" />
+      </div>
+
+      {/* CONTACTS */}
+      <div className="rounded-2xl bg-white/80 shadow-xl p-6">
+        <Skeleton className="h-5 w-28 mb-4" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 rounded-xl" />
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
 /* ===============================
-   BACK CARD SKELETON
+   MASJID DETAILS LAYOUT (DESKTOP)
 ================================ */
-export function MasjidCardBackSkeleton() {
+export function MasjidDetailsLayoutSkeleton() {
   return (
-    <div className="w-full h-full p-4 bg-white rounded-2xl space-y-4">
-      {/* Header */}
-      <div className="flex justify-between">
-        <Skeleton className="h-5 w-40" />
-        <div className="space-y-1">
-          <Skeleton className="h-3 w-20" />
-          <Skeleton className="h-3 w-16" />
-        </div>
-      </div>
-
-      {/* Prayer Timings */}
-      <div className="grid grid-cols-2 gap-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="p-3 border rounded-xl space-y-2">
-            <Skeleton className="h-4 w-16" />
-            <Skeleton className="h-3 w-24" />
-            <Skeleton className="h-3 w-20" />
+    <div className="mx-auto max-w-7xl">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* LEFT */}
+        <div className="space-y-6">
+          <div className="rounded-2xl bg-white/80 shadow-xl p-4">
+            <div className="w-full aspect-[4/5] bg-slate-200 rounded-xl" />
+            <div className="mt-4 space-y-2">
+              <Skeleton className="h-6 w-56" />
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-4 w-52" />
+            </div>
           </div>
-        ))}
-      </div>
 
-      {/* Contacts */}
-      <div className="space-y-2">
-        <Skeleton className="h-4 w-24" />
-        <div className="grid grid-cols-3 gap-2">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 rounded-lg" />
-          ))}
+          <div className="rounded-2xl bg-white/80 shadow-xl p-4 space-y-2">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-5/6" />
+          </div>
         </div>
-      </div>
 
-      {/* Address */}
-      <div className="space-y-2">
-        <Skeleton className="h-4 w-20" />
-        <Skeleton className="h-3 w-full" />
-        <Skeleton className="h-10 w-full rounded-lg" />
+        {/* RIGHT */}
+        <div className="space-y-6">
+          <div className="rounded-2xl bg-white/80 shadow-xl p-6 flex justify-between">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+            <Skeleton className="w-20 h-20 rounded-full" />
+          </div>
+
+          <div className="rounded-2xl bg-white/80 shadow-xl p-6">
+            <Skeleton className="h-5 w-48 mb-4" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 rounded-xl" />
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-white/80 shadow-xl p-6">
+            <Skeleton className="h-5 w-32 mb-4" />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 rounded-xl" />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
