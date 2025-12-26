@@ -1,19 +1,21 @@
 // src/app/api/auth/me/route.js
-import { verifyToken } from "@/server/utils/createTokens";
-import { NextResponse } from "next/server";
-import User from "@/models/User";
-import connectDB from "@/lib/db";
 
-export async function GET(req) {
+import { NextResponse } from "next/server";
+import connectDB from "@/lib/db";
+import User from "@/models/User";
+import { protect } from "@/lib/auth/protect";
+
+export async function GET(request) {
   await connectDB();
 
-  const token = req.cookies.get("accessToken")?.value;
-  if (!token) return NextResponse.json({ loggedIn: false });
+  // 🔐 Centralized auth check
+  const auth = await protect(request);
 
-  const decoded = verifyToken(token);
-  if (!decoded) return NextResponse.json({ loggedIn: false });
+  if (auth.error) {
+    return NextResponse.json({ loggedIn: false });
+  }
 
-  const user = await User.findById(decoded.userId)
+  const user = await User.findById(auth.user._id)
     .select("-password")
     .populate("city", "name")
     .populate("area", "name")

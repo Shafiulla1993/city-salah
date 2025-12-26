@@ -5,9 +5,10 @@ import connectDB from "@/lib/db";
 import User from "@/models/User";
 import City from "@/models/City";
 import Area from "@/models/Area";
-import { verifyToken } from "@/server/utils/createTokens";
+
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
+import { verifyAccessToken } from "@/server/utils/createTokens";
 
 export async function PATCH(req) {
   await connectDB();
@@ -21,7 +22,7 @@ export async function PATCH(req) {
       );
     }
 
-    const decoded = verifyToken(token);
+    const decoded = verifyAccessToken(token);
     if (!decoded) {
       return NextResponse.json(
         { success: false, message: "Unauthorized" },

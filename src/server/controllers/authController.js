@@ -4,7 +4,6 @@ import bcrypt from "bcryptjs";
 import User from "@/models/User";
 import City from "@/models/City";
 import Area from "@/models/Area";
-import jwt from "jsonwebtoken";
 import { createAccessToken, createRefreshToken } from "../utils/createTokens";
 
 export const registerUser = async (data) => {
@@ -73,17 +72,9 @@ export async function loginUser({ phone, password }) {
   if (!valid)
     return { json: { message: "Phone or Password incorrect" }, status: 401 };
 
-  const accessToken = jwt.sign(
-    { userId: user._id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: "15m" }
-  );
-
-  const refreshToken = jwt.sign(
-    { userId: user._id },
-    process.env.JWT_REFRESH_SECRET,
-    { expiresIn: "7d" }
-  );
+  // ✅ CREATE TOKENS (this was missing)
+  const accessToken = createAccessToken(user);
+  const refreshToken = createRefreshToken(user);
 
   return {
     json: {

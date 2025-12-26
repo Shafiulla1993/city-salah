@@ -1,6 +1,6 @@
 // src/server/middleware/protect.js
 
-import jwt from "jsonwebtoken";
+import { verifyAccessToken } from "@/server/utils/createTokens";
 import User from "@/models/User";
 import connectDB from "@/lib/db";
 
@@ -25,7 +25,11 @@ export async function protect(request) {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = verifyAccessToken(token);
+    if (!decoded) {
+      return { error: "Token expired", status: 401 };
+    }
+
     const user = await User.findById(decoded.userId).select("-password");
     if (!user) return { error: "Invalid user", status: 401 };
 

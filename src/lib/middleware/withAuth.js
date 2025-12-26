@@ -1,7 +1,7 @@
 // src/lib/middleware/withAuth.js
-// src/lib/middleware/withAuth.js
+
 import connectDB from "@/lib/db";
-import { protect } from "@/server/middlewares/protect";
+import { protect } from "@/lib/auth/protect";
 import { allowRoles } from "@/server/middlewares/role";
 
 export function withAuth(roles, handler) {

@@ -27,7 +27,6 @@ const features = [
     description: "Find the direction of the Qibla.",
     href: "/qibla",
     icon: "/icons/qibla-finder.svg",
-    comingSoon: true,
   },
   {
     title: "Community Discussion",

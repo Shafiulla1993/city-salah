@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { loginUser } from "@/server/controllers/authController";
+import { accessTokenCookie, refreshTokenCookie } from "@/lib/auth/cookies";
 
 export async function POST(req) {
   await connectDB();
@@ -16,12 +17,17 @@ export async function POST(req) {
       { status: loginResult?.status || 401 }
     );
 
-    // delete old cookies
-    res.cookies.set("accessToken", "", { path: "/", maxAge: 0 });
-    res.cookies.set("refreshToken", "", {
-      path: "/api/auth/refresh",
-      maxAge: 0,
-    });
+    res.cookies.set(
+      accessTokenCookie.name,
+      loginResult.cookies.accessToken,
+      accessTokenCookie.options
+    );
+
+    res.cookies.set(
+      refreshTokenCookie.name,
+      loginResult.cookies.refreshToken,
+      refreshTokenCookie.options
+    );
 
     return res;
   }
