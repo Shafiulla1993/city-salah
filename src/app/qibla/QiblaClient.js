@@ -42,8 +42,11 @@ export default function QiblaClient() {
 
     const diff =
         heading !== null
-            ? Math.abs(qiblaAngle - heading)
+            ? Math.abs(
+                ((qiblaAngle - heading + 540) % 360) - 180
+            )
             : null;
+
 
     const aligned = diff !== null && diff < 3;
 

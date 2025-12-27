@@ -10,20 +10,17 @@ export default function QiblaCompass({
   heading,
   aligned,
 }) {
-  const rotation =
+  // Where Kaaba should be on the compass
+  const kaabaRotation =
     heading !== null
-      ? -(heading - qiblaAngle)
-      : -qiblaAngle;
+      ? qiblaAngle - heading
+      : qiblaAngle;
 
   return (
     <div className="relative w-80 h-80 rounded-full bg-gradient-to-br from-emerald-950 to-black border border-white/20 shadow-2xl flex items-center justify-center">
 
-      {/* Compass Dial */}
-      <div
-        className="absolute inset-4 rounded-full border border-white/20 transition-transform duration-300 ease-out"
-        style={{ transform: `rotate(${rotation}deg)` }}
-      >
-        {/* Degree marks */}
+      {/* Degree ring (STATIC) */}
+      <div className="absolute inset-4 rounded-full border border-white/20">
         <DegreeRing />
 
         {/* N E S W */}
@@ -38,12 +35,17 @@ export default function QiblaCompass({
         ))}
       </div>
 
-      {/* Kaaba (fixed) */}
-      <div className="absolute top-4 flex flex-col items-center">
-        <KaabaIcon />
-        <span className="text-[10px] text-white/70 mt-1">
-          Qibla
-        </span>
+      {/* Kaaba indicator (ROTATES) */}
+      <div
+        className="absolute inset-0 flex justify-center items-start transition-transform duration-300 ease-out"
+        style={{ transform: `rotate(${kaabaRotation}deg)` }}
+      >
+        <div className="mt-3 flex flex-col items-center">
+          <KaabaIcon />
+          <span className="text-[10px] text-emerald-400 mt-1">
+            Qibla
+          </span>
+        </div>
       </div>
 
       {/* Center dot */}
