@@ -10,45 +10,46 @@ export default function QiblaCompass({
   heading,
   aligned,
 }) {
-  // Where Kaaba should be on the compass
-  const kaabaRotation =
-    heading !== null
-      ? qiblaAngle - heading
-      : qiblaAngle;
+  const compassRotation =
+    heading !== null ? -heading : 0;
 
   return (
     <div className="relative w-80 h-80 rounded-full bg-gradient-to-br from-emerald-950 to-black border border-white/20 shadow-2xl flex items-center justify-center">
 
-      {/* Degree ring (STATIC) */}
-      <div className="absolute inset-4 rounded-full border border-white/20">
+      {/* ROTATING COMPASS */}
+      <div
+        className="absolute inset-4 rounded-full border border-white/20 transition-transform duration-300 ease-out"
+        style={{ transform: `rotate(${compassRotation}deg)` }}
+      >
+        {/* Degree marks */}
         <DegreeRing />
 
-        {/* N E S W */}
+        {/* Cardinal points */}
         {["N", "E", "S", "W"].map((d, i) => (
           <div
             key={d}
             className="absolute inset-0 flex justify-center items-start text-xs font-semibold text-white"
             style={{ transform: `rotate(${i * 90}deg)` }}
           >
-            <span className="mt-6">{d}</span>
+            <span className="mt-5">{d}</span>
           </div>
         ))}
-      </div>
 
-      {/* Kaaba indicator (ROTATES) */}
-      <div
-        className="absolute inset-0 flex justify-center items-start transition-transform duration-300 ease-out"
-        style={{ transform: `rotate(${kaabaRotation}deg)` }}
-      >
-        <div className="mt-3 flex flex-col items-center">
-          <KaabaIcon />
-          <span className="text-[10px] text-emerald-400 mt-1">
-            Qibla
-          </span>
+        {/* KAABA — FIXED ON COMPASS */}
+        <div
+          className="absolute inset-0 flex justify-center items-start"
+          style={{ transform: `rotate(${qiblaAngle}deg)` }}
+        >
+          <div className="mt-2 flex flex-col items-center">
+            <KaabaIcon />
+            <span className="text-[10px] text-emerald-400 mt-1">
+              Qibla
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Center dot */}
+      {/* Center */}
       <div className="w-3 h-3 bg-white rounded-full z-10" />
 
       {/* Aligned indicator */}
