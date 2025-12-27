@@ -8,43 +8,67 @@ export function useCompass() {
   const [heading, setHeading] = useState(null);
   const [unstable, setUnstable] = useState(false);
 
-  const last = useRef(null);
-  const lastTime = useRef(Date.now());
+  const lastHeading = useRef(null);
+  const lastUpdate = useRef(Date.now());
+  const stableSince = useRef(null);
 
   useEffect(() => {
     function handleOrientation(e) {
       if (typeof e.alpha !== "number") return;
 
       const now = Date.now();
-      const alpha = e.alpha;
+      const raw = e.alpha;
 
-      if (last.current !== null) {
-        const diff = Math.abs(alpha - last.current);
-        const timeDiff = now - lastTime.current;
-
-        // Detect instability
-        if (diff > 25 && timeDiff < 300) {
-          setUnstable(true);
-        } else {
-          setUnstable(false);
-        }
-
-        // smoothing
-        last.current = last.current * 0.85 + alpha * 0.15;
+      // Smooth heading
+      if (lastHeading.current === null) {
+        lastHeading.current = raw;
       } else {
-        last.current = alpha;
+        lastHeading.current =
+          lastHeading.current * 0.85 + raw * 0.15;
       }
 
-      lastTime.current = now;
-      setHeading(last.current);
+      const diff = Math.abs(raw - lastHeading.current);
+
+      // Detect instability
+      if (diff > 20) {
+        setUnstable(true);
+        stableSince.current = null;
+      } else {
+        // Stable reading
+        if (!stableSince.current) {
+          stableSince.current = now;
+        }
+
+        // Stable for 1.5s → stop calibration
+        if (now - stableSince.current > 1500) {
+          setUnstable(false);
+        }
+      }
+
+      lastUpdate.current = now;
+      setHeading(lastHeading.current);
     }
 
-    window.addEventListener("deviceorientationabsolute", handleOrientation, true);
-    window.addEventListener("deviceorientation", handleOrientation, true);
+    window.addEventListener(
+      "deviceorientationabsolute",
+      handleOrientation,
+      true
+    );
+    window.addEventListener(
+      "deviceorientation",
+      handleOrientation,
+      true
+    );
 
     return () => {
-      window.removeEventListener("deviceorientationabsolute", handleOrientation);
-      window.removeEventListener("deviceorientation", handleOrientation);
+      window.removeEventListener(
+        "deviceorientationabsolute",
+        handleOrientation
+      );
+      window.removeEventListener(
+        "deviceorientation",
+        handleOrientation
+      );
     };
   }, []);
 
