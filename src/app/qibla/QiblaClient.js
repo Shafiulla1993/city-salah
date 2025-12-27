@@ -2,43 +2,80 @@
 
 "use client";
 
-import { useState } from "react";
-import { useQibla } from "@/hooks/useQibla";
+import { calculateQiblaDirection } from "@/lib/qibla/calculateQibla";
+import { useGeolocation } from "@/hooks/useGeolocation";
+import { useCompass } from "@/hooks/useCompass";
 import QiblaCompass from "@/components/qibla/QiblaCompass";
-import QiblaCityPicker from "@/components/qibla/QiblaCityPicker";
 
 export default function QiblaClient() {
-  const [fallbackLocation, setFallbackLocation] = useState(null);
-  const [showPicker, setShowPicker] = useState(false);
+    const { location, error, loading } = useGeolocation();
+    const heading = useCompass();
 
-  const { bearing, heading } = useQibla({ fallbackLocation });
+    if (loading) {
+        return (
+            <FullScreenMessage text="Finding your location…" />
+        );
+    }
 
-  return (
-    <section className="flex-1 flex flex-col items-center justify-center px-4 py-10 text-white">
-      <h1 className="text-xl font-semibold mb-4">Qibla Finder</h1>
+    if (error === "permission-denied") {
+        return (
+            <FullScreenMessage
+                title="Location Access Required"
+                text="Please allow location access to find accurate Qibla direction."
+            />
+        );
+    }
 
-      {bearing === null && (
-        <button
-          onClick={() => setShowPicker(true)}
-          className="text-sm text-emerald-400 underline"
-        >
-          Choose city manually
-        </button>
-      )}
+    if (error === "gps-off") {
+        return (
+            <FullScreenMessage
+                title="Turn On Location"
+                text="Please enable GPS for accurate Qibla direction."
+            />
+        );
+    }
 
-      <QiblaCompass bearing={bearing} heading={heading} />
+    const qiblaAngle = calculateQiblaDirection(
+        location.lat,
+        location.lng
+    );
 
-      {showPicker && (
-        <QiblaCityPicker
-          onSelect={(city) => {
-            setFallbackLocation({
-              lat: city.latitude,
-              lng: city.longitude,
-            });
-            setShowPicker(false);
-          }}
-        />
-      )}
-    </section>
-  );
+    const diff =
+        heading !== null
+            ? Math.abs(qiblaAngle - heading)
+            : null;
+
+    const aligned = diff !== null && diff < 3;
+
+
+    return (
+        <main className="h-screen flex flex-col items-center justify-center bg-black text-white">
+            <h1 className="text-xl font-semibold mb-6">
+                Qibla Direction
+            </h1>
+
+            <QiblaCompass
+                qiblaAngle={qiblaAngle}
+                heading={heading}
+                aligned={aligned}
+            />
+
+            <p className="mt-6 text-sm text-white/70">
+                Rotate your phone until the arrow points upward
+            </p>
+        </main>
+    );
+}
+
+function FullScreenMessage({ title, text }) {
+    return (
+        <div className="h-screen flex flex-col items-center justify-center text-center px-6 bg-black text-white">
+            {title && (
+                <h1 className="text-xl font-semibold mb-2">
+                    {title}
+                </h1>
+            )}
+            <p className="text-white/70">{text}</p>
+        </div>
+    );
 }
