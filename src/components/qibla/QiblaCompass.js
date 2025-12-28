@@ -2,45 +2,43 @@
 
 "use client";
 
-import CompassDial from "./CompassDial";
-import CenterArrow from "./CenterArrow";
+import CompassRing from "./CompassRing";
 import KaabaIcon from "./KaabaIcon";
+import QiblaInnerIndicator from "./QiblaInnerIndicator";
 
-export default function QiblaCompass({ heading, qibla }) {
-  if (heading === null) {
-    return <p className="text-white/70">Calibrating compass…</p>;
-  }
+export default function QiblaCompass({ heading, qiblaBearing, distanceKm }) {
+  const rotation = ((heading - qiblaBearing + 540) % 360) - 180;
 
-  // Relative position of Kaaba
-  const relative = (qibla - heading + 360) % 360;
+  const aligned = Math.abs(rotation) < 3;
+  const degreesLeft = Math.abs(rotation).toFixed(0);
 
-  const aligned =
-    Math.abs(((qibla - heading + 540) % 360) - 180) < 3;
+  const rotateText =
+    rotation > 0
+      ? `Rotate ${degreesLeft}° right`
+      : rotation < 0
+      ? `Rotate ${degreesLeft}° left`
+      : "Aligned";
 
   return (
-    <div className="relative w-72 h-72 rounded-full bg-black flex items-center justify-center">
+    <div className="relative w-80 h-80 flex flex-col items-center justify-center">
+      {/* Compass ring wrapper */}
+      <div className="relative w-80 h-80 flex items-center justify-center">
+        {/* OUTER RING (UNCHANGED) */}
+        <CompassRing />
 
-      {/* Rotating compass dial */}
-      <CompassDial rotation={360 - heading} />
-
-      {/* Kaaba (world fixed) */}
-      <div
-        className="absolute inset-0 flex justify-center items-start"
-        style={{ transform: `rotate(${relative}deg)` }}
-      >
-        <div className="mt-2">
+        {/* FIXED KAABA (TOP CENTER) */}
+        <div className="absolute top-4 left-1/2 -translate-x-1/2">
           <KaabaIcon />
         </div>
-      </div>
 
-      {/* Center arrow (YOU) */}
-      <CenterArrow />
-
-      {aligned && (
-        <div className="absolute bottom-3 text-emerald-400">
-          ✓ Aligned
+        {/* ROTATING INNER INDICATOR (CENTERED) */}
+        <div
+          className="absolute inset-0 flex items-center justify-center transition-transform duration-200 ease-out"
+          style={{ transform: `rotate(${rotation}deg)` }}
+        >
+          <QiblaInnerIndicator distanceKm={distanceKm} />
         </div>
-      )}
+      </div>
     </div>
   );
 }

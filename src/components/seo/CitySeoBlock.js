@@ -23,6 +23,12 @@ export default function CitySeoBlock({ city, areasCount, masjidCount }) {
         Use this page to browse masjids by area or search for a specific masjid
         in {city.name}. CitySalah is continuously updated to ensure accuracy.
       </p>
+
+      <p className="mt-3">
+        <a href={`/qibla/${city.slug}`} className="text-indigo-400 font-medium">
+          View Qibla direction in {city.name} →
+        </a>
+      </p>
     </section>
   );
 }

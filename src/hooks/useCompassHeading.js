@@ -1,4 +1,4 @@
-// src/hooks/useCompassHeading.js
+// src/hooks/useCompassHeading
 
 "use client";
 
@@ -6,12 +6,31 @@ import { useEffect, useRef, useState } from "react";
 
 export function useCompassHeading() {
   const [heading, setHeading] = useState(null);
-
   const last = useRef(null);
   const lastEmit = useRef(0);
 
   useEffect(() => {
-    function onOrientation(e) {
+    async function init() {
+      // iOS permission
+      if (
+        typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function"
+      ) {
+        try {
+          const res = await DeviceOrientationEvent.requestPermission();
+          if (res !== "granted") return;
+        } catch {
+          return;
+        }
+      }
+
+      window.addEventListener("deviceorientationabsolute", handle, true);
+      window.addEventListener("deviceorientation", handle, true);
+    }
+
+    function handle(e) {
+      if (e.absolute === false) return;
+
       let raw = null;
 
       // iOS
@@ -20,43 +39,41 @@ export function useCompassHeading() {
       }
       // Android
       else if (typeof e.alpha === "number") {
-        raw = e.alpha;
+        raw = 360 - e.alpha;
       }
 
       if (raw === null) return;
 
-      // Normalize
-      raw = (raw + 360) % 360;
+      // Screen orientation correction
+      const screenAngle =
+        window.screen.orientation?.angle || window.orientation || 0;
 
-      // Throttle (max ~10 updates/sec)
+      raw = (raw + screenAngle + 360) % 360;
+
+      // Throttle
       const now = Date.now();
-      if (now - lastEmit.current < 100) return;
+      if (now - lastEmit.current < 120) return;
       lastEmit.current = now;
 
       // Strong smoothing
       if (last.current === null) {
         last.current = raw;
       } else {
-        const diff =
-          ((raw - last.current + 540) % 360) - 180;
+        const diff = ((raw - last.current + 540) % 360) - 180;
 
-        // Ignore tiny jitters
-        if (Math.abs(diff) < 1.5) return;
+        if (Math.abs(diff) < 2) return;
 
-        last.current =
-          (last.current + diff * 0.2 + 360) % 360;
+        last.current = (last.current + diff * 0.25 + 360) % 360;
       }
 
       setHeading(last.current);
     }
 
-    window.addEventListener("deviceorientation", onOrientation, true);
+    init();
 
     return () => {
-      window.removeEventListener(
-        "deviceorientation",
-        onOrientation
-      );
+      window.removeEventListener("deviceorientationabsolute", handle);
+      window.removeEventListener("deviceorientation", handle);
     };
   }, []);
 

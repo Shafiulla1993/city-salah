@@ -23,7 +23,6 @@
     "dotenv": "^17.2.3",
     "formidable": "^3.5.4",
     "framer-motion": "^12.23.26",
-    "geolib": "^3.3.4",
     "js-cookie": "^3.0.5",
     "jsonwebtoken": "^9.0.2",
     "jwt-decode": "^4.0.0",
