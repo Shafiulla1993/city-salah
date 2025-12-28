@@ -7,12 +7,10 @@ import { useEffect, useState } from "react";
 export function useGeolocation() {
   const [location, setLocation] = useState(null);
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      setError("Geolocation not supported");
-      setLoading(false);
+      setError("not-supported");
       return;
     }
 
@@ -22,22 +20,11 @@ export function useGeolocation() {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
         });
-        setLoading(false);
       },
-      (err) => {
-        if (err.code === err.PERMISSION_DENIED) {
-          setError("permission-denied");
-        } else {
-          setError("gps-off");
-        }
-        setLoading(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-      }
+      () => setError("denied"),
+      { enableHighAccuracy: true }
     );
   }, []);
 
-  return { location, error, loading };
+  return { location, error };
 }
