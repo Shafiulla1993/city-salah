@@ -3,23 +3,35 @@
 "use client";
 
 import KaabaIcon from "./KaabaIcon";
+import CenterArrow from "./CenterArrow";
 
 export default function QiblaLiveCompass({ heading, qibla }) {
   if (heading === null) {
     return <p className="text-white/70">Calibrating compass…</p>;
   }
 
-  const compassRotation = -heading;
+  /**
+   * Compass dial rotation (visual only)
+   */
+  const compassRotation = 360 - heading;
 
-  const diff = Math.abs(((heading - qibla + 540) % 360) - 180);
-  const aligned = diff < 3;
+  /**
+   * Where Kaaba appears relative to YOU
+   */
+  const relativeAngle = (qibla - heading + 360) % 360;
+
+  /**
+   * Alignment check
+   */
+  const aligned =
+    Math.abs(((qibla - heading + 540) % 360) - 180) < 3;
 
   return (
     <div className="relative w-80 h-80 rounded-full bg-black border border-white/20 shadow-xl flex items-center justify-center">
 
-      {/* ROTATING COMPASS */}
+      {/* ROTATING COMPASS DIAL */}
       <div
-        className="absolute inset-4 rounded-full transition-transform duration-300"
+        className="absolute inset-4 rounded-full transition-transform duration-300 ease-out"
         style={{ transform: `rotate(${compassRotation}deg)` }}
       >
         {/* Degree ticks */}
@@ -33,7 +45,7 @@ export default function QiblaLiveCompass({ heading, qibla }) {
           </div>
         ))}
 
-        {/* N E S W */}
+        {/* Cardinal points */}
         {["N", "E", "S", "W"].map((d, i) => (
           <div
             key={d}
@@ -43,21 +55,30 @@ export default function QiblaLiveCompass({ heading, qibla }) {
             <span className="mt-5">{d}</span>
           </div>
         ))}
+      </div>
 
-        {/* KAABA FIXED ON COMPASS */}
-        <div
-          className="absolute inset-0 flex justify-center items-start"
-          style={{ transform: `rotate(${qibla}deg)` }}
-        >
-          <div className="mt-2 flex flex-col items-center">
-            <KaabaIcon />
-            <span className="text-[10px] text-emerald-400">Qibla</span>
-          </div>
+      {/* 🕋 KAABA – WORLD FIXED (RELATIVE TO YOU) */}
+      <div
+        className="absolute inset-0 flex justify-center items-start pointer-events-none"
+        style={{ transform: `rotate(${relativeAngle}deg)` }}
+      >
+        <div className="mt-3 flex flex-col items-center">
+          <KaabaIcon />
+          <span className="text-[10px] text-emerald-400">
+            Qibla
+          </span>
         </div>
       </div>
 
-      <div className="w-3 h-3 bg-white rounded-full z-10" />
+      {/* ▲ CENTER ARROW – YOU (FIXED) */}
+      <div className="z-10 flex flex-col items-center">
+        <CenterArrow />
+        <span className="text-[10px] text-white/70 mt-1">
+          You
+        </span>
+      </div>
 
+      {/* ✓ ALIGNED */}
       {aligned && (
         <div className="absolute bottom-4 text-emerald-400 font-semibold">
           ✓ Aligned
