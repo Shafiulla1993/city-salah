@@ -1,4 +1,4 @@
-// src/app/qibla.page.js
+// src/app/qibla/page.js
 
 import QiblaClient from "./QiblaClient";
 

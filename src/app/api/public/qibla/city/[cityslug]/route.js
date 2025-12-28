@@ -1,4 +1,4 @@
-// src/app/api/public/qibla/city/[cityslug]/route.js
+// src/app/api/public/qibla/city/[citySlug]/route.js
 
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
@@ -9,50 +9,54 @@ export async function GET(req, { params }) {
   try {
     await connectDB();
 
-    const { cityslug } = params;
+    const { citySlug } = await params;
 
-    const city = await City.findOne({
-      slug: new RegExp(`^${cityslug}$`, "i"),
-    }).select("_id name slug");
+    // 1️⃣ Find city by slug
+    const city = await City.findOne({ slug: citySlug })
+      .select("name slug")
+      .lean();
 
     if (!city) {
       return NextResponse.json({ message: "City not found" }, { status: 404 });
     }
 
+    // 2️⃣ Fetch areas with coordinates
     const areas = await Area.find({
       city: city._id,
-      "center.coordinates.0": { $exists: true },
+      "center.coordinates": { $exists: true },
     })
       .select("center")
       .lean();
 
     if (!areas.length) {
       return NextResponse.json(
-        { message: "No area coordinates available" },
+        { message: "No areas with coordinates found" },
         { status: 404 }
       );
     }
 
-    // GeoJSON average
-    const avgLat =
-      areas.reduce((s, a) => s + a.center.coordinates[1], 0) / areas.length;
+    // 3️⃣ Average coordinates (BEST strategy)
+    let latSum = 0;
+    let lngSum = 0;
 
-    const avgLng =
-      areas.reduce((s, a) => s + a.center.coordinates[0], 0) / areas.length;
+    for (const a of areas) {
+      lngSum += a.center.coordinates[0];
+      latSum += a.center.coordinates[1];
+    }
 
     return NextResponse.json({
-      city: {
-        name: city.name,
-        slug: city.slug,
-      },
+      city,
       center: {
-        lat: avgLat,
-        lng: avgLng,
+        lat: latSum / areas.length,
+        lng: lngSum / areas.length,
       },
       areasCount: areas.length,
     });
   } catch (err) {
-    console.error("City Qibla API error:", err);
-    return NextResponse.json({ message: "Internal error" }, { status: 500 });
+    console.error("Qibla city API error:", err);
+    return NextResponse.json(
+      { message: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
