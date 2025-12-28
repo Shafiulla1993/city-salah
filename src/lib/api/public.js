@@ -97,6 +97,11 @@ export const publicAPI = {
   },
 
   /* =======================
+   QIBLA
+======================= */
+  getCityQibla: (citySlug) => httpFetch(`/public/qibla/city/${citySlug}`),
+
+  /* =======================
      SEARCH INDEX (LIGHTWEIGHT)
   ======================= */
   getAllMasjidIndex: () => httpFetch(`${BASE}/masjids/index`),

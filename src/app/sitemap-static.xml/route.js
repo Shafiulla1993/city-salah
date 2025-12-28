@@ -12,6 +12,7 @@ export async function GET() {
     "/auqatus-salah",
     "/updates",
     "/contact",
+    "/qibla",
   ];
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>

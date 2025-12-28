@@ -1,9 +1,7 @@
 // src/app/qibla/[citySlug]/page.js
 
-import connectDB from "@/lib/db";
-import City from "@/models/City";
-import Area from "@/models/Area";
 import { notFound } from "next/navigation";
+import { publicAPI } from "@/lib/api/public";
 import QiblaClient from "@/app/qibla/QiblaClient";
 
 /* -----------------------------
@@ -12,23 +10,19 @@ import QiblaClient from "@/app/qibla/QiblaClient";
 export async function generateMetadata({ params }) {
   const { cityslug } = await params;
 
-  await connectDB();
+  try {
+    const data = await publicAPI.getCityQibla(cityslug);
 
-  const city = await City.findOne({
-    slug: new RegExp(`^${cityslug}$`, "i"),
-  }).select("name");
-
-  if (!city) {
+    return {
+      title: `Qibla Direction in ${data.city.name} | CitySalah`,
+      description: `Find approximate Qibla direction in ${data.city.name} using area-based coordinates.`,
+    };
+  } catch {
     return {
       title: "Qibla Direction | CitySalah",
       description: "Find Qibla direction using CitySalah.",
     };
   }
-
-  return {
-    title: `Qibla Direction in ${city.name} | CitySalah`,
-    description: `Find approximate Qibla direction in ${city.name} using area-based coordinates.`,
-  };
 }
 
 /* -----------------------------
@@ -37,34 +31,23 @@ export async function generateMetadata({ params }) {
 export default async function CityQiblaPage({ params }) {
   const { cityslug } = await params;
 
-  await connectDB();
+  let data;
+  try {
+    data = await publicAPI.getCityQibla(cityslug);
+  } catch {
+    notFound();
+  }
 
-  const city = await City.findOne({
-    slug: new RegExp(`^${cityslug}$`, "i"),
-  }).select("_id name");
-
-  if (!city) notFound();
-
-  const areas = await Area.find({
-    city: city._id,
-    "center.coordinates.0": { $exists: true },
-  })
-    .select("center")
-    .lean();
-
-  if (!areas.length) notFound();
-
-  // GeoJSON average
-  const avgLat =
-    areas.reduce((s, a) => s + a.center.coordinates[1], 0) / areas.length;
-
-  const avgLng =
-    areas.reduce((s, a) => s + a.center.coordinates[0], 0) / areas.length;
+  const { city, center, areasCount } = data;
 
   return (
-    <main className="min-h-screen flex flex-col items-center pt-6 pb-24">
+    <main className="bg-white">
       {/* Compass */}
-      <QiblaClient mode="city" initialLat={avgLat} initialLng={avgLng} />
+      <QiblaClient
+        mode="city"
+        initialLat={center.lat}
+        initialLng={center.lng}
+      />
 
       {/* SEO Content */}
       <section className="max-w-3xl mx-auto px-4 pb-20">
@@ -73,14 +56,14 @@ export default async function CityQiblaPage({ params }) {
         </h1>
 
         <p className="text-sm text-gray-600 mb-4">
-          This Qibla direction is calculated using the average coordinates of
-          all areas in {city.name}.
+          This Qibla direction is calculated using the average coordinates of{" "}
+          {areasCount} areas in {city.name}.
         </p>
 
         <p className="text-xs text-gray-500">
-          Disclaimer: This is an approximate direction for city-level guidance.
-          For precise alignment, use the live Qibla compass or consult a nearby
-          mosque.
+          Disclaimer: This is an approximate direction intended for general
+          guidance. For precise alignment, please use the live compass or
+          consult a nearby mosque.
         </p>
       </section>
     </main>
