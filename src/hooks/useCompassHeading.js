@@ -6,55 +6,56 @@ import { useEffect, useRef, useState } from "react";
 
 export function useCompassHeading() {
   const [heading, setHeading] = useState(null);
+
   const last = useRef(null);
+  const lastEmit = useRef(0);
 
   useEffect(() => {
-    function handleOrientation(e) {
-      let h = null;
+    function onOrientation(e) {
+      let raw = null;
 
-      // iOS Safari
+      // iOS
       if (typeof e.webkitCompassHeading === "number") {
-        h = e.webkitCompassHeading; // already true north
+        raw = e.webkitCompassHeading;
       }
-      // Android / others
+      // Android
       else if (typeof e.alpha === "number") {
-        h = 360 - e.alpha;
+        raw = e.alpha;
       }
 
-      if (h === null) return;
+      if (raw === null) return;
 
-      // normalize
-      h = (h + 360) % 360;
+      // Normalize
+      raw = (raw + 360) % 360;
 
-      // smooth (low-pass filter)
+      // Throttle (max ~10 updates/sec)
+      const now = Date.now();
+      if (now - lastEmit.current < 100) return;
+      lastEmit.current = now;
+
+      // Strong smoothing
       if (last.current === null) {
-        last.current = h;
+        last.current = raw;
       } else {
-        last.current = last.current * 0.85 + h * 0.15;
+        const diff =
+          ((raw - last.current + 540) % 360) - 180;
+
+        // Ignore tiny jitters
+        if (Math.abs(diff) < 1.5) return;
+
+        last.current =
+          (last.current + diff * 0.2 + 360) % 360;
       }
 
       setHeading(last.current);
     }
 
-    window.addEventListener(
-      "deviceorientationabsolute",
-      handleOrientation,
-      true
-    );
-    window.addEventListener(
-      "deviceorientation",
-      handleOrientation,
-      true
-    );
+    window.addEventListener("deviceorientation", onOrientation, true);
 
     return () => {
       window.removeEventListener(
-        "deviceorientationabsolute",
-        handleOrientation
-      );
-      window.removeEventListener(
         "deviceorientation",
-        handleOrientation
+        onOrientation
       );
     };
   }, []);
