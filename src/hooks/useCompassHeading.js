@@ -9,24 +9,53 @@ export function useCompassHeading() {
   const last = useRef(null);
 
   useEffect(() => {
-    function handle(e) {
-      if (typeof e.alpha !== "number") return;
+    function handleOrientation(e) {
+      let h = null;
 
+      // iOS Safari
+      if (typeof e.webkitCompassHeading === "number") {
+        h = e.webkitCompassHeading; // already true north
+      }
+      // Android / others
+      else if (typeof e.alpha === "number") {
+        h = 360 - e.alpha;
+      }
+
+      if (h === null) return;
+
+      // normalize
+      h = (h + 360) % 360;
+
+      // smooth (low-pass filter)
       if (last.current === null) {
-        last.current = e.alpha;
+        last.current = h;
       } else {
-        last.current = last.current * 0.85 + e.alpha * 0.15;
+        last.current = last.current * 0.85 + h * 0.15;
       }
 
       setHeading(last.current);
     }
 
-    window.addEventListener("deviceorientationabsolute", handle, true);
-    window.addEventListener("deviceorientation", handle, true);
+    window.addEventListener(
+      "deviceorientationabsolute",
+      handleOrientation,
+      true
+    );
+    window.addEventListener(
+      "deviceorientation",
+      handleOrientation,
+      true
+    );
 
     return () => {
-      window.removeEventListener("deviceorientationabsolute", handle);
-      window.removeEventListener("deviceorientation", handle);
+      window.removeEventListener(
+        "deviceorientationabsolute",
+        handleOrientation
+      );
+      window.removeEventListener(
+        "deviceorientation",
+        handleOrientation
+      );
     };
   }, []);
 
