@@ -1,18 +1,25 @@
 // src/lib/http/serverFetch.js
-
 import { headers } from "next/headers";
 
 export async function serverFetch(path) {
   const h = await headers();
 
-  const protocol = h.get("x-forwarded-proto") || "http";
-  const host = h.get("x-forwarded-host") || h.get("host");
+  const isProd = process.env.NODE_ENV === "production";
 
-  if (!host) {
-    throw new Error("Cannot determine host");
+  const baseUrl = isProd
+    ? process.env.NEXT_PUBLIC_SITE_URL
+    : (() => {
+        const protocol = h.get("x-forwarded-proto") || "http";
+        const host = h.get("x-forwarded-host") || h.get("host");
+        if (!host) throw new Error("Cannot determine host");
+        return `${protocol}://${host}`;
+      })();
+
+  if (!baseUrl) {
+    throw new Error("Base URL not resolved");
   }
 
-  const url = `${protocol}://${host}${path}`;
+  const url = `${baseUrl}${path}`;
 
   const res = await fetch(url, {
     next: { revalidate: 600 },
@@ -22,10 +29,5 @@ export async function serverFetch(path) {
     throw new Error(`Fetch failed: ${url}`);
   }
 
-  const json = await res.json();
-
-  // ✅ NEW: allow object responses (masjid, city, area)
-  if (json && typeof json === "object") return json;
-
-  throw new Error(`Unexpected API response shape: ${url}`);
+  return res.json();
 }
