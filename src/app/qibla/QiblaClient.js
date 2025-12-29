@@ -9,6 +9,9 @@ import { getQiblaBearing } from "@/lib/qibla/getQiblaBearing";
 import QiblaCompass from "@/components/qibla/QiblaCompass";
 import QiblaSkeleton from "@/components/qibla/QiblaSkeleton";
 
+/**
+ * Distance to Kaaba (approx, km)
+ */
 function distanceKm(lat1, lng1) {
   const R = 6371;
   const dLat = ((21.422487 - lat1) * Math.PI) / 180;
@@ -25,10 +28,9 @@ function distanceKm(lat1, lng1) {
 
 /**
  * QiblaClient
- *
  * mode:
- * - "live" → GPS + compass (default)
- * - "city" → fixed coords + compass
+ * - "live" → GPS + compass
+ * - "city" → fixed coordinates + compass
  */
 export default function QiblaClient({ mode = "live", initialLat, initialLng }) {
   const isCityMode = mode === "city";
@@ -42,61 +44,79 @@ export default function QiblaClient({ mode = "live", initialLat, initialLng }) {
   const lat = isCityMode ? initialLat : location?.lat;
   const lng = isCityMode ? initialLng : location?.lng;
 
+  // Location permission error (live mode only)
   if (!isCityMode && error) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-gray-500 px-4 text-center">
-        Location access is required to find Qibla direction.
+      <div className="min-h-[50vh] flex items-center justify-center px-4 text-center text-white/70">
+        Location access is required to determine the Qibla direction.
       </div>
     );
   }
 
-  if (!lat || !lng || heading === null) {
-    return <QiblaSkeleton />;
-  }
+  const hasData = lat && lng && heading !== null;
 
-  const qiblaBearing = getQiblaBearing(lat, lng);
+  const qiblaBearing = hasData ? getQiblaBearing(lat, lng) : null;
 
-  const rotation = ((heading - qiblaBearing + 540) % 360) - 180;
+  const rotation =
+    hasData && qiblaBearing !== null
+      ? ((heading - qiblaBearing + 540) % 360) - 180
+      : null;
 
-  const degreesLeft = Math.abs(rotation).toFixed(0);
+  const degreesLeft = rotation !== null ? Math.abs(rotation).toFixed(0) : null;
+
   const rotateText =
     rotation > 0
-      ? `Rotate ${degreesLeft}° right`
+      ? `Rotate ${degreesLeft}° to the right`
       : rotation < 0
-      ? `Rotate ${degreesLeft}° left`
-      : "Aligned";
+      ? `Rotate ${degreesLeft}° to the left`
+      : "You are aligned with the Qibla";
 
   return (
-    <main className="min-h-screen flex flex-col items-center pt-6 pb-24">
-      {/* Compass */}
-      <div className="mt-6">
-        <QiblaCompass
-          heading={heading}
-          qiblaBearing={qiblaBearing}
-          distanceKm={distanceKm(lat, lng)}
-        />
+    <section className="flex flex-col items-center px-4 pb-10">
+      {/* FIXED HEIGHT SLOT (prevents layout jump) */}
+      <div className="mt-4 flex items-center justify-center h-[320px] w-full">
+        {!hasData ? (
+          <QiblaSkeleton />
+        ) : (
+          <QiblaCompass
+            heading={heading}
+            qiblaBearing={qiblaBearing}
+            distanceKm={distanceKm(lat, lng)}
+          />
+        )}
       </div>
 
-      {/* Instructions */}
-      <div className="fixed bottom-16 left-0 right-0 text-center px-4">
-        <p className="text-lg font-semibold text-gray-900">{rotateText}</p>
+      {/* ROTATION INSTRUCTION */}
+      {rotation !== null && (
+        <>
+          <p className="mt-4 text-base font-semibold text-white text-center">
+            {rotateText}
+          </p>
 
-        <p className="mt-1 text-sm text-gray-600">
-          Keep your phone flat and rotate slowly
+          <p className="mt-1 text-sm text-white/70 text-center">
+            Keep your phone flat and rotate slowly
+          </p>
+        </>
+      )}
+
+      {/* ACCURACY & METHOD */}
+      <div className="mt-6 max-w-md text-sm text-white/60 text-center leading-relaxed">
+        <p>
+          The Qibla direction is calculated using your device’s location and
+          orientation sensors together with the geographic bearing toward the
+          Kaaba in Makkah.
         </p>
 
-        <p className="mt-2 text-xs text-gray-500">
-          Qibla bearing from this location:{" "}
-          <span className="font-medium text-gray-700">
-            {qiblaBearing.toFixed(1)}°
-          </span>
+        <p className="mt-2">
+          Accuracy may vary due to device calibration or nearby magnetic
+          interference. This direction should be treated as an estimate.
         </p>
 
-        <p className="mt-1 text-[11px] text-gray-400 leading-snug">
-          Direction shown is an estimate based on device sensors. For best
-          accuracy, verify with a local mosque or physical compass.
+        <p className="mt-2 text-xs text-white/50">
+          For complete certainty, please verify with a local mosque or a
+          physical compass.
         </p>
       </div>
-    </main>
+    </section>
   );
 }

@@ -1,32 +1,42 @@
 // src/lib/http/serverFetch.js
+// src/lib/http/serverFetch.js
 import { headers } from "next/headers";
 
-export async function serverFetch(path) {
-  const h = await headers();
-
+/**
+ * serverFetch
+ *
+ * - Dev  → always uses http://localhost:3000
+ * - Prod → uses NEXT_PUBLIC_SITE_URL
+ *
+ * This avoids:
+ * - SSL certificate issues in dev
+ * - Invalid URL errors in Node
+ * - Proxy / header edge cases
+ */
+export async function serverFetch(path, options = {}) {
   const isProd = process.env.NODE_ENV === "production";
 
-  const baseUrl = isProd
-    ? process.env.NEXT_PUBLIC_SITE_URL
-    : (() => {
-        const protocol = h.get("x-forwarded-proto") || "http";
-        const host = h.get("x-forwarded-host") || h.get("host");
-        if (!host) throw new Error("Cannot determine host");
-        return `${protocol}://${host}`;
-      })();
+  let baseUrl;
 
-  if (!baseUrl) {
-    throw new Error("Base URL not resolved");
+  if (isProd) {
+    baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
+    if (!baseUrl) {
+      throw new Error("NEXT_PUBLIC_SITE_URL is not defined in production");
+    }
+  } else {
+    // ✅ FORCE LOCALHOST IN DEV (no SSL, no cert issues)
+    baseUrl = "http://localhost:3000";
   }
 
   const url = `${baseUrl}${path}`;
 
   const res = await fetch(url, {
-    next: { revalidate: 600 },
+    ...options,
+    next: options.next ?? { revalidate: 600 },
   });
 
   if (!res.ok) {
-    throw new Error(`Fetch failed: ${url}`);
+    throw new Error(`Fetch failed (${res.status}): ${url}`);
   }
 
   return res.json();
