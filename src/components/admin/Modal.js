@@ -2,39 +2,65 @@
 
 "use client";
 
-import React from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
-export default function Modal({ open, onClose, title, children, size = "md" }) {
-  if (!open) return null;
+export default function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  closeOnBackdrop = false,
+}) {
+  const [mounted, setMounted] = useState(false);
 
-  const sizeClasses =
-    size === "sm"
-      ? "max-w-lg"
-      : size === "lg"
-      ? "max-w-4xl"
-      : "max-w-2xl";
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  if (!open || !mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+      {/* BACKDROP */}
       <div
-        className="absolute inset-0 bg-black/40"
-        onClick={() => onClose?.()}
-        aria-hidden
+        className="absolute inset-0 bg-black/50"
+        onClick={() => closeOnBackdrop && onClose()}
       />
-      <div className={`relative w-full ${sizeClasses} mx-4`}>
-        <div className="bg-white/90 backdrop-blur rounded-2xl shadow-lg border border-white/30 overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3 border-b">
-            <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
-            <button
-              onClick={() => onClose?.()}
-              className="text-slate-600 hover:text-slate-800"
-            >
-              ✕
-            </button>
-          </div>
-          <div className="p-5 max-h-[70vh] overflow-auto">{children}</div>
+
+      {/* MODAL */}
+      <div
+        className="
+          relative bg-white w-full max-w-4xl
+          h-[100dvh] md:h-[90vh]
+          rounded-none md:rounded-xl
+          flex flex-col
+          shadow-xl
+        "
+      >
+        {/* HEADER */}
+        <div className="sticky top-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between">
+          <h3 className="font-semibold text-lg">{title}</h3>
+          <button
+            onClick={onClose}
+            className="text-2xl leading-none hover:text-red-600"
+          >
+            ×
+          </button>
         </div>
+
+        {/* CONTENT */}
+        <div className="flex-1 overflow-y-auto px-4 py-4">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

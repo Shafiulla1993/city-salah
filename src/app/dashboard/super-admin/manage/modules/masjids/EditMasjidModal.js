@@ -6,134 +6,124 @@ import { useEffect, useState } from "react";
 import Modal from "@/components/admin/Modal";
 import { adminAPI } from "@/lib/api/sAdmin";
 import { notify } from "@/lib/toast";
-import ContactPersonsForm from "./ContactPersonsForm";
-import PrayerRulesForm from "./PrayerRulesForm";
+import MasjidForm from "./MasjidForm";
 
 export default function EditMasjidModal({
   open,
   onClose,
   masjidId,
   onUpdated,
+  cities = [],
+  areas = [],
 }) {
   const [loading, setLoading] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
+  const [prayerRules, setPrayerRules] = useState({});
 
   const [form, setForm] = useState({
-    imageUrl: "",
-    imagePublicId: "",
-    contacts: {
-      imam: {},
-      mozin: {},
-      mutawalli: {},
-    },
-    prayerRules: {},
+    name: "",
+    address: "",
+    city: "",
+    area: "",
+    lat: "",
+    lng: "",
+    contacts: {},
     ladiesPrayerFacility: false,
   });
 
-  function update(key, value) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }
+  const [image, setImage] = useState({ url: "", publicId: "" });
 
-  /* ---------------- LOAD MASJID ---------------- */
   useEffect(() => {
     if (!open || !masjidId) return;
 
-    async function load() {
-      setLoading(true);
+    (async () => {
       try {
-        const [masjidRes, rulesRes] = await Promise.all([
+        setLoading(true);
+
+        const [mRes, rRes] = await Promise.all([
           adminAPI.getMasjidById(masjidId),
           adminAPI.getMasjidPrayerRules(masjidId),
         ]);
 
-        const m = masjidRes?.data;
-        const config = rulesRes?.data;
-        const normalizedRules = {};
+        const m = mRes.data;
 
-        (config?.rules || []).forEach((r) => {
-          normalizedRules[r.prayer] = {
+        setForm({
+          name: m.name,
+          address: m.address,
+          city: m.city?._id,
+          area: m.area?._id,
+          lat: m.location?.coordinates?.[1],
+          lng: m.location?.coordinates?.[0],
+          ladiesPrayerFacility: Boolean(m.ladiesPrayerFacility),
+          contacts: Object.fromEntries(
+            m.contacts?.map((c) => [c.role, c]) || []
+          ),
+        });
+
+        setImage({
+          url: m.imageUrl || "",
+          publicId: m.imagePublicId || "",
+        });
+
+        const normalized = {};
+        rRes.data.rules?.forEach((r) => {
+          normalized[r.prayer] = {
             mode: r.mode,
             manual: r.manual || {},
             auto: r.auto || {},
           };
         });
 
-        setForm({
-          imageUrl: m?.imageUrl || "",
-          imagePublicId: m?.imagePublicId || "",
-          ladiesPrayerFacility: Boolean(m.ladiesPrayerFacility),
-          contacts: {
-            imam: m?.contacts?.find((c) => c.role === "imam") || {},
-            mozin: m?.contacts?.find((c) => c.role === "mozin") || {},
-            mutawalli: m?.contacts?.find((c) => c.role === "mutawalli") || {},
-          },
-          prayerRules: normalizedRules,
-        });
-      } catch (err) {
+        setPrayerRules(normalized);
+      } catch {
         notify.error("Failed to load masjid");
       } finally {
         setLoading(false);
       }
-    }
-
-    load();
+    })();
   }, [open, masjidId]);
 
-  /* ---------------- IMAGE ---------------- */
   async function onImageSelect(file) {
     if (!file) return;
 
     try {
       setLoading(true);
-
       const fd = new FormData();
       fd.append("image", file);
 
-      // 1️⃣ Upload image
-      const uploaded = await adminAPI.uploadMasjidImage(fd);
-
-      if (!uploaded?.data?.imageUrl) {
-        throw new Error("Image upload failed");
-      }
-
-      const payload = {
-        imageUrl: uploaded.data.imageUrl,
-        imagePublicId: uploaded.data.imagePublicId,
-      };
-
-      // 2️⃣ Attach image to masjid
-      await adminAPI.updateMasjid(masjidId, payload);
-
-      // 3️⃣ Update local state
-      setForm((prev) => ({ ...prev, ...payload }));
-
-      notify.success("Image updated");
-    } catch (err) {
-      notify.error(err.message || "Image update failed");
+      const res = await adminAPI.uploadMasjidImage(fd);
+      setImage({
+        url: res.data.imageUrl,
+        publicId: res.data.imagePublicId,
+      });
+    } catch {
+      notify.error("Image upload failed");
     } finally {
       setLoading(false);
     }
   }
 
-  /* ---------------- SUBMIT ---------------- */
   async function submit(e) {
     e.preventDefault();
-    setLoading(true);
 
     try {
-      /* 1️⃣ Update masjid metadata */
+      setLoading(true);
+
       await adminAPI.updateMasjid(masjidId, {
-        imageUrl: form.imageUrl,
-        imagePublicId: form.imagePublicId,
-        ladiesPrayerFacility: form.ladiesPrayerFacility,
+        ...form,
+        imageUrl: image.url,
+        imagePublicId: image.publicId,
+        location: {
+          type: "Point",
+          coordinates: [Number(form.lng), Number(form.lat)],
+        },
         contacts: Object.entries(form.contacts)
           .filter(([, v]) => v?.name)
           .map(([role, v]) => ({ role, ...v })),
       });
 
-      /* 2️⃣ Upsert prayer rules (ONE BY ONE) */
-      for (const [prayer, rule] of Object.entries(form.prayerRules)) {
+      for (const [prayer, rule] of Object.entries(prayerRules)) {
         if (!rule?.mode) continue;
-
         await adminAPI.upsertMasjidPrayerRule(masjidId, {
           prayer,
           mode: rule.mode,
@@ -142,81 +132,49 @@ export default function EditMasjidModal({
         });
       }
 
-      notify.success("Masjid updated successfully");
-      onUpdated?.(true);
+      notify.success("Masjid updated");
+      onUpdated?.();
       onClose();
-    } catch (err) {
-      notify.error(err.message || "Update failed");
+    } catch {
+      notify.error("Update failed");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Edit Masjid" size="2xl">
-      {loading ? (
-        <p className="text-center py-10">Loading...</p>
-      ) : (
-        <form onSubmit={submit} className="space-y-6">
-          {/* IMAGE */}
-          <div>
-            <label className="block mb-1 font-medium">Masjid Image</label>
-            {form.imageUrl && (
-              <img
-                src={form.imageUrl}
-                className="w-full max-h-40 object-cover rounded mb-2"
-              />
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => onImageSelect(e.target.files?.[0])}
-            />
-          </div>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Edit Masjid"
+      closeOnBackdrop={false}
+    >
+      <form onSubmit={submit} className="flex flex-col h-full">
+        <MasjidForm
+          form={form}
+          setForm={setForm}
+          prayerRules={prayerRules}
+          setPrayerRules={setPrayerRules}
+          cities={cities}
+          areas={areas}
+          image={image}
+          onImageSelect={onImageSelect}
+          mapOpen={mapOpen}
+          setMapOpen={setMapOpen}
+        />
 
-          {/* LADIES PRAYER FACILITY */}
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="ladiesPrayerFacility"
-              checked={form.ladiesPrayerFacility}
-              onChange={(e) => update("ladiesPrayerFacility", e.target.checked)}
-              className="h-4 w-4"
-            />
-            <label
-              htmlFor="ladiesPrayerFacility"
-              className="text-sm font-medium"
-            >
-              Ladies prayer facility available
-            </label>
-          </div>
-
-          {/* CONTACTS */}
-          <ContactPersonsForm
-            contacts={form.contacts}
-            onChange={(v) => update("contacts", v)}
-          />
-
-          {/* PRAYER RULES */}
-          <PrayerRulesForm
-            value={form.prayerRules}
-            onChange={(v) => update("prayerRules", v)}
-          />
-
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="border px-4 py-2 rounded"
-            >
-              Cancel
-            </button>
-            <button className="bg-slate-700 text-white px-4 py-2 rounded">
-              Save Changes
-            </button>
-          </div>
-        </form>
-      )}
+        <div className="sticky bottom-0 bg-white border-t p-4 flex justify-end gap-3">
+          <button type="button" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            disabled={loading}
+            className="bg-slate-700 text-white px-4 py-2 rounded"
+          >
+            {loading ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
     </Modal>
   );
 }

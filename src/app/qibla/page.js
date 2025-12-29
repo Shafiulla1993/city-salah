@@ -10,16 +10,12 @@ export const metadata = {
 
 export default function QiblaPage() {
   return (
-    <main className="flex flex-col">
-      {/* SEO CONTENT */}
+    <main className="flex flex-col text-white">
       <section className="max-w-3xl mx-auto px-4 pt-6 pb-2 text-center">
-        <h1 className="text-xl font-semibold text-white">
-          Qibla Direction Finder
-        </h1>
+        <h1 className="text-xl font-semibold">Qibla Direction Finder</h1>
 
         <p className="mt-2 text-sm text-white/80">
-          Find the direction of the Kaaba in Makkah from anywhere in the world
-          using your device’s location and compass sensors.
+          Find the direction of the Kaaba in Makkah from anywhere in the world.
         </p>
       </section>
 
