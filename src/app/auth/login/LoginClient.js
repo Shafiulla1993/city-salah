@@ -99,27 +99,27 @@ export default function LoginClient() {
 
 
   async function handleAttachEmail() {
-    setModalError("");
-    setModalInfo("");
+  setModalError("");
+  setModalInfo("");
 
-    try {
-      const res = await fetch("/api/auth/attach-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          identifier: form.identifier,
-          email: legacyEmail,
-        }),
-      });
+  try {
+    const res = await fetch("/api/auth/attach-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone: form.identifier, 
+        email: legacyEmail,
+      }),
+    });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to send verification");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to send verification");
 
-      setModalInfo("Verification link sent. Please check your email.");
-    } catch (err) {
-      setModalError(err.message || "Failed to attach email");
-    }
+    setModalInfo("Verification link sent. Please check your email.");
+  } catch (err) {
+    setModalError(err.message || "Failed to attach email");
   }
+}
 
   return (
     <div className="w-full min-h-[80vh] flex items-center justify-center px-4 py-8">
