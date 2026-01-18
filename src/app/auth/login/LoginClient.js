@@ -75,26 +75,28 @@ export default function LoginClient() {
   }
 
   async function handleResendVerification() {
-    setLoading(true);
-    setError("");
-    setInfo("");
+  setLoading(true);
+  setError("");
+  setInfo("");
 
-    try {
-      const res = await fetch("/api/auth/send-verification", {
-        method: "POST",
-        credentials: "include",
-      });
+  try {
+    const res = await fetch("/api/auth/send-verification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: verifyEmail }),   // 👈 IMPORTANT
+    });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
 
-      setInfo("Verification email sent. Please check your inbox.");
-    } catch (err) {
-      setError(err.message || "Failed to send verification email");
-    } finally {
-      setLoading(false);
-    }
+    setInfo("Verification email sent. Please check your inbox.");
+  } catch (err) {
+    setError(err.message || "Failed to send verification email");
+  } finally {
+    setLoading(false);
   }
+}
+
 
   async function handleAttachEmail() {
     setModalError("");

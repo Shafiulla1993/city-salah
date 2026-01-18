@@ -1,4 +1,5 @@
 // src/app/api/auth/send-verification/route.js
+// src/app/api/auth/send-verification/route.js
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -7,12 +8,34 @@ import connectDB from "@/lib/db";
 import User from "@/models/User";
 import { sendMail } from "@/lib/mail/mailer";
 import { verifyEmailTemplate } from "@/lib/mail/templates/verifyEmail";
+import { verifyToken } from "@/lib/auth/token";
+import { authCookie } from "@/lib/auth/cookies";
 
 export async function POST(request) {
   await connectDB();
 
   try {
-    const { email } = await request.json();
+    let email;
+
+    // 1) Try JSON body (legacy modal, register, etc)
+    try {
+      const body = await request.json();
+      email = body?.email;
+    } catch {
+      // ignore JSON parse error
+    }
+
+    // 2) If no email in body, try from JWT (logged-in user)
+    if (!email) {
+      const token = request.cookies.get(authCookie.name)?.value;
+      if (token) {
+        const decoded = verifyToken(token);
+        if (decoded?.userId) {
+          const user = await User.findById(decoded.userId);
+          email = user?.email;
+        }
+      }
+    }
 
     if (!email) {
       return NextResponse.json({ message: "Email required" }, { status: 400 });
@@ -41,8 +64,6 @@ export async function POST(request) {
       process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
     const verifyLink = `${baseUrl}/auth/verify-email?token=${rawToken}`;
-    console.log("VERIFY LINK =", verifyLink);
-
 
     await sendMail({
       to: user.email,
