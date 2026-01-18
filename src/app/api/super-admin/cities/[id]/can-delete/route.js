@@ -1,13 +1,34 @@
-// src/app/api/super-admin/cities/can-delete
+// src/app/api/super-admin/cities/[id]/can-delete
 
-import { withAuth } from "@/lib/middleware/withAuth";
-import { canDeleteCityController } from "@/server/controllers/superadmin/cities.controller";
 import connectDB from "@/lib/db";
+import { withAuth } from "@/lib/middleware/withAuth";
+import Area from "@/models/Area";
+import User from "@/models/User";
+import Masjid from "@/models/Masjid";
 
-export const GET = withAuth("super_admin", async (request, ctx) => {
+// GET /api/super-admin/cities/:id/can-delete
+export const GET = withAuth("super_admin", async (request, { params }) => {
   await connectDB();
-  const { id } = await ctx.params;
 
-  const result = await canDeleteCityController({ id });
-  return Response.json(result.json, { status: result.status });
+  const { id } = await params;
+
+  const [linkedAreas, linkedUsers, linkedMasjids] = await Promise.all([
+    Area.countDocuments({ city: id }),
+    User.countDocuments({ city: id }),
+    Masjid.countDocuments({ city: id }),
+  ]);
+
+  const canDelete =
+    linkedAreas === 0 && linkedUsers === 0 && linkedMasjids === 0;
+
+  return {
+    status: 200,
+    json: {
+      success: true,
+      canDelete,
+      linkedAreas,
+      linkedUsers,
+      linkedMasjids,
+    },
+  };
 });

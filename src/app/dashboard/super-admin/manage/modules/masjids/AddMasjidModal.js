@@ -1,10 +1,8 @@
 // src/app/dashboard/super-admin/manage/modules/masjids/AddMasjidModal.js
-
 "use client";
 
 import { useEffect, useState } from "react";
 import Modal from "@/components/admin/Modal";
-import { adminAPI } from "@/lib/api/sAdmin";
 import { notify } from "@/lib/toast";
 import MasjidForm from "./MasjidForm";
 
@@ -18,6 +16,7 @@ export default function AddMasjidModal({
   const [loading, setLoading] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [prayerRules, setPrayerRules] = useState({});
+  const [image, setImage] = useState({ url: "", publicId: "" });
 
   const [form, setForm] = useState({
     name: "",
@@ -30,21 +29,26 @@ export default function AddMasjidModal({
     ladiesPrayerFacility: false,
   });
 
-  const [image, setImage] = useState({ url: "", publicId: "" });
+  async function uploadImage(file) {
+    const fd = new FormData();
+    fd.append("image", file);
+
+    const res = await fetch("/api/super-admin/masjids/upload-image", {
+      method: "POST",
+      body: fd,
+      credentials: "include",
+    });
+
+    const json = await res.json();
+    return json.data;
+  }
 
   async function onImageSelect(file) {
     if (!file) return;
-
     try {
       setLoading(true);
-      const fd = new FormData();
-      fd.append("image", file);
-
-      const res = await adminAPI.uploadMasjidImage(fd);
-      setImage({
-        url: res.data.imageUrl,
-        publicId: res.data.imagePublicId,
-      });
+      const data = await uploadImage(file);
+      setImage({ url: data.imageUrl, publicId: data.imagePublicId });
     } catch {
       notify.error("Image upload failed");
     } finally {
@@ -62,33 +66,31 @@ export default function AddMasjidModal({
     try {
       setLoading(true);
 
-      const payload = {
-        name: form.name,
-        address: form.address,
-        city: form.city,
-        area: form.area,
-        ladiesPrayerFacility: form.ladiesPrayerFacility,
-        imageUrl: image.url,
-        imagePublicId: image.publicId,
-        location: {
-          type: "Point",
-          coordinates: [Number(form.lng), Number(form.lat)],
-        },
-        contacts: Object.entries(form.contacts)
-          .filter(([, v]) => v?.name)
-          .map(([role, v]) => ({ role, ...v })),
-      };
+      const res = await fetch("/api/super-admin/masjids", {
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({
+          ...form,
+          imageUrl: image.url,
+          imagePublicId: image.publicId,
+          location: {
+            type: "Point",
+            coordinates: [Number(form.lng), Number(form.lat)],
+          },
+          contacts: Object.entries(form.contacts)
+            .filter(([, v]) => v?.name)
+            .map(([role, v]) => ({ role, ...v })),
+        }),
+      });
 
-      const res = await adminAPI.createMasjid(payload);
-      const masjidId = res.data._id;
+      const json = await res.json();
+      const masjidId = json.data._id;
 
       for (const [prayer, rule] of Object.entries(prayerRules)) {
-        if (!rule?.mode) continue;
-        await adminAPI.upsertMasjidPrayerRule(masjidId, {
-          prayer,
-          mode: rule.mode,
-          manual: rule.manual,
-          auto: rule.auto,
+        await fetch(`/api/super-admin/masjids/${masjidId}/prayer-rules`, {
+          method: "PUT",
+          credentials: "include",
+          body: JSON.stringify({ prayer, ...rule }),
         });
       }
 
@@ -122,7 +124,6 @@ export default function AddMasjidModal({
           mapOpen={mapOpen}
           setMapOpen={setMapOpen}
         />
-
         <div className="sticky bottom-0 bg-white border-t p-4 flex justify-end gap-3">
           <button type="button" onClick={onClose}>
             Cancel

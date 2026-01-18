@@ -1,4 +1,4 @@
-// src/server/middleware/protect.js
+// src/lib/auth/protect.js
 
 import connectDB from "@/lib/db";
 import User from "@/models/User";

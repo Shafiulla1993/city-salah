@@ -1,11 +1,10 @@
-// File: src/app/dashboard/super-admin/manage/modules/cities/modals/AddCityModal.js
+// src/app/dashboard/super-admin/manage/modules/cities/modals/AddCityModal.js
 "use client";
 
 import React, { useState } from "react";
 import Modal from "@/components/admin/Modal";
 import { Input } from "@/components/form/Input";
 import { notify } from "@/lib/toast";
-import { adminAPI } from "@/lib/api/sAdmin";
 
 export default function AddCityModal({ open, onClose, onCreated }) {
   const [loading, setLoading] = useState(false);
@@ -22,15 +21,23 @@ export default function AddCityModal({ open, onClose, onCreated }) {
 
     setLoading(true);
     try {
-      const res = await adminAPI.createCity(form);
-      if (res?.success) {
-        notify.success("City created");
-        onCreated?.(res.data);
-        onClose();
-        setForm({ name: "", timezone: "Asia/Kolkata" });
-      } else {
-        notify.error(res?.message || "Create failed");
+      const res = await fetch("/api/super-admin/cities", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data?.success) {
+        return notify.error(data?.message || "Create failed");
       }
+
+      notify.success("City created");
+      onCreated?.(data.data);
+      onClose();
+      setForm({ name: "", timezone: "Asia/Kolkata" });
     } catch (err) {
       console.error(err);
       notify.error("Create failed");

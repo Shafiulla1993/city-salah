@@ -2,142 +2,108 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { adminAPI } from "@/lib/api/sAdmin";
-
 import MasjidsTable from "../modules/masjids/MasjidsTable";
 import AddMasjidModal from "../modules/masjids/AddMasjidModal";
 import MasjidsSkeleton from "../modules/masjids/MasjidsSkeleton";
-import { useInfiniteMasjids } from "../modules/masjids/useInfiniteMasjids";
 
 export default function MasjidsTab() {
-  const {
-    masjids,
-    loading,
-    hasMore,
-    loadFirst,
-    loadNext,
-    setObserver,
-    setObserverRoot,
-    sort,
-    setSort,
-    search,
-    setSearch,
-    cityId,
-    setCityId,
-    areaId,
-    setAreaId,
-  } = useInfiniteMasjids({ initialSort: "-createdAt", limit: 10 });
-
-  const [addOpen, setAddOpen] = useState(false);
-
-  // Dropdown data
+  const [masjids, setMasjids] = useState([]);
   const [cities, setCities] = useState([]);
   const [areas, setAreas] = useState([]);
 
-  // Use callback ref to attach observer reliably
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  const [sort, setSort] = useState("-createdAt");
+  const [search, setSearch] = useState("");
+  const [cityId, setCityId] = useState("");
+  const [areaId, setAreaId] = useState("");
+
+  const [addOpen, setAddOpen] = useState(false);
+
+  const observerRef = useRef(null);
   const loaderRef = useRef(null);
 
-  // If your app has a specific scrollable container, try to detect it here:
+  async function fetchMasjids(p = 1, reset = false) {
+    setLoading(true);
+    const params = new URLSearchParams({
+      page: String(p),
+      limit: String(limit),
+      sort,
+      search,
+      ...(cityId && { cityId }),
+      ...(areaId && { areaId }),
+    });
+
+    const res = await fetch(`/api/super-admin/masjids?${params.toString()}`, {
+      credentials: "include",
+    });
+    const json = await res.json();
+
+    const rows = Array.isArray(json?.data) ? json.data : [];
+    setTotal(json?.total || 0);
+
+    setMasjids((prev) => {
+      const map = new Map();
+      (reset ? rows : [...prev, ...rows]).forEach((m) => {
+        map.set(m._id, m);
+      });
+      return Array.from(map.values());
+    });
+
+    setHasMore(p * limit < (json?.total || 0));
+    setPage(p);
+    setLoading(false);
+  }
+
+  async function fetchCitiesAreas() {
+    const [cRes, aRes] = await Promise.all([
+      fetch(`/api/super-admin/cities?limit=1000`, {
+        credentials: "include",
+      }).then((r) => r.json()),
+      fetch(`/api/super-admin/areas?limit=2000`, {
+        credentials: "include",
+      }).then((r) => r.json()),
+    ]);
+    setCities(cRes?.data || []);
+    setAreas(aRes?.data || []);
+  }
+
   useEffect(() => {
-    // Example: if your layout uses a div with id "main-scroll" or class ".app-scroll"
-    // const scrollContainer = document.querySelector("#main-scroll") || document.querySelector(".app-scroll");
-    // if (scrollContainer) setObserverRoot(scrollContainer);
-    // For now, we attempt to auto-detect a common scroll container:
-    const maybe = document.querySelector(
-      ".main-content, .app-scroll, .scrollable, #__next"
-    );
-    if (maybe) {
-      // If that element has overflowY other than 'visible', it's likely the scroll root
-      const style = getComputedStyle(maybe);
-      if (style.overflowY === "auto" || style.overflowY === "scroll") {
-        setObserverRoot(maybe);
-      }
-    }
-  }, [setObserverRoot]);
-
-  // callback ref that will call setObserver when element mounts
-  const attachLoader = (el) => {
-    loaderRef.current = el;
-    if (el) {
-      // attach sentinel to observer
-      setObserver(el);
-    } else {
-      // if unmounted, detach by calling setObserver(null)
-      setObserver(null);
-    }
-  };
-
-  /* ----------------------------------------------------
-   *  Load dropdown data (cities + areas) once
-   * ---------------------------------------------------- */
-  useEffect(() => {
-    (async () => {
-      try {
-        const [cRes, aRes] = await Promise.all([
-          adminAPI.getCities(),
-          adminAPI.getAreas("?limit=2000"),
-        ]);
-
-        setCities(cRes?.data ?? []);
-        setAreas(aRes?.data ?? []);
-      } catch (err) {
-        console.error("Failed cities/areas:", err);
-      }
-    })();
+    fetchCitiesAreas();
   }, []);
 
-  /* ----------------------------------------------------
-   * Initial load of masjids
-   * ---------------------------------------------------- */
   useEffect(() => {
-    loadFirst();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    fetchMasjids(1, true);
+  }, [sort, search, cityId, areaId]); // eslint-disable-line
 
-  /* ----------------------------------------------------
-   * Reload when filters change
-   * ---------------------------------------------------- */
   useEffect(() => {
-    loadFirst();
-  }, [sort, search, cityId, areaId]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!loaderRef.current) return;
 
-  // Window-scroll fallback: if intersection doesn't trigger (some layouts), this will load more
-  useEffect(() => {
-    let ticking = false;
+    if (observerRef.current) observerRef.current.disconnect();
 
-    function onScrollFallback() {
-      if (!hasMore || loading) return;
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        // distance from bottom
-        const distance =
-          document.documentElement.scrollHeight -
-          (window.innerHeight + window.scrollY);
-        // when within 900px from bottom, load next
-        if (distance < 900) {
-          loadNext();
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          fetchMasjids(page + 1);
         }
-        ticking = false;
-      });
-    }
+      },
+      { rootMargin: "600px" },
+    );
 
-    window.addEventListener("scroll", onScrollFallback, { passive: true });
-    return () => window.removeEventListener("scroll", onScrollFallback);
-  }, [hasMore, loading, loadNext]);
-
-  /* ----------------------------------------------------
-   * Safe masjid list
-   * ---------------------------------------------------- */
-  const safeMasjids = Array.isArray(masjids) ? masjids : [];
+    observerRef.current.observe(loaderRef.current);
+    return () => observerRef.current.disconnect();
+  }, [page, hasMore, loading]); // eslint-disable-line
 
   const filteredAreas = areas.filter((a) => !cityId || a.city?._id === cityId);
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Manage Masjids</h2>
-
         <button
           className="btn btn-primary btn-sm"
           onClick={() => setAddOpen(true)}
@@ -146,11 +112,10 @@ export default function MasjidsTab() {
         </button>
       </div>
 
-      {/* Filters */}
       <div className="flex gap-3 flex-wrap">
         <input
           className="border px-3 py-2 rounded-lg"
-          placeholder="Search masjid or address"
+          placeholder="Search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -166,7 +131,6 @@ export default function MasjidsTab() {
           <option value="-name">Name Z→A</option>
         </select>
 
-        {/* City Filter */}
         <select
           className="border px-3 py-2 rounded-lg"
           value={cityId}
@@ -180,7 +144,6 @@ export default function MasjidsTab() {
           ))}
         </select>
 
-        {/* Area Filter */}
         <select
           className="border px-3 py-2 rounded-lg"
           value={areaId}
@@ -195,36 +158,31 @@ export default function MasjidsTab() {
         </select>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl shadow p-4">
-        {!safeMasjids.length && loading ? (
+        {!masjids.length && loading ? (
           <MasjidsSkeleton />
         ) : (
           <MasjidsTable
-            masjids={safeMasjids}
-            onMasjidDeleted={() => loadFirst()}
-            onMasjidUpdated={() => loadFirst()}
+            masjids={masjids}
+            onMasjidUpdated={() => fetchMasjids(1, true)}
+            onMasjidDeleted={() => fetchMasjids(1, true)}
           />
         )}
-
-        {/* Infinite scroll loader */}
-        {/* use callback ref attachLoader so observer always attaches reliably */}
-        <div ref={attachLoader} className="py-6 mt-8 text-center text-gray-400">
+        <div ref={loaderRef} className="py-6 text-center text-gray-400">
           {loading
             ? "Loading..."
             : hasMore
-            ? "Scroll to load more"
-            : "No more masjids"}
+              ? "Scroll to load more"
+              : "No more masjids"}
         </div>
       </div>
 
-      {/* Add Modal */}
       <AddMasjidModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
         cities={cities}
         areas={areas}
-        onCreated={() => loadFirst()}
+        onCreated={() => fetchMasjids(1, true)}
       />
     </div>
   );

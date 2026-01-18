@@ -3,51 +3,60 @@
 
 import { useEffect, useState } from "react";
 import Modal from "@/components/admin/Modal";
-import { adminAPI } from "@/lib/api/sAdmin";
 import { notify } from "@/lib/toast";
+import AddCityModal from "../cities/AddCityModal";
 
 export default function AddAreaModal({ open, onClose, onCreated }) {
   const [cities, setCities] = useState([]);
-  const [form, setForm] = useState({
-    name: "",
-    city: "",
-    lat: "",
-    lng: "",
-  });
+  const [form, setForm] = useState({ name: "", city: "", lat: "", lng: "" });
+  const [openCityModal, setOpenCityModal] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    loadCities();
+
+    // reset form on open
+    setForm({ name: "", city: "", lat: "", lng: "" });
+
+    (async () => {
+      const res = await fetch("/api/super-admin/cities", {
+        credentials: "include",
+      });
+      const data = await res.json();
+      setCities(data?.data || []);
+    })();
   }, [open]);
 
-  async function loadCities() {
-    const res = await adminAPI.getCities();
-    setCities(res?.data ?? []);
-  }
-
-  function update(k, v) {
-    setForm((s) => ({ ...s, [k]: v }));
-  }
-
   async function handleSubmit() {
-    const body = {
-      name: form.name,
-      city: form.city,
-      center: {
-        type: "Point",
-        coordinates: [Number(form.lng), Number(form.lat)],
-      },
-    };
+    const res = await fetch("/api/super-admin/areas", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: form.name,
+        city: form.city,
+        center: {
+          type: "Point",
+          coordinates: [Number(form.lng), Number(form.lat)],
+        },
+      }),
+    });
 
-    const res = await adminAPI.createArea(body);
+    const data = await res.json();
 
-    if (res?.success) {
+    if (data?.success) {
+      // re-fetch populated area
+      const detailRes = await fetch(`/api/super-admin/areas/${data.data._id}`, {
+        credentials: "include",
+      });
+      const detail = await detailRes.json();
+
       notify.success("Area created");
-      onCreated?.(res.data);
-      onClose();
+      onCreated?.(detail.data);
+
       setForm({ name: "", city: "", lat: "", lng: "" });
+      onClose();
     } else {
-      notify.error(res?.message || "Failed");
+      notify.error(data?.message || "Failed");
     }
   }
 
@@ -58,15 +67,29 @@ export default function AddAreaModal({ open, onClose, onCreated }) {
           className="w-full border px-3 py-2 rounded"
           placeholder="Area Name"
           value={form.name}
-          onChange={(e) => update("name", e.target.value)}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
         />
 
         <select
           className="w-full border px-3 py-2 rounded"
           value={form.city}
-          onChange={(e) => update("city", e.target.value)}
+          onChange={(e) => {
+            if (e.target.value === "__add_new__") {
+              setOpenCityModal(true);
+              return;
+            }
+            setForm({ ...form, city: e.target.value });
+          }}
         >
           <option value="">Select City</option>
+
+          <option
+            value="__add_new__"
+            className="font-semibold text-emerald-700"
+          >
+            + Add New City
+          </option>
+
           {cities.map((c) => (
             <option key={c._id} value={c._id}>
               {c.name}
@@ -74,18 +97,28 @@ export default function AddAreaModal({ open, onClose, onCreated }) {
           ))}
         </select>
 
+        <AddCityModal
+          open={openCityModal}
+          onClose={() => setOpenCityModal(false)}
+          onCreated={(city) => {
+            setCities((prev) => [city, ...prev]);
+            setForm((f) => ({ ...f, city: city._id }));
+            setOpenCityModal(false);
+          }}
+        />
+
         <input
           className="w-full border px-3 py-2 rounded"
           placeholder="Latitude"
           value={form.lat}
-          onChange={(e) => update("lat", e.target.value)}
+          onChange={(e) => setForm({ ...form, lat: e.target.value })}
         />
 
         <input
           className="w-full border px-3 py-2 rounded"
           placeholder="Longitude"
           value={form.lng}
-          onChange={(e) => update("lng", e.target.value)}
+          onChange={(e) => setForm({ ...form, lng: e.target.value })}
         />
 
         <button

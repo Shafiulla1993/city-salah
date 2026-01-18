@@ -2,7 +2,6 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { adminAPI } from "@/lib/api/sAdmin";
 import CitiesTable from "../modules/cities/CitiesTable";
 import CitiesSkeleton from "../modules/cities/CitiesSkeleton";
 import AddCityModal from "../modules/cities/AddCityModal";
@@ -21,7 +20,6 @@ export default function CitiesTab() {
 
   const [openAdd, setOpenAdd] = useState(false);
   const [editId, setEditId] = useState(null);
-
   const [delId, setDelId] = useState(null);
 
   const loaderRef = useRef();
@@ -45,9 +43,14 @@ export default function CitiesTab() {
 
     try {
       const query = `?page=${pageToLoad}&limit=10&sort=${sort}&search=${encodeURIComponent(
-        search
+        search,
       )}`;
-      const payload = await adminAPI.getCities(query);
+
+      const res = await fetch(`/api/super-admin/cities${query}`, {
+        credentials: "include",
+      });
+
+      const payload = await res.json();
       const newData = payload?.data ?? [];
 
       if (pageToLoad === 1) {
@@ -74,7 +77,7 @@ export default function CitiesTab() {
           setPage((p) => p + 1);
         }
       },
-      { threshold: 1 }
+      { threshold: 1 },
     );
 
     if (loaderRef.current) observer.observe(loaderRef.current);
@@ -143,8 +146,8 @@ export default function CitiesTab() {
           {loading
             ? "Loading..."
             : hasMore
-            ? "Scroll to load more"
-            : "No more cities"}
+              ? "Scroll to load more"
+              : "No more cities"}
         </div>
       </div>
 
@@ -154,8 +157,8 @@ export default function CitiesTab() {
         onCreated={(c) =>
           setCities((prev) =>
             Array.from(
-              new Map([[c._id, c], ...prev.map((p) => [p._id, p])]).values()
-            )
+              new Map([[c._id, c], ...prev.map((p) => [p._id, p])]).values(),
+            ),
           )
         }
       />
@@ -166,7 +169,7 @@ export default function CitiesTab() {
         onClose={() => setEditId(null)}
         onUpdated={(updated) =>
           setCities((prev) =>
-            prev.map((c) => (c._id === updated._id ? updated : c))
+            prev.map((c) => (c._id === updated._id ? updated : c)),
           )
         }
       />

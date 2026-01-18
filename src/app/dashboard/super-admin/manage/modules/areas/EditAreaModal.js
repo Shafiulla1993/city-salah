@@ -3,14 +3,11 @@
 
 import { useEffect, useState } from "react";
 import Modal from "@/components/admin/Modal";
-import { adminAPI } from "@/lib/api/sAdmin";
 import { notify } from "@/lib/toast";
 
 export default function EditAreaModal({ open, onClose, areaId, onUpdated }) {
-  const [loading, setLoading] = useState(false);
   const [cities, setCities] = useState([]);
   const [initial, setInitial] = useState(null);
-
   const [form, setForm] = useState({
     name: "",
     city: "",
@@ -19,47 +16,43 @@ export default function EditAreaModal({ open, onClose, areaId, onUpdated }) {
   });
 
   useEffect(() => {
-    if (!open) return;
-    loadData();
-  }, [open]);
+    if (!open || !areaId) return;
 
-  async function loadData() {
-    try {
-      const [cityRes, areaRes] = await Promise.all([
-        adminAPI.getCities(),
-        adminAPI.getAreaById(areaId),
-      ]);
+    (async () => {
+      try {
+        const [cityRes, areaRes] = await Promise.all([
+          fetch("/api/super-admin/cities", { credentials: "include" }),
+          fetch(`/api/super-admin/areas/${areaId}`, { credentials: "include" }),
+        ]);
 
-      setCities(cityRes?.data ?? []);
+        const citiesData = await cityRes.json();
+        const areaData = await areaRes.json();
 
-      if (areaRes?.data) {
-        const a = areaRes.data;
+        const a = areaData?.data;
+        if (!a) return;
 
+        setCities(citiesData?.data || []);
         setInitial(a);
 
         setForm({
-          name: a.name,
+          name: a.name || "",
           city: a.city?._id || "",
           lat: a.center?.coordinates?.[1] ?? "",
           lng: a.center?.coordinates?.[0] ?? "",
         });
+      } catch (err) {
+        console.error("EditArea load error:", err);
       }
-    } catch (err) {
-      console.error(err);
-    }
-  }
+    })();
+  }, [open, areaId]);
 
-  function update(k, v) {
-    setForm((s) => ({ ...s, [k]: v }));
-  }
+  if (!open || !initial) return null; // 🔒 prevent render until data ready
 
   async function handleSubmit() {
-    setLoading(true);
-
     const payload = {};
 
     if (form.name !== initial.name) payload.name = form.name;
-    if (form.city !== (initial.city?._id || "")) payload.city = form.city;
+    if (form.city !== initial.city?._id) payload.city = form.city;
 
     if (
       Number(form.lat) !== initial.center?.coordinates?.[1] ||
@@ -71,17 +64,33 @@ export default function EditAreaModal({ open, onClose, areaId, onUpdated }) {
       };
     }
 
-    const res = await adminAPI.updateArea(areaId, payload);
+    try {
+      const res = await fetch(`/api/super-admin/areas/${areaId}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-    if (res?.success) {
-      notify.success("Area updated");
-      onUpdated?.(res.data);
-      onClose();
-    } else {
-      notify.error(res?.message || "Update failed");
+      const data = await res.json();
+
+      if (data?.success) {
+        // 🔁 re-fetch populated
+        const detailRes = await fetch(`/api/super-admin/areas/${areaId}`, {
+          credentials: "include",
+        });
+        const detail = await detailRes.json();
+
+        notify.success("Area updated");
+        onUpdated?.(detail.data); // populated city
+        onClose();
+      } else {
+        notify.error(data?.message || "Update failed");
+      }
+    } catch (err) {
+      console.error(err);
+      notify.error("Update failed");
     }
-
-    setLoading(false);
   }
 
   return (
@@ -90,13 +99,13 @@ export default function EditAreaModal({ open, onClose, areaId, onUpdated }) {
         <input
           className="w-full border px-3 py-2 rounded"
           value={form.name}
-          onChange={(e) => update("name", e.target.value)}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
         />
 
         <select
           className="w-full border px-3 py-2 rounded"
           value={form.city}
-          onChange={(e) => update("city", e.target.value)}
+          onChange={(e) => setForm({ ...form, city: e.target.value })}
         >
           <option value="">Select City</option>
           {cities.map((c) => (
@@ -110,22 +119,21 @@ export default function EditAreaModal({ open, onClose, areaId, onUpdated }) {
           className="w-full border px-3 py-2 rounded"
           placeholder="Latitude"
           value={form.lat}
-          onChange={(e) => update("lat", e.target.value)}
+          onChange={(e) => setForm({ ...form, lat: e.target.value })}
         />
 
         <input
           className="w-full border px-3 py-2 rounded"
           placeholder="Longitude"
           value={form.lng}
-          onChange={(e) => update("lng", e.target.value)}
+          onChange={(e) => setForm({ ...form, lng: e.target.value })}
         />
 
         <button
           onClick={handleSubmit}
-          disabled={loading}
           className="w-full bg-slate-700 text-white rounded px-4 py-2"
         >
-          {loading ? "Saving…" : "Save changes"}
+          Save changes
         </button>
       </div>
     </Modal>

@@ -1,14 +1,29 @@
 // src/app/api/super-admin/areas/[id]/can-delete/route.js
 import connectDB from "@/lib/db";
 import { withAuth } from "@/lib/middleware/withAuth";
-import { canDeleteAreaController } from "@/server/controllers/superadmin/areas.controller";
+import Masjid from "@/models/Masjid";
+import User from "@/models/User";
 
-export const GET = withAuth("super_admin", async (req, ctx) => {
+// GET /api/super-admin/areas/:id/can-delete
+export const GET = withAuth("super_admin", async (request, { params }) => {
   await connectDB();
 
-  const { id } = await ctx.params;
+  const { id } = await params;
 
-  const res = await canDeleteAreaController({ id });
+  const [linkedMasjids, linkedUsers] = await Promise.all([
+    Masjid.countDocuments({ area: id }),
+    User.countDocuments({ area: id }),
+  ]);
 
-  return Response.json(res.json, { status: res.status });
+  const canDelete = linkedMasjids === 0 && linkedUsers === 0;
+
+  return {
+    status: 200,
+    json: {
+      success: true,
+      canDelete,
+      linkedMasjids,
+      linkedUsers,
+    },
+  };
 });

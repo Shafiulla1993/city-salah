@@ -1,9 +1,8 @@
-// File: src/app/dashboard/super-admin/manage/modules/cities/modals/DeleteCityModal.js
+// src/app/dashboard/super-admin/manage/modules/cities/modals/DeleteCityModal.js
 "use client";
 
 import { useEffect, useState } from "react";
 import Modal from "@/components/admin/Modal";
-import { adminAPI } from "@/lib/api/sAdmin";
 import { notify } from "@/lib/toast";
 
 export default function DeleteCityModal({ open, onClose, cityId, onDeleted }) {
@@ -14,17 +13,24 @@ export default function DeleteCityModal({ open, onClose, cityId, onDeleted }) {
   useEffect(() => {
     if (!open || !cityId) return;
 
-    // 🔥 Reset old data so previous city result is not shown
     setCheck(null);
-
     checkCity();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, cityId]);
 
   async function checkCity() {
     setChecking(true);
     try {
-      const res = await adminAPI.checkCityDeleteSafe(cityId);
-      setCheck(res);
+      const res = await fetch(`/api/super-admin/cities/${cityId}/can-delete`, {
+        credentials: "include",
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data?.success) {
+        return notify.error(data?.message || "Failed to check city");
+      }
+
+      setCheck(data);
     } catch (err) {
       console.error(err);
       notify.error("Failed to check city status");
@@ -39,14 +45,19 @@ export default function DeleteCityModal({ open, onClose, cityId, onDeleted }) {
 
     setLoading(true);
     try {
-      const res = await adminAPI.deleteCity(cityId);
-      if (res?.success) {
-        notify.success("City deleted");
-        onDeleted?.(cityId);
-        onClose();
-      } else {
-        notify.error(res?.message || "Delete failed");
+      const res = await fetch(`/api/super-admin/cities/${cityId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data?.success) {
+        return notify.error(data?.message || "Delete failed");
       }
+
+      notify.success("City deleted");
+      onDeleted?.(cityId);
+      onClose();
     } catch (err) {
       console.error(err);
       notify.error("Failed to delete city");

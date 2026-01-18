@@ -1,10 +1,9 @@
-// File: src/app/dashboard/super-admin/manage/modules/cities/modals/EditCityModal.js
+// src/app/dashboard/super-admin/manage/modules/cities/modals/EditCityModal.js
 "use client";
 
 import React, { useEffect, useState } from "react";
 import Modal from "@/components/admin/Modal";
 import { Input } from "@/components/form/Input";
-import { adminAPI } from "@/lib/api/sAdmin";
 import { notify } from "@/lib/toast";
 
 export default function EditCityModal({ open, onClose, cityId, onUpdated }) {
@@ -13,20 +12,26 @@ export default function EditCityModal({ open, onClose, cityId, onUpdated }) {
   const [form, setForm] = useState({ name: "", timezone: "Asia/Kolkata" });
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !cityId) return;
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, cityId]);
 
   async function load() {
-    if (!cityId) return;
     setLoading(true);
     try {
-      const res = await adminAPI.getCityById(cityId);
-      const c = res?.data;
-      if (c) {
-        setInitial(c);
-        setForm({ name: c.name || "", timezone: c.timezone || "Asia/Kolkata" });
+      const res = await fetch(`/api/super-admin/cities/${cityId}`, {
+        credentials: "include",
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data?.success) {
+        return notify.error(data?.message || "Failed to load city");
       }
+
+      const c = data.data;
+      setInitial(c);
+      setForm({ name: c.name || "", timezone: c.timezone || "Asia/Kolkata" });
     } catch (err) {
       console.error(err);
       notify.error("Failed to load city");
@@ -42,27 +47,35 @@ export default function EditCityModal({ open, onClose, cityId, onUpdated }) {
   async function submit(e) {
     e.preventDefault();
     if (!initial) return;
+
+    const payload = {};
+    if (form.name !== initial.name) payload.name = form.name;
+    if (form.timezone !== initial.timezone) payload.timezone = form.timezone;
+
+    if (Object.keys(payload).length === 0) {
+      notify.info("No changes made");
+      onClose();
+      return;
+    }
+
     setLoading(true);
     try {
-      const payload = {};
-      if (form.name !== initial.name) payload.name = form.name;
-      if (form.timezone !== initial.timezone) payload.timezone = form.timezone;
+      const res = await fetch(`/api/super-admin/cities/${cityId}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-      if (Object.keys(payload).length === 0) {
-        notify.info("No changes made");
-        onClose();
-        setLoading(false);
-        return;
+      const data = await res.json();
+
+      if (!res.ok || !data?.success) {
+        return notify.error(data?.message || "Update failed");
       }
 
-      const res = await adminAPI.updateCity(cityId, payload);
-      if (res?.success) {
-        notify.success("City updated");
-        onUpdated?.(res.data);
-        onClose();
-      } else {
-        notify.error(res?.message || "Update failed");
-      }
+      notify.success("City updated");
+      onUpdated?.(data.data);
+      onClose();
     } catch (err) {
       console.error(err);
       notify.error("Update failed");

@@ -28,74 +28,6 @@ export const adminAPI = {
   deleteUser: (id) =>
     httpFetch(`/super-admin/users/${id}`, { method: "DELETE" }),
 
-  /** ------------------- CITIES ------------------- **/
-  getCities: (query = "") => httpFetch(`/super-admin/cities${query}`),
-  getCityById: (id) => httpFetch(`/super-admin/cities/${id}`),
-  createCity: (data) => send(`/super-admin/cities`, "POST", data),
-  updateCity: (id, data) => send(`/super-admin/cities/${id}`, "PUT", data),
-  checkCityDeleteSafe: (id) =>
-    httpFetch(`/super-admin/cities/${id}/can-delete`),
-  deleteCity: (id) =>
-    httpFetch(`/super-admin/cities/${id}`, { method: "DELETE" }),
-
-  /** ------------------- AREAS ------------------- **/
-  getAreas: (query = "") => httpFetch(`/super-admin/areas${query}`),
-  getAreaById: (id) => httpFetch(`/super-admin/areas/${id}`),
-  createArea: (data) => send(`/super-admin/areas`, "POST", data),
-  updateArea: (id, data) => send(`/super-admin/areas/${id}`, "PUT", data),
-  deleteArea: (id) =>
-    httpFetch(`/super-admin/areas/${id}`, { method: "DELETE" }),
-  checkAreaDeleteSafe: (id) => httpFetch(`/super-admin/areas/${id}/can-delete`),
-
-  /** ------------------- MASJIDS (METADATA ONLY) ------------------- **/
-  getMasjids: (query = "") => httpFetch(`/super-admin/masjids${query}`),
-  getMasjidById: (id) => httpFetch(`/super-admin/masjids/${id}`),
-  createMasjid: (data) => send(`/super-admin/masjids`, "POST", data),
-  updateMasjid: (id, data) => send(`/super-admin/masjids/${id}`, "PUT", data),
-  deleteMasjid: (id) =>
-    httpFetch(`/super-admin/masjids/${id}`, { method: "DELETE" }),
-
-  /** ------------------- MASJID PRAYER RULES (NEW) ------------------- **/
-  /**
-   * Upsert a single prayer rule (manual / auto)
-   * Payload:
-   * {
-   *   prayer,
-   *   mode,
-   *   manual | auto
-   * }
-   */
-  upsertMasjidPrayerRule: (id, data) =>
-    send(`/super-admin/masjids/${id}/prayer-rules`, "PUT", data),
-
-  getMasjidPrayerRules: (id) =>
-    httpFetch(`/super-admin/masjids/${id}/prayer-rules`),
-
-  /** ------------------- PRAYERS (SYNC – NEW) ------------------- **/
-  /**
-   * Sync Maghrib for a city (cached)
-   * Payload:
-   * {
-   *   cityId,
-   *   date
-   * }
-   */
-  syncMaghrib: (data) =>
-    send(`/super-admin/prayers/sync-maghrib`, "POST", data),
-
-  /** ------------------- MASJID IMAGE ------------------- **/
-  uploadMasjidImage: (data) =>
-    httpFetch(`/super-admin/masjids/upload-image`, {
-      method: "POST",
-      body: data, // FormData
-    }),
-
-  deleteMasjidImage: (data) =>
-    httpFetch(`/super-admin/masjids/delete-image`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
   /** ------------------- ANNOUNCEMENTS ------------------- **/
   getAnnouncements: (query = "") =>
     httpFetch(`/super-admin/general-announcements${query}`),
@@ -135,7 +67,7 @@ export const adminAPI = {
     httpFetch(
       `/super-admin/general-prayer-timings/list?cityId=${cityId}&areaId=${
         areaId || ""
-      }&start=${start}&end=${end}`
+      }&start=${start}&end=${end}`,
     ),
 
   /** Upload CSV (full year import) */
@@ -157,6 +89,6 @@ export const adminAPI = {
     send(`/super-admin/general-prayer-timings/manual`, "POST", data),
   getGeneralTimingByDate: ({ cityId, areaId, date }) =>
     httpFetch(
-      `/super-admin/general-prayer-timings/by-date?cityId=${cityId}&areaId=${areaId}&date=${date}`
+      `/super-admin/general-prayer-timings/by-date?cityId=${cityId}&areaId=${areaId}&date=${date}`,
     ),
 };
