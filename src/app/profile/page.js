@@ -1,221 +1,279 @@
 // src/app/profile/page.js
+
 "use client";
 
 import { useEffect, useState } from "react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import { authAPI } from "@/lib/api/auth";
-import { publicAPI } from "@/lib/api/public";
 import { Input } from "@/components/form/Input";
 import PasswordInput from "@/components/form/PasswordInput";
 import { Select } from "@/components/form/Select";
-import { notify } from "@/lib/toast";
+import { Button } from "@/components/form/Button";
+import { useAuth } from "@/context/AuthContext";
+import { publicAPI } from "@/lib/api/public";
+
+function maskEmail(email) {
+  if (!email) return "";
+  const [name, domain] = email.split("@");
+  return `${name[0]}*****${name[name.length - 1]}@${domain}`;
+}
 
 export default function ProfilePage() {
-  const [loading, setLoading] = useState(true);
-  const [cities, setCities] = useState([]);
-  const [areas, setAreas] = useState([]);
+  const { user, fetchLoginState } = useAuth();
 
-  const [citiesLoaded, setCitiesLoaded] = useState(false);
-  const [areasLoaded, setAreasLoaded] = useState(false);
-
-  const [userNames, setUserNames] = useState({
-    cityName: "",
-    areaName: "",
-  });
-
-  const [form, setForm] = useState({
+  const [infoForm, setInfoForm] = useState({
     name: "",
-    email: "",
     phone: "",
     city: "",
     area: "",
-    password: "",
   });
 
-  const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+  });
 
-  /** Load initial profile */
+  const [cities, setCities] = useState([]);
+  const [areas, setAreas] = useState([]);
+
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  // Load profile into form
   useEffect(() => {
-    async function loadData() {
-      try {
-        const meRes = await authAPI.me();
-        if (!meRes.loggedIn) return;
+    if (!user) return;
 
-        const user = meRes.user;
+    setInfoForm({
+      name: user.name || "",
+      phone: user.phone || "",
+      city: user.city?._id || "",
+      area: user.area?._id || "",
+    });
+  }, [user]);
 
-        setUserNames({
-          cityName: user.city?.name || "",
-          areaName: user.area?.name || "",
-        });
-
-        setForm({
-          name: user.name || "",
-          email: user.email || "",
-          phone: user.phone || "",
-          city: user.city?._id || "",
-          area: user.area?._id || "",
-          password: "",
-        });
-      } catch {
-        notify.error("Failed to load profile");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadData();
+  // Load cities
+  useEffect(() => {
+    publicAPI.getCities().then((res) => {
+      if (Array.isArray(res)) setCities(res);
+    });
   }, []);
 
-  /** Load cities */
-  async function loadCitiesIfNeeded() {
-    if (citiesLoaded) return;
-    try {
-      const res = await publicAPI.getCities();
-      setCities(res?.data || []);
-      setCitiesLoaded(true);
-    } catch {
-      notify.error("Failed to load cities");
-    }
-  }
+  // Load areas when city changes
+  useEffect(() => {
+    if (!infoForm.city) return setAreas([]);
+    publicAPI.getAreas(infoForm.city).then((res) => {
+      if (Array.isArray(res)) setAreas(res);
+    });
+  }, [infoForm.city]);
 
-  /** Load areas */
-  async function loadAreas(cityId) {
-    if (!cityId) {
-      setAreas([]);
-      setAreasLoaded(false);
-      return;
-    }
+  const updateInfo = (key, value) =>
+    setInfoForm((prev) => ({ ...prev, [key]: value }));
 
-    try {
-      const res = await publicAPI.getAreas(cityId);
-      setAreas(res?.data || []);
-      setAreasLoaded(true);
-    } catch {
-      notify.error("Failed to load areas");
-    }
-  }
+  const updatePassword = (key, value) =>
+    setPasswordForm((prev) => ({ ...prev, [key]: value }));
 
-  /** Submit updated profile */
-  async function handleUpdate(e) {
+  // ---------------- PROFILE INFO UPDATE ----------------
+  async function handleInfoSubmit(e) {
     e.preventDefault();
-
-    const payload = {
-      name: form.name,
-      email: form.email,
-      phone: form.phone,
-      city: form.city,
-      area: form.area,
-    };
-
-    if (form.password.trim() !== "") {
-      payload.password = form.password.trim();
-    }
+    setLoading(true);
+    setError("");
+    setMessage("");
 
     try {
-      const res = await authAPI.updateProfile(payload);
-      if (res?.user) notify.success("Profile updated");
-      update("password", "");
+      const res = await fetch("/api/auth/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(infoForm),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Update failed");
+
+      setMessage("Profile updated successfully.");
+      await fetchLoginState();
     } catch (err) {
-      notify.error(err.message || "Failed to update");
+      setError(err.message || "Update failed");
+    } finally {
+      setLoading(false);
     }
   }
 
-  if (loading) {
-    return (
-      <div className="max-w-xl mx-auto py-10">
-        <p className="animate-pulse text-gray-500">Loading profile...</p>
-      </div>
-    );
+  // ---------------- CHANGE PASSWORD ----------------
+  async function handlePasswordSubmit(e) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(passwordForm),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Password change failed");
+
+      setMessage("Password changed successfully.");
+      setPasswordForm({ currentPassword: "", newPassword: "" });
+    } catch (err) {
+      setError(err.message || "Password change failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ---------------- SEND VERIFICATION ----------------
+  async function handleSendVerification() {
+    setLoading(true);
+    setError("");
+    setMessage("");
+
+    try {
+      const res = await fetch("/api/auth/send-verification", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to send email");
+
+      setMessage("Verification email sent. Please check your inbox.");
+    } catch (err) {
+      setError(err.message || "Failed to send verification email");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <ProtectedRoute>
-      <div className="max-w-xl mx-auto py-10 space-y-8 px-3">
-        <h1 className="text-3xl font-bold text-indigo-700 text-center drop-shadow-sm">
-          Your Profile
+      <div className="max-w-3xl mx-auto py-10 px-4 space-y-10">
+        <h1 className="text-3xl font-bold text-center text-teal-700">
+          My Profile
         </h1>
 
-        <form
-          onSubmit={handleUpdate}
-          className="
-            space-y-6 
-            bg-white/95 rounded-xl shadow-2xl 
-            p-6 border border-white/40 backdrop-blur
-          "
-        >
-          <Input
-            label="Full Name"
-            value={form.name}
-            onChange={(e) => update("name", e.target.value)}
-            required
-          />
+        {message && (
+          <div className="bg-green-50 border border-green-200 text-green-800 p-3 rounded">
+            {message}
+          </div>
+        )}
 
-          <Input
-            label="Email"
-            value={form.email}
-            onChange={(e) => update("email", e.target.value)}
-          />
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-800 p-3 rounded">
+            {error}
+          </div>
+        )}
 
-          <Input
-            label="Phone"
-            value={form.phone}
-            onChange={(e) => update("phone", e.target.value)}
-            required
-          />
+        {/* ================= PROFILE INFO ================= */}
+        <section className="bg-white rounded-xl shadow p-6 space-y-4">
+          <h2 className="text-xl font-semibold text-slate-800">
+            Profile Information
+          </h2>
 
-          {/* City */}
-          <Select
-            label="City"
-            value={form.city}
-            onClick={loadCitiesIfNeeded}
-            onChange={(e) => {
-              update("city", e.target.value);
-              update("area", "");
-              loadAreas(e.target.value);
-            }}
-            options={[
-              ...(!citiesLoaded && form.city
-                ? [{ value: form.city, label: userNames.cityName }]
-                : []),
-              ...cities.map((c) => ({ value: c._id, label: c.name })),
-            ]}
-            required
-          />
+          <form onSubmit={handleInfoSubmit} className="space-y-4">
+            <Input
+              label="Full Name"
+              value={infoForm.name}
+              onChange={(e) => updateInfo("name", e.target.value)}
+              required
+            />
 
-          {/* Area */}
-          <Select
-            label="Area"
-            value={form.area}
-            onClick={() => loadAreas(form.city)}
-            onChange={(e) => update("area", e.target.value)}
-            disabled={!form.city}
-            options={[
-              ...(!areasLoaded && form.area
-                ? [{ value: form.area, label: userNames.areaName }]
-                : []),
-              ...areas.map((a) => ({ value: a._id, label: a.name })),
-            ]}
-            required
-          />
+            <Input
+              label="Phone"
+              value={infoForm.phone}
+              onChange={(e) => updateInfo("phone", e.target.value)}
+              required
+            />
 
-          <PasswordInput
-            label="New Password"
-            value={form.password}
-            onChange={(e) => update("password", e.target.value)}
-            placeholder="Leave empty to keep current password"
-          />
+            <Select
+              label="City"
+              value={infoForm.city}
+              onChange={(e) => {
+                updateInfo("city", e.target.value);
+                updateInfo("area", "");
+              }}
+              options={cities.map((c) => ({ label: c.name, value: c._id }))}
+              required
+            />
 
-          <button
-            type="submit"
-            className="
-              w-full py-3 rounded-lg text-lg font-semibold
-              bg-indigo-600 hover:bg-indigo-700 text-white
-              transition shadow-md
-            "
-          >
-            Save Changes
-          </button>
-        </form>
+            <Select
+              label="Area"
+              value={infoForm.area}
+              onChange={(e) => updateInfo("area", e.target.value)}
+              options={areas.map((a) => ({ label: a.name, value: a._id }))}
+              disabled={!infoForm.city}
+              required
+            />
+
+            <Button type="submit" disabled={loading}>
+              Save Profile
+            </Button>
+          </form>
+        </section>
+
+        {/* ================= EMAIL STATUS ================= */}
+        <section className="bg-white rounded-xl shadow p-6 space-y-4">
+          <h2 className="text-xl font-semibold text-slate-800">
+            Email Verification
+          </h2>
+
+          <p className="text-slate-700">
+            Email:{" "}
+            <span className="font-semibold">
+              {user?.emailVerified ? user.email : maskEmail(user?.email)}
+            </span>
+          </p>
+
+          {user?.emailVerified ? (
+            <p className="text-green-700 font-medium">Email is verified ✅</p>
+          ) : (
+            <>
+              <p className="text-amber-700">
+                Your email is not verified. Please verify to secure your account.
+              </p>
+              <Button
+                type="button"
+                onClick={handleSendVerification}
+                disabled={loading}
+              >
+                Verify Now
+              </Button>
+            </>
+          )}
+        </section>
+
+        {/* ================= CHANGE PASSWORD ================= */}
+        <section className="bg-white rounded-xl shadow p-6 space-y-4">
+          <h2 className="text-xl font-semibold text-slate-800">
+            Change Password
+          </h2>
+
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <PasswordInput
+              label="Current Password"
+              value={passwordForm.currentPassword}
+              onChange={(e) =>
+                updatePassword("currentPassword", e.target.value)
+              }
+              required
+            />
+
+            <PasswordInput
+              label="New Password"
+              value={passwordForm.newPassword}
+              onChange={(e) => updatePassword("newPassword", e.target.value)}
+              required
+            />
+
+            <Button type="submit" disabled={loading}>
+              Change Password
+            </Button>
+          </form>
+        </section>
       </div>
     </ProtectedRoute>
   );

@@ -154,7 +154,7 @@ export default function Navbar() {
                   Profile
                 </Link>
                 <Link
-                  href="/logout"
+                  href="/auth/logout"
                   className="px-3 py-2 text-red-300 hover:text-red-400"
                 >
                   Logout
@@ -162,7 +162,7 @@ export default function Navbar() {
               </>
             ) : (
               <Link
-                href="/login"
+                href="/auth/login"
                 className="px-3 py-2 text-white/90 hover:text-white transition-colors"
               >
                 Login
@@ -214,7 +214,7 @@ export default function Navbar() {
                   </Link>
 
                   <Link
-                    href="/logout"
+                    href="/auth/logout"
                     onClick={() => setMobileOpen(false)}
                     className="px-3 py-2 rounded text-red-300 hover:bg-red-500/20 transition"
                   >
@@ -223,7 +223,7 @@ export default function Navbar() {
                 </>
               ) : (
                 <Link
-                  href="/login"
+                  href="/auth/login"
                   onClick={() => setMobileOpen(false)}
                   className="px-3 py-2 rounded text-white hover:bg-white/20 transition"
                 >

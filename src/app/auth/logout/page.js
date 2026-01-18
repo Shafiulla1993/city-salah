@@ -1,3 +1,5 @@
+// src/app/auth/logout/page.js
+
 "use client";
 
 import { useEffect } from "react";
@@ -15,15 +17,13 @@ export default function LogoutPage() {
         credentials: "include",
       });
 
-      localStorage.removeItem("accessToken");
       setLoggedIn(false);
       setUser(null);
-
       router.replace("/");
     }
 
     doLogout();
-  }, []);
+  }, [router, setLoggedIn, setUser]);
 
   return <p className="text-center mt-10">Logging out...</p>;
 }

@@ -8,11 +8,10 @@ import { protect } from "@/lib/auth/protect";
 export async function GET(request) {
   await connectDB();
 
-  // 🔐 Centralized auth check
   const auth = await protect(request);
 
   if (auth.error) {
-    return NextResponse.json({ loggedIn: false });
+    return NextResponse.json({ loggedIn: false }, { status: 401 });
   }
 
   const user = await User.findById(auth.user._id)
@@ -22,11 +21,14 @@ export async function GET(request) {
     .lean();
 
   if (!user) {
-    return NextResponse.json({ loggedIn: false });
+    return NextResponse.json({ loggedIn: false }, { status: 401 });
   }
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     loggedIn: true,
     user,
   });
+
+  // Sliding session cookie already refreshed in protect()
+  return response;
 }

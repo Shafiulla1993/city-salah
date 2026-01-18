@@ -8,13 +8,18 @@ const UserSchema = new Schema(
 
     email: {
       type: String,
+      required: true,
       unique: true,
-      sparse: true,
       lowercase: true,
       trim: true,
     },
 
-    phone: { type: String, required: true, unique: true, trim: true },
+    phone: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
 
     password: { type: String, required: true },
 
@@ -29,7 +34,14 @@ const UserSchema = new Schema(
 
     masjidId: [{ type: Schema.Types.ObjectId, ref: "Masjid", default: [] }],
 
-    createdAt: { type: Date, default: Date.now },
+    // 🔐 Email verification
+    emailVerified: { type: Boolean, default: false },
+    emailVerifyToken: String,
+    emailVerifyExpire: Date, 
+
+    // 🔁 Password reset
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
   },
   { timestamps: true }
 );

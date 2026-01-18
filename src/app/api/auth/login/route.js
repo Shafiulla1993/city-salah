@@ -1,59 +1,85 @@
 // src/app/api/auth/login
+
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
-import { loginUser } from "@/server/controllers/authController";
-import { accessTokenCookie, refreshTokenCookie } from "@/lib/auth/cookies";
+import User from "@/models/User";
+import bcrypt from "bcryptjs";
+import { createToken } from "@/lib/auth/token";
+import { authCookie } from "@/lib/auth/cookies";
 
 export async function POST(req) {
   await connectDB();
 
-  const { phone, password } = await req.json();
-  const loginResult = await loginUser({ phone, password });
+  try {
+    const { identifier, password } = await req.json();
 
-  // 🔥 FAILED LOGIN → CLEAR OLD TOKENS
-  if (!loginResult?.json?.user) {
-    const res = NextResponse.json(
-      { message: loginResult?.json?.message || "Invalid credentials" },
-      { status: loginResult?.status || 401 }
-    );
+    if (!identifier || !password) {
+      return NextResponse.json(
+        { message: "Phone or Email and password required" },
+        { status: 400 }
+      );
+    }
 
-    res.cookies.set(
-      accessTokenCookie.name,
-      loginResult.cookies.accessToken,
-      accessTokenCookie.options
-    );
+    const user = await User.findOne({
+      $or: [
+        { phone: identifier },
+        { email: identifier.toLowerCase() },
+      ],
+    });
 
-    res.cookies.set(
-      refreshTokenCookie.name,
-      loginResult.cookies.refreshToken,
-      refreshTokenCookie.options
-    );
+    if (!user) {
+      return NextResponse.json(
+        { message: "Invalid credentials" },
+        { status: 401 }
+      );
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return NextResponse.json(
+        { message: "Invalid credentials" },
+        { status: 401 }
+      );
+    }
+
+    // 🔵 Legacy user: no email yet
+    if (!user.email) {
+      return NextResponse.json(
+        { code: "EMAIL_REQUIRED" },
+        { status: 403 }
+      );
+    }
+
+    // 🟡 Email exists but not verified
+    if (!user.emailVerified) {
+      return NextResponse.json(
+        {
+          code: "EMAIL_NOT_VERIFIED",
+          email: user.email,
+        },
+        { status: 403 }
+      );
+    }
+
+    const token = createToken(user);
+
+    const res = NextResponse.json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        role: user.role,
+      },
+    });
+
+    res.cookies.set(authCookie.name, token, authCookie.options);
 
     return res;
+  } catch (err) {
+    console.error("LOGIN_ERROR:", err);
+    return NextResponse.json(
+      { message: "Server error" },
+      { status: 500 }
+    );
   }
-
-  // SUCCESS
-  const res = NextResponse.json(loginResult.json);
-
-  if (loginResult.cookies?.accessToken) {
-    res.cookies.set("accessToken", loginResult.cookies.accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 15,
-    });
-  }
-
-  if (loginResult.cookies?.refreshToken) {
-    res.cookies.set("refreshToken", loginResult.cookies.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/api/auth/refresh",
-      maxAge: 60 * 60 * 24 * 7,
-    });
-  }
-
-  return res;
 }

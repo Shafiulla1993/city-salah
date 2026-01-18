@@ -9,6 +9,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/main-page/Footer";
 import ToastProviderClient from "@/components/ui/ToastProviderClient";
 import HomeButtonClientOnly from "@/components/ui/HomeButtonClientOnly";
+import VerifyEmailBanner from "@/components/auth/VerifyEmailBanner";
 
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
@@ -84,7 +85,8 @@ export default function RootLayout({ children }) {
           <ToastProviderClient />
 
           {/* MAIN CONTENT */}
-          <main className="flex-1 flex flex-col">{children}</main>
+          <main className="flex-1 flex flex-col"><VerifyEmailBanner />
+          {children}</main>
 
           <Footer />
           {/* FLOATING HOME BUTTON (MOBILE FIRST) */}

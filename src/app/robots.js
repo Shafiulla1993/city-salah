@@ -6,7 +6,7 @@ export default function robots() {
       {
         userAgent: "*",
         allow: ["/", "/_next/", "/_next/image", "/favicon.png", "/images/"],
-        disallow: ["/api/", "/dashboard/", "/login/", "/register/"],
+        disallow: ["/api/", "/dashboard/", "/auth/"],
       },
     ],
     sitemap: "https://citysalah.in/sitemap.xml",

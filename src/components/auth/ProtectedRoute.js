@@ -15,7 +15,7 @@ export default function ProtectedRoute({ role = null, children }) {
 
     // Not logged in → redirect
     if (!loggedIn) {
-      router.replace("/login");
+      router.replace("/auth/login");
       return;
     }
 
