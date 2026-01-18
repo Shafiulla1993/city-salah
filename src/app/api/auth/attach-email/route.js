@@ -12,7 +12,6 @@ export async function POST(req) {
 
   try {
     const { phone, email } = await req.json();
-
     if (!phone || !email) {
       return NextResponse.json(
         { message: "Phone and email required" },
@@ -20,15 +19,22 @@ export async function POST(req) {
       );
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     const user = await User.findOne({ phone });
     if (!user) {
+      return NextResponse.json({ message: "User not found" }, { status: 404 });
+    }
+
+    const emailOwner = await User.findOne({ email: normalizedEmail });
+    if (emailOwner && emailOwner.phone !== phone) {
       return NextResponse.json(
-        { message: "User not found" },
-        { status: 404 }
+        { message: "This email is already in use by another account" },
+        { status: 400 }
       );
     }
 
-    user.email = email.toLowerCase();
+    user.email = normalizedEmail;
     user.emailVerified = false;
 
     const rawToken = crypto.randomBytes(32).toString("hex");
@@ -50,9 +56,6 @@ export async function POST(req) {
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("ATTACH_EMAIL_ERROR:", err);
-    return NextResponse.json(
-      { message: "Server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: "Server error" }, { status: 500 });
   }
 }
