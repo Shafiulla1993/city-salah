@@ -1,24 +1,17 @@
 // src/app/dashboard/super-admin/manage/modules/users/EditUserModal.js
+// src/app/dashboard/super-admin/manage/modules/users/EditUserModal.js
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Modal from "@/components/admin/Modal";
 import { Input } from "@/components/form/Input";
 import MultiSelect from "@/components/form/MultiSelect";
-import { adminAPI } from "@/lib/api/sAdmin";
 import { notify } from "@/lib/toast";
 
 export default function EditUserModal({ open, onClose, userId, onUpdated }) {
-  const [loading, setLoading] = useState(false);
-  const [initial, setInitial] = useState(null);
-
-  const [cities, setCities] = useState([]);
-  const [areas, setAreas] = useState([]);
-  const [masjids, setMasjids] = useState([]);
-
   const [form, setForm] = useState({
     name: "",
-    phone: "",
+    phone: "", // used only when admin chooses to change
     email: "",
     password: "",
     role: "public",
@@ -27,267 +20,144 @@ export default function EditUserModal({ open, onClose, userId, onUpdated }) {
     masjidId: [],
   });
 
-  function update(key, value) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }
+  const [masjids, setMasjids] = useState([]);
+  const [showPhoneEdit, setShowPhoneEdit] = useState(false);
+  const [initial, setInitial] = useState(null);
 
-  /** Load user + cities + masjids */
   useEffect(() => {
     if (!open) return;
-    loadUserData();
-  }, [open]);
 
-  async function loadUserData() {
-    setLoading(true);
-    try {
-      const [cRes, mRes] = await Promise.all([
-        adminAPI.getCities(),
-        adminAPI.getMasjids(),
-      ]);
-
-      setCities(cRes?.data ?? []);
-      setMasjids(mRes?.data ?? []);
-
-      if (!userId) return;
-
-      const uRes = await adminAPI.getUserById(userId);
-      const u = uRes?.data;
-      if (!u) return;
-
-      setInitial(u);
+    Promise.all([
+      fetch(`/api/super-admin/users/${userId}`, {
+        credentials: "include",
+      }).then((r) => r.json()),
+      fetch(`/api/super-admin/masjids`, { credentials: "include" }).then((r) =>
+        r.json(),
+      ),
+    ]).then(([u, m]) => {
+      const user = u.data;
+      setInitial(user);
 
       setForm({
-        name: u.name || "",
-        phone: u.phone || "",
-        email: u.email || "",
+        name: user.name || "",
+        phone: "",
+        email: user.email || "",
         password: "",
-        role: u.role || "public",
-        city: u.city?._id || "",
-        area: u.area?._id || "",
-        masjidId: Array.isArray(u.masjidId)
-          ? u.masjidId.map((m) => (typeof m === "object" ? m._id : m))
+        role: user.role || "public",
+        city: user.city?._id || "",
+        area: user.area?._id || "",
+        masjidId: Array.isArray(user.masjidId)
+          ? user.masjidId.map((x) => (typeof x === "object" ? x._id : x))
           : [],
       });
 
-      // Load areas for saved city
-      if (u.city?._id) {
-        const aRes = await adminAPI.getAreas(`?city=${u.city._id}`);
-        setAreas(aRes?.data ?? []);
-      }
-    } catch (err) {
-      console.error(err);
-      notify.error("Failed to load user");
-    } finally {
-      setLoading(false);
-    }
-  }
+      setMasjids(m.data || []);
+    });
+  }, [open, userId]);
 
-  /** Load areas when city changes */
-  useEffect(() => {
-    if (!form.city) {
-      setAreas([]);
-      update("area", "");
-      return;
-    }
-    adminAPI
-      .getAreas(`?city=${form.city}`)
-      .then((res) => setAreas(res?.data ?? []))
-      .catch(() => setAreas([]));
-  }, [form.city]);
+  if (!initial) return null;
 
-  /** SUBMIT */
   async function submit(e) {
     e.preventDefault();
-    setLoading(true);
 
-    try {
-      const payload = {};
+    const payload = {
+      name: form.name,
+      email: form.email,
+      role: form.role,
+      city: form.city || null,
+      area: form.area || null,
+      masjidId: form.masjidId,
+    };
 
-      if (form.name !== initial.name) payload.name = form.name;
-      if (form.phone !== initial.phone) payload.phone = form.phone;
-      if (form.email !== initial.email) payload.email = form.email || undefined;
-      if (form.password?.trim()) payload.password = form.password;
-      if (form.role !== initial.role) payload.role = form.role;
+    // Only update phone if admin explicitly entered new one
+    if (showPhoneEdit && form.phone.trim()) {
+      payload.phone = form.phone.trim();
+    }
 
-      // Convert "" → null
-      if (form.city !== (initial.city?._id || ""))
-        payload.city = form.city || null;
-      if (form.area !== (initial.area?._id || ""))
-        payload.area = form.area || null;
+    const res = await fetch(`/api/super-admin/users/${userId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
 
-      // masjid assignments
-      const oldMasj = (initial.masjidId || []).map((m) =>
-        typeof m === "object" ? m._id : m
-      );
-      const newMasj = form.masjidId;
-      const same =
-        JSON.stringify([...oldMasj].sort()) ===
-        JSON.stringify([...newMasj].sort());
-      if (!same) payload.masjidId = newMasj;
-
-      if (form.role === "masjid_admin" && newMasj.length === 0) {
-        notify.error("Masjid admin must be assigned to at least one masjid");
-        setLoading(false);
-        return;
-      }
-
-      if (Object.keys(payload).length === 0) {
-        notify.info("No changes to update");
-        onClose();
-        setLoading(false);
-        return;
-      }
-
-      const res = await adminAPI.updateUser(userId, payload);
-      if (res?.success) {
-        notify.success("User updated");
-        onUpdated?.(res.data);
-        onClose();
-      } else {
-        notify.error(res?.message || "Update failed");
-      }
-    } catch (err) {
-      console.error(err);
-      notify.error("Failed to update user");
-    } finally {
-      setLoading(false);
+    const json = await res.json();
+    if (json.success) {
+      notify.success("User updated");
+      onUpdated(json.data);
+      onClose();
+    } else {
+      notify.error(json.message || "Update failed");
     }
   }
-
-  /** Dropdown lists */
-  const cityList = cities.map((c) => ({ value: c._id, label: c.name }));
-  const areaList = areas.map((a) => ({ value: a._id, label: a.name }));
-
-  /** FIXED MASJID LIST FILTERING */
-  const masjidList = masjids
-    .filter((m) => {
-      const isAssigned = form.masjidId.includes(m._id);
-
-      // Masjid admin → show all
-      if (form.role === "masjid_admin") return true;
-
-      // Other roles → filter normally but always include assigned ones
-      if (!form.city && !form.area) return true;
-
-      if (form.area) return m.area?._id === form.area || isAssigned;
-
-      if (form.city) return m.city?._id === form.city || isAssigned;
-
-      return true;
-    })
-    .map((m) => ({ value: m._id, label: m.name }));
 
   return (
     <Modal open={open} onClose={onClose} title="Edit User" size="lg">
-      <form onSubmit={submit} className="space-y-5">
-        {/* MAIN FIELDS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <form onSubmit={submit} className="space-y-4">
+        <Input
+          label="Name"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+        />
+
+        <Input
+          label="Email"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+        />
+
+        {/* PHONE (SECURE) */}
+        {!showPhoneEdit ? (
+          <button
+            type="button"
+            onClick={() => setShowPhoneEdit(true)}
+            className="text-sm text-blue-600 underline"
+          >
+            Change Phone Number
+          </button>
+        ) : (
           <Input
-            label="Name"
-            value={form.name}
-            onChange={(e) => update("name", e.target.value)}
-          />
-          <Input
-            label="Phone"
+            label="New Phone Number"
+            placeholder="Enter new phone (leave empty to keep old)"
             value={form.phone}
-            onChange={(e) => update("phone", e.target.value)}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
           />
-          <Input
-            label="Email"
-            value={form.email}
-            onChange={(e) => update("email", e.target.value)}
-          />
-          <Input
-            label="Password"
-            type="password"
-            placeholder="Leave blank to keep existing"
-            value={form.password}
-            onChange={(e) => update("password", e.target.value)}
-          />
+        )}
+
+        {/* ROLE */}
+        <div>
+          <label className="block mb-1 text-sm font-medium">Role</label>
+          <select
+            value={form.role}
+            onChange={(e) => setForm({ ...form, role: e.target.value })}
+            className="border px-3 py-2 rounded-lg w-full"
+          >
+            <option value="public">Public</option>
+            <option value="masjid_admin">Masjid Admin</option>
+            <option value="super_admin">Super Admin</option>
+          </select>
         </div>
 
-        {/* ROLE / CITY / AREA */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label className="block mb-1 text-sm font-medium">Role</label>
-            <select
-              value={form.role}
-              onChange={(e) => update("role", e.target.value)}
-              className="border px-3 py-2 rounded-lg w-full"
-            >
-              <option value="public">Public</option>
-              <option value="masjid_admin">Masjid Admin</option>
-              <option value="super_admin">Super Admin</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block mb-1 text-sm font-medium">
-              City (User belongs to)
-            </label>
-            <select
-              value={form.city}
-              onChange={(e) => update("city", e.target.value)}
-              className="border px-3 py-2 rounded-lg w-full"
-            >
-              <option value="">Select City</option>
-              {cityList.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block mb-1 text-sm font-medium">
-              Area (User belongs to)
-            </label>
-            <select
-              value={form.area}
-              onChange={(e) => update("area", e.target.value)}
-              disabled={!form.city}
-              className="border px-3 py-2 rounded-lg w-full disabled:bg-gray-200"
-            >
-              <option value="">Select Area</option>
-              {areaList.map((a) => (
-                <option key={a.value} value={a.value}>
-                  {a.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* MASJID SELECTION */}
+        {/* MASJID ASSIGNMENT */}
         {form.role === "masjid_admin" && (
           <div>
             <label className="block mb-1 text-sm font-medium">
-              Assigned Masjids (User manages)
+              Assigned Masjids
             </label>
             <MultiSelect
-              options={masjidList}
+              options={masjids.map((m) => ({ value: m._id, label: m.name }))}
               value={form.masjidId}
-              onChange={(vals) => update("masjidId", vals)}
+              onChange={(vals) => setForm({ ...form, masjidId: vals })}
             />
           </div>
         )}
 
-        {/* FOOTER */}
-        <div className="flex justify-end gap-3 pt-3">
-          <button
-            type="button"
-            className="px-4 py-2 rounded-lg border"
-            onClick={onClose}
-          >
+        <div className="flex justify-end gap-3 pt-4">
+          <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 rounded-lg bg-slate-700 text-white"
-          >
-            {loading ? "Saving..." : "Save Changes"}
+          <button className="bg-slate-700 text-white px-4 py-2 rounded">
+            Save Changes
           </button>
         </div>
       </form>

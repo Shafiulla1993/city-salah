@@ -1,16 +1,14 @@
 // src/app/dashboard/super-admin/manage/modules/users/AddUserModal.js
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Modal from "@/components/admin/Modal";
 import { Input } from "@/components/form/Input";
 import MultiSelect from "@/components/form/MultiSelect";
-import { adminAPI } from "@/lib/api/sAdmin";
 import { notify } from "@/lib/toast";
 
 export default function AddUserModal({ open, onClose, onCreated }) {
   const [loading, setLoading] = useState(false);
-
   const [cities, setCities] = useState([]);
   const [areas, setAreas] = useState([]);
   const [masjids, setMasjids] = useState([]);
@@ -26,110 +24,56 @@ export default function AddUserModal({ open, onClose, onCreated }) {
     masjidId: [],
   });
 
-  function update(k, v) {
-    setForm((s) => ({ ...s, [k]: v }));
-  }
+  const update = (k, v) => setForm((s) => ({ ...s, [k]: v }));
 
-  /** Load cities + masjids */
   useEffect(() => {
     if (!open) return;
-    loadLists();
+    Promise.all([
+      fetch("/api/super-admin/cities").then((r) => r.json()),
+      fetch("/api/super-admin/masjids").then((r) => r.json()),
+    ]).then(([c, m]) => {
+      setCities(c.data || []);
+      setMasjids(m.data || []);
+    });
   }, [open]);
 
-  async function loadLists() {
-    try {
-      const [c, m] = await Promise.all([
-        adminAPI.getCities(),
-        adminAPI.getMasjids(),
-      ]);
-      setCities(c?.data ?? []);
-      setMasjids(m?.data ?? []);
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  /** Load areas when city changes */
   useEffect(() => {
-    if (!form.city) {
-      setAreas([]);
-      update("area", "");
-      return;
-    }
-
-    adminAPI
-      .getAreas(`?city=${form.city}`)
-      .then((res) => setAreas(res?.data ?? []))
-      .catch(() => setAreas([]));
+    if (!form.city) return setAreas([]);
+    fetch(`/api/super-admin/areas?city=${form.city}`)
+      .then((r) => r.json())
+      .then((a) => setAreas(a.data || []));
   }, [form.city]);
 
-  /** Submit */
   async function submit(e) {
     e.preventDefault();
+
+    if (!form.name || !form.phone || !form.email || !form.password)
+      return notify.error("Name, phone, email and password are required");
+
     setLoading(true);
-
     try {
-      if (
-        !form.name ||
-        !form.phone ||
-        !form.password ||
-        !form.city ||
-        !form.area
-      ) {
-        notify.error("Name, phone, password, city and area are required");
-        setLoading(false);
-        return;
-      }
+      const res = await fetch("/api/super-admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(form),
+      });
+      const json = await res.json();
 
-      if (form.role === "masjid_admin" && form.masjidId.length === 0) {
-        notify.error("Masjid admin must be assigned to at least one masjid");
-        setLoading(false);
-        return;
-      }
-
-      const payload = {
-        name: form.name,
-        phone: form.phone,
-        email: form.email || undefined,
-        password: form.password,
-        city: form.city,
-        area: form.area,
-        role: form.role,
-        masjidId: form.masjidId,
-      };
-
-      const res = await adminAPI.createUser(payload);
-      if (res?.success) {
+      if (json.success) {
         notify.success("User created");
         onCreated?.();
-        onClose?.();
-      } else notify.error(res?.message || "Create failed");
-    } catch (err) {
-      console.error(err);
-      notify.error("Failed to create user");
+        onClose();
+      } else notify.error(json.message || "Create failed");
     } finally {
       setLoading(false);
     }
   }
 
-  /** Options */
-  const cityList = cities.map((c) => ({ value: c._id, label: c.name }));
-  const areaList = areas.map((a) => ({ value: a._id, label: a.name }));
-
-  const masjidList = masjids
-    .filter((m) => {
-      if (!form.city && !form.area) return true;
-      if (form.area) return m.area?._id === form.area;
-      if (form.city) return m.city?._id === form.city;
-      return true;
-    })
-    .map((m) => ({ value: m._id, label: m.name }));
-
   return (
     <Modal open={open} onClose={onClose} title="Create User" size="lg">
       <form onSubmit={submit} className="space-y-5">
-        {/* MAIN FIELDS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <Input
             label="Name"
             value={form.name}
@@ -153,82 +97,59 @@ export default function AddUserModal({ open, onClose, onCreated }) {
           />
         </div>
 
-        {/* ROLE / CITY / AREA */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label className="block mb-1 text-sm font-medium">Role</label>
-            <select
-              value={form.role}
-              onChange={(e) => update("role", e.target.value)}
-              className="border px-3 py-2 rounded-lg w-full"
-            >
-              <option value="public">Public</option>
-              <option value="masjid_admin">Masjid Admin</option>
-              <option value="super_admin">Super Admin</option>
-            </select>
-          </div>
+        <div className="grid grid-cols-3 gap-3">
+          <select
+            value={form.role}
+            onChange={(e) => update("role", e.target.value)}
+            className="border px-3 py-2 rounded"
+          >
+            <option value="public">Public</option>
+            <option value="masjid_admin">Masjid Admin</option>
+            <option value="super_admin">Super Admin</option>
+          </select>
 
-          <div>
-            <label className="block mb-1 text-sm font-medium">City</label>
-            <select
-              value={form.city}
-              onChange={(e) => update("city", e.target.value)}
-              className="border px-3 py-2 rounded-lg w-full"
-            >
-              <option value="">Select City</option>
-              {cityList.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={form.city}
+            onChange={(e) => update("city", e.target.value)}
+            className="border px-3 py-2 rounded"
+          >
+            <option value="">City</option>
+            {cities.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
 
-          <div>
-            <label className="block mb-1 text-sm font-medium">Area</label>
-            <select
-              value={form.area}
-              disabled={!form.city}
-              onChange={(e) => update("area", e.target.value)}
-              className="border px-3 py-2 rounded-lg w-full disabled:bg-gray-200"
-            >
-              <option value="">Select Area</option>
-              {areaList.map((a) => (
-                <option key={a.value} value={a.value}>
-                  {a.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={form.area}
+            onChange={(e) => update("area", e.target.value)}
+            className="border px-3 py-2 rounded"
+          >
+            <option value="">Area</option>
+            {areas.map((a) => (
+              <option key={a._id} value={a._id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* MASJID ADMIN SELECTION */}
         {form.role === "masjid_admin" && (
-          <div>
-            <label className="block mb-1 text-sm font-medium">
-              Assign Masjids
-            </label>
-            <MultiSelect
-              options={masjidList}
-              value={form.masjidId}
-              onChange={(vals) => update("masjidId", vals)}
-            />
-          </div>
+          <MultiSelect
+            options={masjids.map((m) => ({ value: m._id, label: m.name }))}
+            value={form.masjidId}
+            onChange={(v) => update("masjidId", v)}
+          />
         )}
 
-        {/* FOOTER */}
-        <div className="flex justify-end gap-3 pt-3">
-          <button
-            type="button"
-            className="px-4 py-2 rounded-lg border"
-            onClick={onClose}
-          >
+        <div className="flex justify-end gap-3">
+          <button type="button" onClick={onClose}>
             Cancel
           </button>
           <button
-            type="submit"
+            className="bg-slate-700 text-white px-4 py-2 rounded"
             disabled={loading}
-            className="px-4 py-2 rounded-lg bg-slate-700 text-white"
           >
             {loading ? "Saving..." : "Create"}
           </button>

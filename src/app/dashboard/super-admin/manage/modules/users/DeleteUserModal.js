@@ -2,27 +2,23 @@
 
 "use client";
 
-import React from "react";
 import DeleteConfirm from "@/components/admin/DeleteConfirm";
-import { adminAPI } from "@/lib/api/sAdmin";
 import { notify } from "@/lib/toast";
 
 export default function DeleteUserModal({ open, onClose, userId, onDeleted }) {
   async function confirmDelete() {
-    try {
-      const res = await adminAPI.deleteUser(userId);
-      if (res?.success) {
-        notify.success("User deleted");
-        onDeleted?.(userId);
-      } else {
-        notify.error(res?.message || "Delete failed");
-      }
-    } catch (err) {
-      console.error(err);
-      notify.error("Failed to delete user");
-    } finally {
-      onClose?.();
-    }
+    const res = await fetch(`/api/super-admin/users/${userId}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    const json = await res.json();
+
+    if (json.success) {
+      notify.success("User deleted");
+      onDeleted?.(userId);
+    } else notify.error(json.message || "Delete failed");
+
+    onClose();
   }
 
   return (
@@ -30,7 +26,7 @@ export default function DeleteUserModal({ open, onClose, userId, onDeleted }) {
       open={open}
       onClose={onClose}
       onConfirm={confirmDelete}
-      title="Delete user"
+      title="Delete User"
       message="Are you sure you want to delete this user?"
     />
   );

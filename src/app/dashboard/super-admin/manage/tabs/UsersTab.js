@@ -1,88 +1,78 @@
 // src/app/dashboard/super-admin/manage/tabs/UsersTab.js
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { adminAPI } from "@/lib/api/sAdmin";
+import { useEffect, useRef, useState } from "react";
 import UsersTable from "../modules/users/UsersTable";
 import UsersSkeleton from "../modules/users/UsersSkeleton";
 import AddUserModal from "../modules/users/AddUserModal";
 import EditUserModal from "../modules/users/EditUserModal";
 
 export default function UsersTab() {
-  const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState([]);
-
-  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
+  const [page, setPage] = useState(1);
   const [sort, setSort] = useState("-createdAt");
   const [search, setSearch] = useState("");
 
-  const loaderRef = useRef();
-
-  // 🚀 STATE for modals
   const [addOpen, setAddOpen] = useState(false);
   const [editId, setEditId] = useState(null);
 
-  async function loadUsers() {
-    if (loading || !hasMore) return;
+  const loaderRef = useRef(null);
 
+  async function loadPage(p = 1, reset = false) {
+    if (loading) return;
     setLoading(true);
 
     try {
-      const res = await adminAPI.getUsers(
-        `?page=${page}&limit=10&sort=${sort}&search=${search}`
+      const res = await fetch(
+        `/api/super-admin/users?page=${p}&limit=10&sort=${sort}&search=${search}`,
+        { credentials: "include" },
       );
+      const json = await res.json();
+      const rows = json?.data || [];
 
-      const newData = res?.data ?? [];
+      if (reset) setUsers(rows);
+      else {
+        setUsers((prev) => {
+          const map = new Map();
+          [...prev, ...rows].forEach((u) => map.set(u._id, u));
+          return [...map.values()];
+        });
+      }
 
-      if (newData.length < 10) setHasMore(false);
-
-      setUsers((prev) => {
-        const merged = [...prev, ...newData];
-        return Array.from(new Map(merged.map((u) => [u._id, u])).values());
-      });
+      setHasMore(rows.length === 10);
+      setPage(p);
     } catch (err) {
-      console.error(err);
+      console.error("Load users failed:", err);
     } finally {
       setLoading(false);
     }
   }
 
-  // filters reset
   useEffect(() => {
-    setUsers([]);
-    setPage(1);
-    setHasMore(true);
+    loadPage(1, true);
   }, [sort, search]);
 
-  // load more when page changes
-  useEffect(() => {
-    loadUsers();
-  }, [page]);
-
-  // infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !loading) {
-          setPage((p) => p + 1);
+          loadPage(page + 1);
         }
       },
-      { threshold: 1 }
+      { rootMargin: "300px" },
     );
 
     if (loaderRef.current) observer.observe(loaderRef.current);
-
     return () => observer.disconnect();
-  }, [loaderRef, hasMore, loading]);
+  }, [page, hasMore, loading]);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Manage Users</h2>
-
-        {/* OPEN MODAL BUTTON */}
         <button
           className="btn btn-primary btn-sm"
           onClick={() => setAddOpen(true)}
@@ -91,18 +81,17 @@ export default function UsersTab() {
         </button>
       </div>
 
-      {/* Filters */}
       <div className="flex gap-3">
         <input
-          placeholder="Search name"
+          className="border px-3 py-2 rounded-lg"
+          placeholder="Search name or email"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border px-3 py-2 rounded-lg"
         />
         <select
+          className="border px-3 py-2 rounded-lg"
           value={sort}
           onChange={(e) => setSort(e.target.value)}
-          className="border px-3 py-2 rounded-lg"
         >
           <option value="-createdAt">Newest</option>
           <option value="createdAt">Oldest</option>
@@ -111,51 +100,45 @@ export default function UsersTab() {
         </select>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl shadow p-4">
-        <UsersTable
-          users={users}
-          onEdit={(id) => setEditId(id)}
-          onUserDeleted={(id) =>
-            setUsers((prev) => prev.filter((u) => u._id !== id))
-          }
-          onUserUpdated={(updated) =>
-            setUsers((prev) =>
-              prev.map((u) => (u._id === updated._id ? updated : u))
-            )
-          }
-        />
+        {loading && users.length === 0 ? (
+          <UsersSkeleton />
+        ) : (
+          <UsersTable
+            users={users}
+            onEdit={(id) => setEditId(id)}
+            onDeleted={(id) =>
+              setUsers((prev) => prev.filter((u) => u._id !== id))
+            }
+            onUpdated={(u) =>
+              setUsers((prev) => prev.map((x) => (x._id === u._id ? u : x)))
+            }
+          />
+        )}
 
         <div ref={loaderRef} className="py-6 text-center text-gray-400">
           {loading
             ? "Loading..."
             : hasMore
-            ? "Scroll to load more"
-            : "No more users"}
+              ? "Scroll to load more"
+              : "No more users"}
         </div>
       </div>
 
-      {/* ADD USER MODAL */}
       <AddUserModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        onCreated={() => {
-          setUsers([]);
-          setPage(1);
-          setHasMore(true);
-        }}
+        onCreated={() => loadPage(1, true)}
       />
 
-      {/* EDIT USER MODAL */}
       <EditUserModal
         open={!!editId}
         userId={editId}
         onClose={() => setEditId(null)}
-        onUpdated={(updated) =>
-          setUsers((prev) =>
-            prev.map((u) => (u._id === updated._id ? updated : u))
-          )
-        }
+        onUpdated={(u) => {
+          setUsers((prev) => prev.map((x) => (x._id === u._id ? u : x)));
+          setEditId(null);
+        }}
       />
     </div>
   );

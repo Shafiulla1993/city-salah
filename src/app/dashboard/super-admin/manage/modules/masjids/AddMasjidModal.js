@@ -18,6 +18,20 @@ export default function AddMasjidModal({
   const [prayerRules, setPrayerRules] = useState({});
   const [image, setImage] = useState({ url: "", publicId: "" });
 
+  const [localCities, setLocalCities] = useState(cities);
+  const [localAreas, setLocalAreas] = useState(areas);
+
+  const emptyForm = {
+    name: "",
+    address: "",
+    city: "",
+    area: "",
+    lat: "",
+    lng: "",
+    contacts: {},
+    ladiesPrayerFacility: false,
+  };
+
   const [form, setForm] = useState({
     name: "",
     address: "",
@@ -28,6 +42,38 @@ export default function AddMasjidModal({
     contacts: {},
     ladiesPrayerFacility: false,
   });
+
+  useEffect(() => {
+    if (!open) return;
+
+    setForm(emptyForm);
+    setImage({ url: "", publicId: "" });
+    setPrayerRules({});
+    setMapOpen(false);
+  }, [open]);
+
+  useEffect(() => {
+    setLocalCities(cities);
+    setLocalAreas(areas);
+  }, [cities, areas]);
+
+  async function refreshCities(selectId) {
+    const res = await fetch("/api/super-admin/cities", {
+      credentials: "include",
+    });
+    const json = await res.json();
+    setLocalCities(json.data || []);
+    if (selectId) setForm((s) => ({ ...s, city: selectId }));
+  }
+
+  async function refreshAreas(cityId, selectId) {
+    const res = await fetch(`/api/super-admin/areas?city=${cityId}`, {
+      credentials: "include",
+    });
+    const json = await res.json();
+    setLocalAreas(json.data || []);
+    if (selectId) setForm((s) => ({ ...s, area: selectId }));
+  }
 
   async function uploadImage(file) {
     const fd = new FormData();
@@ -117,13 +163,16 @@ export default function AddMasjidModal({
           setForm={setForm}
           prayerRules={prayerRules}
           setPrayerRules={setPrayerRules}
-          cities={cities}
-          areas={areas}
+          cities={localCities}
+          areas={localAreas}
           image={image}
           onImageSelect={onImageSelect}
           mapOpen={mapOpen}
           setMapOpen={setMapOpen}
+          onCityAdded={(id) => refreshCities(id)}
+          onAreaAdded={(cityId, areaId) => refreshAreas(cityId, areaId)}
         />
+
         <div className="sticky bottom-0 bg-white border-t p-4 flex justify-end gap-3">
           <button type="button" onClick={onClose}>
             Cancel
