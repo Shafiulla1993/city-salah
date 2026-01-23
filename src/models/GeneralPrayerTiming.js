@@ -1,45 +1,43 @@
 // src/models/GeneralPrayerTiming.js
 
 import mongoose, { Schema, models, model } from "mongoose";
-import { SlotSchema } from "./common/Slot";
 import auditPlugin from "@/lib/utils/auditPlugin";
 
-/**
- * Cached / resolved timings for specific day
- * Created automatically from template + mapping
- * or can be edited manually by super-admin if needed later.
- */
-const GeneralPrayerTimingSchema = new Schema({
-  // either area OR city is required
-  area: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Area",
+/* Inline Slot Schema */
+const SlotSchema = new Schema(
+  {
+    name: { type: String, required: true }, // e.g. "fajr_start"
+    time: { type: Number, required: true }, // minutes from midnight
   },
+  { _id: false },
+);
+
+const GeneralPrayerTimingSchema = new Schema({
   city: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: "City",
     required: true,
   },
+  area: {
+    type: Schema.Types.ObjectId,
+    ref: "Area",
+    default: null,
+  },
 
-  date: { type: String, required: true }, // YYYY-MM-DD
+  // "01-19"
+  dayKey: { type: String, required: true },
 
-  /**
-   * If super-admin edits this later, we set source="manual".
-   * Until then, values generated from template have source="template".
-   */
-  source: { type: String, enum: ["template", "manual"], default: "template" },
-
-  slots: [SlotSchema], // [{ name, time }]
+  slots: [SlotSchema],
 
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date },
+  createdBy: { type: Schema.Types.ObjectId, ref: "User" },
   updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
 });
 
-// Unique per day per area
 GeneralPrayerTimingSchema.index(
-  { city: 1, area: 1, date: 1 },
-  { unique: true }
+  { city: 1, area: 1, dayKey: 1 },
+  { unique: true },
 );
 
 GeneralPrayerTimingSchema.plugin(auditPlugin);

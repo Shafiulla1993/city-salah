@@ -1,7 +1,14 @@
 // src/server/services/prayerResolver.js
 
+import { to24Hour } from "@/lib/prayer/timeHelpers";
+
 const ALL_PRAYERS = ["fajr", "zohar", "asr", "maghrib", "isha", "juma"];
 
+/**
+ * This resolver NEVER recalculates.
+ * It only returns cached + synced values.
+ * Maghrib auto-sync is written by the sync job.
+ */
 export function resolvePrayerTimings({ config }) {
   const timings = {};
 
@@ -13,20 +20,21 @@ export function resolvePrayerTimings({ config }) {
       continue;
     }
 
+    // Manual
     if (rule.mode === "manual") {
       timings[prayer] = {
-        azan: rule.manual?.azan || "",
-        iqaamat: rule.manual?.iqaamat || "",
+        azan: to24Hour(rule.manual?.azan || ""),
+        iqaamat: to24Hour(rule.manual?.iqaamat || ""),
       };
       continue;
     }
 
-    // 🔥 AUTO MODE (USE CACHED VALUE)
+    // Auto (Maghrib, etc)
     timings[prayer] = {
-      azan: rule.lastComputed?.azan || "AUTO",
-      iqaamat: rule.lastComputed?.iqaamat || "AUTO",
+      azan: to24Hour(rule.lastComputed?.azan || ""),
+      iqaamat: to24Hour(rule.lastComputed?.iqaamat || ""),
       syncedAt: rule.lastComputed?.syncedAt || null,
-      source: rule.auto?.source,
+      source: rule.auto?.source || "auqatus_salah",
     };
   }
 

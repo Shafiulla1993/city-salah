@@ -7,7 +7,7 @@ export default function MasjidCardLite({ masjid }) {
 
   return (
     <Link
-      href={`/masjid/${slug}`}
+      href={`/${masjid.citySlug}/${masjid.areaSlug}/masjid/${slug}`}
       className="block rounded-xl bg-white shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition"
     >
       {/* IMAGE */}

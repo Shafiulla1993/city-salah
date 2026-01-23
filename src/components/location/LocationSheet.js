@@ -1,6 +1,4 @@
 // src/components/location/LocationSheet.js
-// Full-screen bottom sheet for selecting City, Area, and Masjid
-
 "use client";
 
 import { useState, useMemo } from "react";
@@ -20,13 +18,9 @@ export default function LocationSheet({
   selectedArea,
   setSelectedCity,
   setSelectedArea,
-  onSelectMasjid,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
 
-  /* --------------------------
-     City / Area handlers
-  ---------------------------*/
   const handleCityChange = (e) => {
     const id = e.target.value;
     setSelectedCity(id);
@@ -40,35 +34,23 @@ export default function LocationSheet({
     setSearchQuery("");
   };
 
-  /* --------------------------
-     Scope masjids to selected
-     city + area
-  ---------------------------*/
   const scopedMasjids = useMemo(() => {
     if (!selectedCity || !searchIndex.length) return [];
 
-    // City only
     if (selectedCity && !selectedArea) {
       return searchIndex.filter(
-        (m) => String(m.cityId) === String(selectedCity)
+        (m) => String(m.cityId) === String(selectedCity),
       );
     }
 
-    // City + Area
     return searchIndex.filter(
       (m) =>
         String(m.cityId) === String(selectedCity) &&
-        String(m.areaId) === String(selectedArea)
+        String(m.areaId) === String(selectedArea),
     );
   }, [searchIndex, selectedCity, selectedArea]);
 
-  /* --------------------------
-     Centralized search
-  ---------------------------*/
   const searchResults = useMemo(() => {
-    console.log("scopedMasjids:", scopedMasjids);
-    console.log("searchQuery:", searchQuery);
-
     if (!searchQuery.trim()) return scopedMasjids;
 
     return searchItems({
@@ -120,12 +102,11 @@ export default function LocationSheet({
               className="w-full mt-1 mb-4 px-3 py-2 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-indigo-500"
             >
               <option value="">Select City</option>
-              {Array.isArray(cities) &&
-                cities.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.name}
-                  </option>
-                ))}
+              {cities.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.name}
+                </option>
+              ))}
             </select>
 
             {/* AREA */}
@@ -148,11 +129,10 @@ export default function LocationSheet({
               ))}
             </select>
 
-            {/* MASJID SEARCH */}
+            {/* SEARCH */}
             <label className="text-sm font-medium text-slate-700">
               Search Masjid
             </label>
-
             <div className="relative mt-1 mb-3">
               <input
                 type="text"
@@ -174,21 +154,36 @@ export default function LocationSheet({
             {/* RESULTS */}
             <div className="max-h-64 overflow-y-auto space-y-2">
               {searchResults.length > 0 ? (
-                searchResults.map((m) => (
-                  <button
-                    key={`${m.slug}-${m.areaId}`}
-                    onClick={() => {
-                      onSelectMasjid(m);
-                      onClose();
-                    }}
-                    className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-left active:scale-95"
-                  >
-                    <p className="font-semibold text-slate-900">{m.name}</p>
-                    <p className="text-xs text-slate-500">
-                      {m.areaName}, {m.cityName}
-                    </p>
-                  </button>
-                ))
+                searchResults.map((m) => {
+                  console.log("Masjid Index Item:", m);
+
+                  if (!m.citySlug || !m.areaSlug || !m.slug) return null;
+
+                  return (
+                    <button
+                      key={`${m.slug}-${m._id}`}
+                      onClick={() => {
+                        if (!m.citySlug || !m.areaSlug) {
+                          alert(
+                            "Location not loaded yet. Please reopen selector.",
+                          );
+                          return;
+                        }
+
+                        window.location.assign(
+                          `/${m.citySlug}/${m.areaSlug}/masjid/${m.slug}`,
+                        );
+                        onClose();
+                      }}
+                      className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-left active:scale-95"
+                    >
+                      <p className="font-semibold text-slate-900">{m.name}</p>
+                      <p className="text-xs text-slate-500">
+                        {m.areaName}, {m.cityName}
+                      </p>
+                    </button>
+                  );
+                })
               ) : searchQuery ? (
                 <p className="text-center text-slate-400 text-sm py-4">
                   No masjid found

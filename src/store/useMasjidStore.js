@@ -1,187 +1,220 @@
 // src/store/useMasjidStore.js
-
 import { create } from "zustand";
-import { publicAPI } from "@/lib/api/public";
+
+/* -------------------- Helpers -------------------- */
+
+const LS_KEYS = {
+  COORDS: "cs_coords",
+  CITY: "cs_citySlug",
+  AREA: "cs_areaSlug",
+  MASJID: "cs_masjidSlug",
+  SOURCE: "cs_source",
+  RESOLVED_AT: "cs_resolvedAt",
+};
+
+function saveCache({ coords, citySlug, areaSlug, masjidSlug, source }) {
+  if (coords) localStorage.setItem(LS_KEYS.COORDS, JSON.stringify(coords));
+  if (citySlug) localStorage.setItem(LS_KEYS.CITY, citySlug);
+  if (areaSlug) localStorage.setItem(LS_KEYS.AREA, areaSlug);
+  if (masjidSlug) localStorage.setItem(LS_KEYS.MASJID, masjidSlug);
+  if (source) localStorage.setItem(LS_KEYS.SOURCE, source);
+  localStorage.setItem(LS_KEYS.RESOLVED_AT, Date.now().toString());
+}
+
+function loadCache() {
+  try {
+    return {
+      coords: JSON.parse(localStorage.getItem(LS_KEYS.COORDS) || "null"),
+      citySlug: localStorage.getItem(LS_KEYS.CITY) || "",
+      areaSlug: localStorage.getItem(LS_KEYS.AREA) || "",
+      masjidSlug: localStorage.getItem(LS_KEYS.MASJID) || "",
+      source: localStorage.getItem(LS_KEYS.SOURCE) || "none",
+      resolvedAt: localStorage.getItem(LS_KEYS.RESOLVED_AT) || null,
+    };
+  } catch {
+    return {};
+  }
+}
+
+/* -------------------- Store -------------------- */
 
 export const useMasjidStore = create((set, get) => ({
-  /* ---------------- STATE ---------------- */
-  selectedCity: "",
-  selectedArea: "",
-  selectedMasjid: null,
+  /* ------------ Canonical Context ------------ */
+  city: null,
+  area: null,
+  masjid: null,
 
+  citySlug: "",
+  areaSlug: "",
+  masjidSlug: "",
+
+  coords: null, // { lat, lng, accuracy, source: 'gps' }
+  source: "none", // url | manual | gps | none
+  resolved: false,
+
+  /* ------------ Flags ------------ */
   initialized: false,
-  initializing: true,
   loadingLocation: false,
+  gpsAllowed: false,
+  userHasManualSelection: false,
+  urlHydrated: false,
 
-  userHasManualSelection: false, // user clicked city/area/masjid manually
-  urlHydrated: false,            // SEO city/area hydration
-  gpsDetected: false,            // 🔑 GPS intent (AREA MODE, not single)
+  /* ------------ Core Resolvers ------------ */
 
-  /* ---------------- SETTERS ---------------- */
+  resolveFromURL: async (citySlug, areaSlug, masjidSlug) => {
+    const res = await fetch(
+      `/api/public/masjids?mode=by-slug&citySlug=${citySlug}&areaSlug=${areaSlug}&masjidSlug=${masjidSlug}`,
+    );
+    if (!res.ok) return;
 
-  /**
-   * Used ONLY for /masjid/[slug]
-   * Must NOT block GPS permanently
-   * Must preserve single-masjid mode
-   */
-  setContextFromMasjid: (masjid) => {
+    const data = await res.json();
+
     set({
-      selectedCity: masjid.city?._id || "",
-      selectedArea: masjid.area?._id || "",
-      selectedMasjid: masjid,
-      gpsDetected: false,        // ❗ ensure single mode
-      userHasManualSelection: true,
-      urlHydrated: false,
+      city: data.city,
+      area: data.area,
+      masjid: data.masjid,
+      citySlug,
+      areaSlug,
+      masjidSlug,
+      source: "url",
+      resolved: true,
+      urlHydrated: true,
+    });
+
+    saveCache({ citySlug, areaSlug, masjidSlug, source: "url" });
+  },
+
+  resolveFromCoords: async (lat, lng) => {
+    const res = await fetch(
+      `/api/public/masjids?mode=nearest&lat=${lat}&lng=${lng}`,
+    );
+    if (!res.ok) return;
+
+    const data = await res.json();
+
+    set({
+      city: data.city,
+      area: data.area,
+      masjid: data.masjid,
+      citySlug: data.city.slug,
+      areaSlug: data.area.slug,
+      masjidSlug: data.masjid.slug,
+      coords: { lat, lng, accuracy: null, source: "gps" },
+      source: "gps",
+      resolved: true,
+    });
+
+    saveCache({
+      coords: { lat, lng, accuracy: null, source: "gps" },
+      citySlug: data.city.slug,
+      areaSlug: data.area.slug,
+      masjidSlug: data.masjid.slug,
+      source: "gps",
     });
   },
 
-  /**
-   * Normal city selection (AREA MODE)
-   */
-  setCity: (cityId) => {
+  setManualLocation: (masjid) => {
     set({
-      selectedCity: cityId,
-      selectedArea: "",
-      selectedMasjid: null,
-      gpsDetected: false,
+      city: masjid.city,
+      area: masjid.area,
+      masjid,
+      citySlug: masjid.city.slug,
+      areaSlug: masjid.area.slug,
+      masjidSlug: masjid.slug,
+      source: "manual",
+      resolved: true,
       userHasManualSelection: true,
-      urlHydrated: false,
     });
-    localStorage.setItem("selectedCityId", cityId);
+
+    saveCache({
+      citySlug: masjid.city.slug,
+      areaSlug: masjid.area.slug,
+      masjidSlug: masjid.slug,
+      source: "manual",
+    });
   },
 
-  /**
-   * Normal area selection (AREA MODE)
-   */
-  setArea: (areaId) => {
-    set({
-      selectedArea: areaId,
-      selectedMasjid: null,
-      gpsDetected: false,
-      userHasManualSelection: true,
-      urlHydrated: false,
-    });
-    localStorage.setItem("selectedAreaId", areaId);
-  },
+  /* ------------ Detect My Location (LOCKED) ------------ */
 
-  /**
-   * Explicit masjid click from UI (SINGLE MODE)
-   */
-  setMasjid: (masjid) => {
-    set({
-      selectedMasjid: masjid,
-      gpsDetected: false,
-      userHasManualSelection: true,
-      urlHydrated: false,
-    });
-    if (masjid?._id) {
-      localStorage.setItem("selectedMasjidId", masjid._id);
-    }
-  },
-
-  /* ---------------- INIT ---------------- */
-  init: async () => {
-    const { initialized } = get();
-    if (initialized) return;
-
-    set({ initialized: true, initializing: true });
-
-    /* ---------- 1️⃣ SEO URL HYDRATION (city/area only) ---------- */
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const citySlug = params.get("city");
-      const areaSlug = params.get("area");
-
-      if (citySlug) {
-        try {
-          set({ urlHydrated: true });
-
-          const cities = await publicAPI.getCities();
-          const city = cities.find((c) => c.slug === citySlug);
-
-          if (city) {
-            set({
-              selectedCity: city._id,
-              selectedArea: "",
-              selectedMasjid: null,
-              gpsDetected: false,
-            });
-            localStorage.setItem("selectedCityId", city._id);
-
-            if (areaSlug) {
-              const areas = await publicAPI.getAreas(city._id);
-              const area = areas.find(
-                (a) =>
-                  a.name.toLowerCase().replace(/\s+/g, "-") === areaSlug
-              );
-
-              if (area) {
-                set({
-                  selectedArea: area._id,
-                  selectedMasjid: null,
-                  gpsDetected: false,
-                });
-                localStorage.setItem("selectedAreaId", area._id);
-              }
-            }
-          }
-
-          set({ initializing: false });
-          return; // ⛔ SEO wins → NO GPS
-        } catch (err) {
-          console.error("SEO hydration failed", err);
-        }
-      }
-    }
-
-    /* ---------- 2️⃣ GPS DETECTION ---------- */
-    const { userHasManualSelection, urlHydrated } = get();
-    if (userHasManualSelection || urlHydrated) {
-      set({ initializing: false });
-      return;
-    }
+  detectMyLocation: async () => {
+    set({ loadingLocation: true });
 
     if (!navigator.geolocation) {
-      set({ initializing: false });
+      set({ loadingLocation: false });
       return;
     }
-
-    set({ loadingLocation: true });
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        try {
-          const nearest = await publicAPI.getNearestMasjids({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            limit: 1,
-          });
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
 
-          if (!nearest?.length) return;
+        set({
+          gpsAllowed: true,
+          coords: {
+            lat,
+            lng,
+            accuracy: pos.coords.accuracy,
+            source: "gps",
+          },
+        });
 
-          const m = nearest[0];
-          const full = await publicAPI.getMasjidById(m._id);
+        saveCache({
+          coords: {
+            lat,
+            lng,
+            accuracy: pos.coords.accuracy,
+            source: "gps",
+          },
+          source: "gps",
+        });
 
-          set({
-            selectedCity: m.city?._id || m.city,
-            selectedArea: m.area?._id || m.area,
-            selectedMasjid: full,   // highlight nearest
-            gpsDetected: true,      // 🔑 AREA MODE
-          });
-
-          localStorage.setItem("selectedCityId", m.city?._id || m.city);
-          localStorage.setItem("selectedAreaId", m.area?._id || m.area);
-          localStorage.setItem("selectedMasjidId", m._id);
-        } catch (err) {
-          console.error("GPS detection failed", err);
-        } finally {
-          set({ loadingLocation: false, initializing: false });
-        }
+        await get().resolveFromCoords(lat, lng);
+        set({ loadingLocation: false });
       },
       () => {
-        set({ loadingLocation: false, initializing: false });
+        // Permission denied or failed – no fallback (locked)
+        set({ loadingLocation: false });
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: false, timeout: 8000 },
     );
+  },
+
+  /* ------------ Init (Runs Once) ------------ */
+
+  init: async (routerParams = {}) => {
+    if (get().initialized) return;
+    set({ initialized: true });
+
+    const { citySlug, areaSlug, masjidSlug } = routerParams;
+
+    // 1️⃣ Canonical URL wins
+    if (citySlug && areaSlug && masjidSlug) {
+      await get().resolveFromURL(citySlug, areaSlug, masjidSlug);
+      return;
+    }
+
+    // 2️⃣ Load cache
+    const cache = loadCache();
+    if (cache.citySlug && cache.areaSlug && cache.masjidSlug) {
+      await get().resolveFromURL(
+        cache.citySlug,
+        cache.areaSlug,
+        cache.masjidSlug,
+      );
+      set({
+        coords: cache.coords,
+        source: cache.source || "none",
+      });
+      return;
+    }
+
+    // 3️⃣ Only restore coords, never auto-resolve
+    if (cache.coords) {
+      set({
+        coords: cache.coords,
+        source: cache.source || "none",
+      });
+    }
   },
 }));

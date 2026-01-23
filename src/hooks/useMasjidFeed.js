@@ -1,76 +1,70 @@
 // src/hooks/useMasjidFeed.js
-
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { publicAPI } from "@/lib/api/public";
 
-export function useMasjidFeed({ limit = 10, cityId, areaId } = {}) {
-  const [masjids, setMasjids] = useState([]);
+export function useMasjidFeed({ limit = 12, cityId, areaId } = {}) {
+  const [items, setItems] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
-
   const observerRef = useRef(null);
 
-  const loadPage = async (p) => {
-    if (loading) return;
+  const loadPage = useCallback(
+    async (p) => {
+      if (loading) return;
+      setLoading(true);
 
-    setLoading(true);
-
-    try {
-      const res = await publicAPI.getMasjidFeed({
+      const params = new URLSearchParams({
+        mode: "feed",
         page: p,
         limit,
-        cityId,
-        areaId,
+      });
+      if (cityId) params.append("cityId", cityId);
+      if (areaId) params.append("areaId", areaId);
+
+      const res = await fetch(`/api/public/masjids?${params.toString()}`);
+      const json = await res.json();
+
+      setItems((prev) => {
+        const map = new Map();
+        [...prev, ...json.data].forEach((m) => map.set(m._id, m));
+        return Array.from(map.values());
       });
 
-      const rows = res?.data || [];
-      const total = res?.total || 0;
-
-      setMasjids((prev) => [...prev, ...rows]);
-      setHasMore(p * limit < total);
+      setHasMore(p * limit < json.total);
       setPage(p);
-    } catch (e) {
-      console.error("Feed load error", e);
-    } finally {
       setLoading(false);
-    }
-  };
+    },
+    [limit, cityId, areaId, loading],
+  );
 
-  // Initial + filter change load
   useEffect(() => {
-    setMasjids([]);
+    setItems([]);
     setPage(1);
     setHasMore(true);
     loadPage(1);
-  }, [cityId, areaId]); // eslint-disable-line
+  }, [cityId, areaId]); // reset when filter changes
 
-  // Intersection observer
-  const setObserver = useCallback(
-    (node) => {
-      if (loading) return;
-      if (observerRef.current) observerRef.current.disconnect();
+  const setObserver = (el) => {
+    if (observerRef.current) observerRef.current.disconnect();
+    if (!el) return;
 
-      observerRef.current = new IntersectionObserver(
-        (entries) => {
-          if (entries[0].isIntersecting && hasMore) {
-            loadPage(page + 1);
-          }
-        },
-        { rootMargin: "600px" }
-      );
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasMore && !loading) {
+        loadPage(page + 1);
+      }
+    });
 
-      if (node) observerRef.current.observe(node);
-    },
-    [loading, hasMore, page]
-  );
+    observer.observe(el);
+    observerRef.current = observer;
+  };
 
   return {
-    masjids,
+    masjids: items,
     loading,
     hasMore,
     setObserver,
+    loadNext: () => loadPage(page + 1),
   };
 }

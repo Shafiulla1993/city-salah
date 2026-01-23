@@ -22,7 +22,7 @@ export function useGeolocation() {
         });
       },
       () => setError("denied"),
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true },
     );
   }, []);
 

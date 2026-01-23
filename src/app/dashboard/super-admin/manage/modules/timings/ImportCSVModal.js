@@ -1,4 +1,4 @@
-// src/app/dashboard/super-admin/manage/modules/timings/ManualTimingForm.js
+// src/app/dashboard/super-admin/manage/modules/timings/ImportCSVModal.js
 
 "use client";
 

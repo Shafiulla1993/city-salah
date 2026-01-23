@@ -71,7 +71,7 @@ export const publicAPI = {
 
     const qs = params.toString();
     return httpFetch(
-      `${BASE}/general-announcements${qs ? `?${qs}` : ""}`
+      `${BASE}/general-announcements${qs ? `?${qs}` : ""}`,
     ).catch(() => []);
   },
 
@@ -86,14 +86,11 @@ export const publicAPI = {
   /* =======================
      GENERAL (CITY / AREA) TIMINGS
   ======================= */
-  getGeneralTimings: ({ cityId, areaId, date } = {}) => {
+  getTodayPrayerTimings: ({ citySlug, areaSlug }) => {
     const params = new URLSearchParams();
-    if (cityId) params.append("cityId", cityId);
-    if (areaId) params.append("areaId", areaId);
-    if (date) params.append("date", date);
-
-    const qs = params.toString();
-    return httpFetch(`${BASE}/general-timings${qs ? `?${qs}` : ""}`);
+    if (citySlug) params.append("citySlug", citySlug);
+    if (areaSlug) params.append("areaSlug", areaSlug);
+    return httpFetch(`/api/prayer-timings/today?${params.toString()}`);
   },
 
   /* =======================

@@ -1,67 +1,32 @@
 // src/app/auqatus-salah/page.js
 
-import AuqatusSalahClient from "./AuqatusSalahClient";
+"use client";
 
-export const metadata = {
-  title: "Auqatus Salah (Prayer Times) | CitySalah",
-  description:
-    "View accurate Auqatus Salah prayer timings for your city and nearby areas including Sehri, Fajr, zohar, Asar, Maghrib, and Isha.",
-  alternates: {
-    canonical: "https://citysalah.in/auqatus-salah",
-  },
-  openGraph: {
-    title: "Auqatus Salah (Prayer Times) | CitySalah",
-    description:
-      "Daily Auqatus Salah timings by city and area. Accurate Islamic prayer time ranges.",
-    url: "https://citysalah.in/auqatus-salah",
-    siteName: "CitySalah",
-    type: "website",
-    images: [
-      {
-        url: "https://citysalah.in/api/og/auqatus-salah",
-        width: 1200,
-        height: 630,
-        alt: "Auqatus Salah Prayer Timings",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Auqatus Salah | CitySalah",
-    description:
-      "Check accurate Auqatus Salah prayer timings for your city and nearby areas.",
-    images: ["https://citysalah.in/api/og/auqatus-salah"],
-  },
-};
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useMasjidStore } from "@/store/useMasjidStore";
 
-export default function AuqatusSalahPage() {
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "WebPage",
-    name: "Auqatus Salah (Prayer Times)",
-    description:
-      "Daily Auqatus Salah prayer timings including Sehri, Fajr, zohar, Asar, Maghrib, and Isha.",
-    url: "https://citysalah.in/auqatus-salah",
-    isPartOf: {
-      "@type": "WebSite",
-      name: "CitySalah",
-      url: "https://citysalah.in",
-    },
-    publisher: {
-      "@type": "Organization",
-      name: "CitySalah",
-      url: "https://citysalah.in",
-    },
-  };
+export default function AuqatusSalahResolver() {
+  const router = useRouter();
 
-  return (
-    <>
-      {/* JSON-LD */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <AuqatusSalahClient />
-    </>
-  );
+  const { init, initializing, selectedCitySlug, selectedAreaSlug } =
+    useMasjidStore();
+
+  useEffect(() => {
+    init();
+  }, [init]);
+
+  useEffect(() => {
+    if (initializing) return;
+
+    if (selectedCitySlug && selectedAreaSlug) {
+      router.replace(`/${selectedCitySlug}/${selectedAreaSlug}/auqatus-salah`);
+      return;
+    }
+
+    // fallback
+    router.replace(`/mysore/rajiv-nagar/auqatus-salah`);
+  }, [initializing, selectedCitySlug, selectedAreaSlug, router]);
+
+  return null;
 }

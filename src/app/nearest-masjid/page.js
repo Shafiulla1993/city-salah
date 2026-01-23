@@ -3,7 +3,7 @@
 export const metadata = {
   title: "Nearest Masjid Near You | CitySalah",
   description:
-    "Find the nearest masjid near you with accurate prayer timings. Allow location access to see masjids closest to you.",
+    "Find the nearest masjid near you with accurate prayer timings. Allow location access to see the closest mosque instantly or search manually by city and area.",
   alternates: {
     canonical: "https://citysalah.in/nearest-masjid",
   },
@@ -17,8 +17,7 @@ export default function NearestMasjidPage() {
       className="min-h-screen bg-fixed bg-center bg-cover"
       style={{ backgroundImage: "url('/hero-bg.webp')" }}
     >
-      <div className="min-h-screen bg-black/30 px-4 py-10">
-        {/* SEO CONTENT (VISIBLE TO GOOGLE) */}
+      <div className="min-h-screen bg-black/40 px-4 py-10">
         <section className="max-w-3xl mx-auto text-white text-center mb-10">
           <h1 className="text-2xl font-bold mb-3">
             Find the Nearest Masjid Near You
@@ -26,12 +25,11 @@ export default function NearestMasjidPage() {
 
           <p className="text-sm opacity-90 leading-relaxed">
             CitySalah helps you locate nearby masjids and view accurate prayer
-            timings. Enable your location to find the closest masjid instantly,
-            or search masjids manually by city and area.
+            timings. Allow your device location to automatically open the
+            closest masjid, or search manually by city and area.
           </p>
         </section>
 
-        {/* GPS ENHANCED CONTENT */}
         <NearestMasjidClient />
       </div>
     </main>

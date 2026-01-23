@@ -2,15 +2,15 @@
 
 "use client";
 
+import dynamic from "next/dynamic";
 import usePrayerCountdown, {
   getPrevAndNextIqaamats,
 } from "@/hooks/usePrayerCountdown";
-
-import dynamic from "next/dynamic";
+import { useMasjidStore } from "@/store/useMasjidStore";
 
 const AuqatusCards = dynamic(
   () => import("@/components/auqatus/AuqatusCards"),
-  { ssr: false }
+  { ssr: false },
 );
 
 /* ---------------- UI helpers ---------------- */
@@ -29,11 +29,11 @@ function ContactCard({ title, contact }) {
   return (
     <div className="rounded-xl bg-white border px-3 py-2 text-sm">
       <div className="font-bold text-slate-900">{title}</div>
-      <div className="text-slate-700">{contact.name || "--"}</div>
+      <div className="text-slate-700 truncate">{contact.name || "--"}</div>
       {contact.phone && (
         <a
           href={`tel:${contact.phone}`}
-          className="text-indigo-600 font-medium"
+          className="text-emerald-600 font-medium"
         >
           {contact.phone}
         </a>
@@ -42,18 +42,16 @@ function ContactCard({ title, contact }) {
   );
 }
 
-function SmallPrayerCard({ title, azan, iqaamat, highlight }) {
+function SmallPrayerCard({ title, azan, iqaamat }) {
   return (
-    <div
-      className={`rounded-xl border px-3 py-2 text-sm ${
-        highlight
-          ? "bg-emerald-100 border-emerald-400"
-          : "bg-white border-slate-200"
-      }`}
-    >
+    <div className="rounded-xl border px-3 py-2 text-sm bg-white">
       <div className="font-bold text-slate-900">{title}</div>
-      <div className="text-slate-700">Azaan: {azan || "--"}</div>
-      <div className="text-slate-700">Iqaamat: {iqaamat || "--"}</div>
+      <div className="text-slate-700 whitespace-nowrap">
+        Azaan: {azan || "--"}
+      </div>
+      <div className="text-slate-700 whitespace-nowrap">
+        Iqaamat: {iqaamat || "--"}
+      </div>
     </div>
   );
 }
@@ -65,7 +63,8 @@ export default function MasjidDetailsLayout({
   masjidTimings,
   generalTimings,
 }) {
-  // masjidTimings is ALREADY normalized
+  const { detectMyLocation, loadingLocation } = useMasjidStore();
+
   const { next, prev } = masjidTimings
     ? getPrevAndNextIqaamats(masjidTimings)
     : {};
@@ -77,49 +76,63 @@ export default function MasjidDetailsLayout({
   const mozin = contacts.find((c) => c.role === "mozin");
   const mutawalli = contacts.find((c) => c.role === "mutawalli");
 
+  const coords = masjid?.location?.coordinates;
+  const lat = coords?.[1];
+  const lng = coords?.[0];
+
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="mx-auto max-w-7xl pt-6 space-y-4">
+      {/* HEADER */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold text-slate-100 drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
+            {masjid.name}
+          </h1>
+
+          <p className="text-sm text-slate-600 mt-1">
+            {masjid.area?.name}, {masjid.city?.name}
+          </p>
+        </div>
+
+        <button
+          onClick={detectMyLocation}
+          disabled={loadingLocation}
+          className="mt-2 text-sm px-4 py-2 rounded-full bg-emerald-600 text-white font-semibold shadow-md"
+        >
+          {loadingLocation ? "Detecting..." : "📍 Detect My Location"}
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* LEFT SIDE */}
+        {/* LEFT */}
         <div className="space-y-6">
-          {/* IMAGE + META */}
           <GlassCard>
-            <div className="w-full aspect-[4/5] bg-slate-200 rounded-xl flex items-center justify-center">
+            <div className="w-full aspect-[4/5] bg-slate-200 rounded-xl overflow-hidden">
               <img
                 src={masjid.imageUrl || "/Default_Image.png"}
                 alt={masjid.name}
                 className="w-full h-full object-contain"
               />
             </div>
-
-            <div className="mt-4">
-              <h2 className="text-xl font-bold">{masjid.name}</h2>
-              <p className="text-sm text-slate-600">
-                {masjid.area?.name}, {masjid.city?.name}
-              </p>
-
-              <div className="mt-2 text-sm font-medium">
-                {masjid.ladiesPrayerFacility ? (
-                  <span className="text-emerald-700">
-                    ✓ Ladies Prayer Available
-                  </span>
-                ) : (
-                  <span className="text-rose-700">
-                    ✗ Ladies Prayer Not Available
-                  </span>
-                )}
-              </div>
-            </div>
           </GlassCard>
 
-          {/* ADDRESS */}
           <GlassCard>
             <h3 className="font-bold mb-1">Address</h3>
             <p className="text-sm text-slate-700">{masjid.address || "--"}</p>
+
+            {lat && lng && (
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`}
+                target="_blank"
+                className="inline-block mt-2 text-sm font-semibold text-emerald-700 underline"
+              >
+                Open in Google Maps
+              </a>
+            )}
           </GlassCard>
         </div>
 
-        {/* RIGHT SIDE */}
+        {/* RIGHT */}
         <div className="space-y-6">
           {/* NEXT PRAYER */}
           {next && (
@@ -128,9 +141,12 @@ export default function MasjidDetailsLayout({
                 <div>
                   <div className="text-sm text-slate-600">Next Prayer</div>
                   <div className="text-xl font-bold uppercase">{next.name}</div>
-                  <div className="text-slate-700">{next.timeStr}</div>
+                  <div className="text-slate-700 whitespace-nowrap">
+                    {next.timeStr}
+                  </div>
                 </div>
 
+                {/* Countdown Ring */}
                 <div className="relative w-20 h-20">
                   <svg viewBox="0 0 100 100" className="-rotate-90">
                     <circle
@@ -153,7 +169,7 @@ export default function MasjidDetailsLayout({
                       strokeDashoffset={2 * Math.PI * 42 * (1 - progress)}
                     />
                   </svg>
-                  <div className="absolute inset-0 flex items-center justify-center text-xs font-bold">
+                  <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-center leading-tight">
                     {remainingStr}
                   </div>
                 </div>
@@ -165,7 +181,6 @@ export default function MasjidDetailsLayout({
           {masjidTimings && (
             <GlassCard>
               <h3 className="font-bold mb-3">Masjid Prayer Timings</h3>
-
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <SmallPrayerCard title="Fajr" {...masjidTimings.fajr} />
                 <SmallPrayerCard title="Zohar" {...masjidTimings.zohar} />
@@ -181,7 +196,6 @@ export default function MasjidDetailsLayout({
           {(imam || mozin || mutawalli) && (
             <GlassCard>
               <h3 className="font-bold mb-3">Masjid Contacts</h3>
-
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <ContactCard title="Imam" contact={imam} />
                 <ContactCard title="Mozin" contact={mozin} />
@@ -190,10 +204,12 @@ export default function MasjidDetailsLayout({
             </GlassCard>
           )}
 
-          {/* AUQATUS SALAH */}
+          {/* GENERAL PRAYER TIMINGS (OLD POSITION) */}
           {generalTimings?.length > 0 && (
             <GlassCard>
-              <h3 className="font-bold mb-3">Auqatus Salah (Area)</h3>
+              <h3 className="font-bold mb-2 text-slate-800">
+                Auqatus Salah (Area)
+              </h3>
               <AuqatusCards slots={generalTimings} />
             </GlassCard>
           )}

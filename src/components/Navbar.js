@@ -99,7 +99,8 @@ export default function Navbar() {
             <Link
               href="/auqatus-salah"
               className={`text-sm whitespace-nowrap text-white/90 hover:text-white ${
-                pathname === "/auqatus-salah"
+                pathname === "/auqatus-salah" ||
+                pathname.endsWith("/auqatus-salah")
                   ? "underline font-semibold text-white"
                   : ""
               }`}
