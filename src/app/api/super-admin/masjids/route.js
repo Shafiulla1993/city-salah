@@ -7,6 +7,9 @@ import City from "@/models/City";
 import Area from "@/models/Area";
 import MasjidPrayerConfig from "@/models/MasjidPrayerConfig";
 
+/* ===============================
+   GET – List Masjids
+================================ */
 export const GET = withAuth("super_admin", async (request) => {
   const url = new URL(request.url);
   const {
@@ -19,9 +22,7 @@ export const GET = withAuth("super_admin", async (request) => {
   } = Object.fromEntries(url.searchParams.entries());
 
   const filter = {};
-  if (search) {
-    filter.$or = [{ name: new RegExp(search, "i") }];
-  }
+  if (search) filter.$or = [{ name: new RegExp(search, "i") }];
   if (mongoose.isValidObjectId(cityId)) filter.city = cityId;
   if (mongoose.isValidObjectId(areaId)) filter.area = areaId;
 
@@ -49,6 +50,10 @@ export const GET = withAuth("super_admin", async (request) => {
   };
 });
 
+/* ===============================
+   POST – Create Masjid
+   (Prayer rules saved later via /prayer-rules API)
+================================ */
 export const POST = withAuth("super_admin", async (request, ctx) => {
   const body = await request.json();
   const user = ctx.user;
@@ -56,11 +61,12 @@ export const POST = withAuth("super_admin", async (request, ctx) => {
   const city = await City.findById(body.city);
   const area = await Area.findById(body.area);
 
-  if (!city || !area)
+  if (!city || !area) {
     return {
       status: 400,
       json: { success: false, message: "Invalid City/Area" },
     };
+  }
 
   const masjid = await Masjid.create({
     name: body.name,
@@ -76,25 +82,10 @@ export const POST = withAuth("super_admin", async (request, ctx) => {
     createdBy: user._id,
   });
 
+  // Create empty prayer config shell (rules will be filled by /prayer-rules)
   await MasjidPrayerConfig.create({
     masjid: masjid._id,
-    rules: [
-      { prayer: "fajr", mode: "manual", manual: { azan: "", iqaamat: "" } },
-      { prayer: "zohar", mode: "manual", manual: { azan: "", iqaamat: "" } },
-      { prayer: "asr", mode: "manual", manual: { azan: "", iqaamat: "" } },
-      {
-        prayer: "maghrib",
-        mode: "auto",
-        auto: {
-          source: "auqatus_salah",
-          azan_offset_minutes: 2,
-          iqaamat_offset_minutes: 4,
-        },
-        lastComputed: { azan: "", iqaamat: "", syncedAt: null },
-      },
-      { prayer: "isha", mode: "manual", manual: { azan: "", iqaamat: "" } },
-      { prayer: "juma", mode: "manual", manual: { azan: "", iqaamat: "" } },
-    ],
+    rules: [],
   });
 
   const populated = await Masjid.findById(masjid._id).populate("city area");

@@ -3,7 +3,7 @@
 import mongoose from "mongoose";
 import { withAuth } from "@/lib/middleware/withAuth";
 import MasjidPrayerConfig from "@/models/MasjidPrayerConfig";
-import { normalizeTime } from "@/lib/helpers/normalizeTime";
+import { parseToMinutes } from "@/lib/prayer/timeHelpers";
 
 /**
  * GET → fetch all prayer rules for a masjid
@@ -11,11 +11,12 @@ import { normalizeTime } from "@/lib/helpers/normalizeTime";
 export const GET = withAuth("super_admin", async (_req, ctx) => {
   const { id } = await ctx.params;
 
-  if (!mongoose.isValidObjectId(id))
+  if (!mongoose.isValidObjectId(id)) {
     return {
       status: 400,
       json: { success: false, message: "Invalid masjid ID" },
     };
+  }
 
   const config = await MasjidPrayerConfig.findOne({ masjid: id });
 
@@ -29,42 +30,48 @@ export const GET = withAuth("super_admin", async (_req, ctx) => {
 });
 
 /**
+ * Helper: return "" if empty, otherwise minutes as string
+ */
+function safeMinutes(val) {
+  const m = parseToMinutes(val);
+  if (m === null || m === undefined || Number.isNaN(m)) return "";
+  return String(m);
+}
+
+/**
  * PUT → upsert ONE prayer rule
- * body:
- * {
- *   prayer,
- *   mode,
- *   manual?: { azan, iqaamat },
- *   auto?: { azan_offset_minutes, iqaamat_offset_minutes }
- * }
  */
 export const PUT = withAuth("super_admin", async (req, ctx) => {
   const { id } = await ctx.params;
   const { prayer, mode, manual, auto } = await req.json();
 
-  if (!mongoose.isValidObjectId(id))
+  if (!mongoose.isValidObjectId(id)) {
     return {
       status: 400,
       json: { success: false, message: "Invalid masjid ID" },
     };
+  }
 
-  if (!prayer || !mode)
+  if (!prayer || !mode) {
     return {
       status: 400,
       json: { success: false, message: "Prayer and mode are required" },
     };
+  }
 
-  if (prayer === "maghrib" && mode !== "auto")
+  if (prayer === "maghrib" && mode !== "auto") {
     return {
       status: 400,
       json: { success: false, message: "Maghrib must be auto" },
     };
+  }
 
-  if (prayer !== "maghrib" && mode === "auto")
+  if (prayer !== "maghrib" && mode === "auto") {
     return {
       status: 400,
       json: { success: false, message: "Only Maghrib can be auto" },
     };
+  }
 
   const rule =
     mode === "auto"
@@ -81,18 +88,18 @@ export const PUT = withAuth("super_admin", async (req, ctx) => {
           prayer,
           mode: "manual",
           manual: {
-            azan: normalizeTime(manual?.azan, prayer),
-            iqaamat: normalizeTime(manual?.iqaamat, prayer),
+            azan: safeMinutes(manual?.azan),
+            iqaamat: safeMinutes(manual?.iqaamat),
           },
         };
 
-  const doc = await MasjidPrayerConfig.findOneAndUpdate(
+  const updated = await MasjidPrayerConfig.findOneAndUpdate(
     { masjid: id, "rules.prayer": prayer },
     { $set: { "rules.$": rule } },
     { new: true },
   );
 
-  if (!doc) {
+  if (!updated) {
     await MasjidPrayerConfig.findOneAndUpdate(
       { masjid: id },
       { $push: { rules: rule } },

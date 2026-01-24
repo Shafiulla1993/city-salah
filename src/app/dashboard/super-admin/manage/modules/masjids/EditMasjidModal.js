@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import Modal from "@/components/admin/Modal";
 import { notify } from "@/lib/toast";
 import MasjidForm from "./MasjidForm";
+import { minutesToHHMM } from "@/lib/prayer/timeHelpers";
 
 export default function EditMasjidModal({
   open,
@@ -87,14 +88,28 @@ export default function EditMasjidModal({
           publicId: m.imagePublicId || "",
         });
 
+        const rulesArr = rRes?.data?.rules || [];
+
         const normalized = {};
-        (rRes.data?.rules || []).forEach((r) => {
+        rulesArr.forEach((r) => {
           normalized[r.prayer] = {
             mode: r.mode,
-            manual: r.manual,
+            manual: r.manual
+              ? {
+                  azan:
+                    r.manual.azan !== null && r.manual.azan !== undefined
+                      ? minutesToHHMM(Number(r.manual.azan))
+                      : "",
+                  iqaamat:
+                    r.manual.iqaamat !== null && r.manual.iqaamat !== undefined
+                      ? minutesToHHMM(Number(r.manual.iqaamat))
+                      : "",
+                }
+              : undefined,
             auto: r.auto,
           };
         });
+
         setPrayerRules(normalized);
       } catch (err) {
         console.error(err);
