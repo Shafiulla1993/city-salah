@@ -42,11 +42,11 @@ export default async function AreaPage({ params }) {
   if (!area) notFound();
 
   const masjids = await serverFetch(
-    `/api/public/masjids/index?city=${city._id}`
+    `/api/public/masjids?mode=index&cityId=${city._id}`
   );
 
   const areaMasjids = masjids.filter(
-    (m) => String(m.areaId) === String(area._id)
+    (m) => String(m.areaSlug) === String(area.slug)
   );
 
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([

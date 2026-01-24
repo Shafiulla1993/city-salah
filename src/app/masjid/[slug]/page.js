@@ -1,17 +1,21 @@
 // src/app/masjid/[slug]/page.js
 
-import { permanentRedirect } from "next/navigation";
+import { permanentRedirect, notFound } from "next/navigation";
 import { serverFetch } from "@/lib/http/serverFetch";
 
 export default async function MasjidResolver({ params }) {
   const { slug } = await params;
 
-  const masjid = await serverFetch(`/api/public/masjids/${slug}`).catch(
-    () => null,
+  // Legacy lookup: search index
+  const rows = await serverFetch("/api/public/masjids?mode=index").catch(
+    () => [],
   );
-  if (!masjid) permanentRedirect("/404");
 
+  const masjid = rows.find((m) => m.slug === slug);
+  if (!masjid) notFound();
+
+  // 301 redirect to canonical URL
   permanentRedirect(
-    `/${masjid.city.slug}/${masjid.area.slug}/masjid/${masjid.slug}`,
+    `/${masjid.citySlug}/${masjid.areaSlug}/masjid/${masjid.slug}`
   );
 }
