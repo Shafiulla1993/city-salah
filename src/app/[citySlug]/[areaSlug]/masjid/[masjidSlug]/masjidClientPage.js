@@ -40,10 +40,34 @@ export default function MasjidClientPage({ citySlug, areaSlug, masjidSlug }) {
   if (!masjid || !masjidTimings) return null;
 
   return (
-    <MasjidDetailsLayout
-      masjid={masjid.masjid}
-      masjidTimings={masjidTimings}
-      generalTimings={generalTimings}
-    />
+    <>
+  {/* SEO Visible Content */}
+  <section className="sr-only">
+    <h1>
+      {masjid.masjid.name} Masjid in {masjid.area.name}, {masjid.city.name}
+    </h1>
+
+    <p>
+      {masjid.masjid.name} is a mosque located in {masjid.area.name}, {masjid.city.name}.
+      Find daily prayer timings for Fajr, Zohar, Asr, Maghrib and Isha, Jumma time,
+      address and directions.
+    </p>
+
+    <h2>Prayer Timings of {masjid.masjid.name} in {masjid.area.name}</h2>
+    <h3>Nearest Masjid in {masjid.area.name}, {masjid.city.name}</h3>
+  </section>
+
+  <MasjidDetailsLayout
+  masjid={{
+    ...masjid.masjid,
+    city: masjid.city,
+    area: masjid.area,
+  }}
+  masjidTimings={masjidTimings}
+  generalTimings={generalTimings}
+/>
+
+</>
+
   );
 }

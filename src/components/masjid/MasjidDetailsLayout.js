@@ -79,6 +79,7 @@ export default function MasjidDetailsLayout({
   const coords = masjid?.location?.coordinates;
   const lat = coords?.[1];
   const lng = coords?.[0];
+  
 
   return (
     <div className="mx-auto max-w-7xl pt-6 space-y-4">
@@ -88,10 +89,10 @@ export default function MasjidDetailsLayout({
           <h1 className="text-4xl font-bold text-slate-100 drop-shadow-[0_2px_6px_rgba(0,0,0,0.7)]">
             {masjid.name}
           </h1>
+          <h2 className="text-base font-semibold text-white mt-1 drop-shadow">
+            Masjid in {masjid.area?.name}, {masjid.city?.name} – Prayer Timings & Location
+          </h2>
 
-          <p className="text-sm text-slate-600 mt-1">
-            {masjid.area?.name}, {masjid.city?.name}
-          </p>
         </div>
 
         <button
@@ -110,14 +111,17 @@ export default function MasjidDetailsLayout({
             <div className="w-full aspect-[4/5] bg-slate-200 rounded-xl overflow-hidden">
               <img
                 src={masjid.imageUrl || "/Default_Image.png"}
-                alt={masjid.name}
+                alt={`${masjid.name} Masjid in ${masjid.area?.name}, ${masjid.city?.name}`}
                 className="w-full h-full object-contain"
               />
             </div>
           </GlassCard>
 
           <GlassCard>
-            <h3 className="font-bold mb-1">Address</h3>
+            <h3 className="font-bold mb-1">
+              Address of {masjid.name} Masjid, {masjid.area?.name}
+            </h3>
+
             <p className="text-sm text-slate-700">{masjid.address || "--"}</p>
 
             {lat && lng && (
