@@ -1,5 +1,6 @@
 // src/app/sitemap-areas.xml/route.js
 
+// src/app/sitemap-areas.xml/route.js
 import { serverFetch } from "@/lib/http/serverFetch";
 
 export async function GET() {
@@ -11,12 +12,18 @@ export async function GET() {
   const urls = areas
     .map(
       (a) => `
-    <url>
-      <loc>${base}/city/${a.citySlug}/area/${a.slug}</loc>
-      <lastmod>${now}</lastmod>
-      <changefreq>weekly</changefreq>
-      <priority>0.7</priority>
-    </url>`
+  <url>
+    <loc>${base}/${a.citySlug}/${a.slug}</loc>
+    <lastmod>${now}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>${base}/${a.citySlug}/${a.slug}/qibla</loc>
+    <lastmod>${now}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>`,
     )
     .join("");
 
@@ -25,6 +32,6 @@ export async function GET() {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls}
 </urlset>`,
-    { headers: { "Content-Type": "application/xml" } }
+    { headers: { "Content-Type": "application/xml" } },
   );
 }

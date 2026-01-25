@@ -1,11 +1,12 @@
 // src/app/qibla/page.js
 
-import { redirect } from "next/navigation";
+import QiblaResolverClient from "./QiblaResolverClient";
 
 export const metadata = {
+  title: "Qibla Direction Near You | CitySalah",
   robots: "noindex, follow",
 };
 
-export default function QiblaRootRedirect() {
-  redirect("/nearest-masjid");
+export default function QiblaPage() {
+  return <QiblaResolverClient />;
 }

@@ -18,6 +18,7 @@ export default function LocationSheet({
   selectedArea,
   setSelectedCity,
   setSelectedArea,
+  mode = "masjid", // "masjid" | "qibla"
 }) {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -128,6 +129,23 @@ export default function LocationSheet({
                 </option>
               ))}
             </select>
+
+            {mode === "qibla" && selectedCity && selectedArea && (
+              <button
+                onClick={() => {
+                  const city = cities.find((c) => c._id === selectedCity);
+                  const area = areas.find((a) => a._id === selectedArea);
+
+                  if (!city || !area) return;
+
+                  window.location.assign(`/${city.slug}/${area.slug}/qibla`);
+                  onClose();
+                }}
+                className="w-full mb-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold"
+              >
+                View Qibla Direction for this Area
+              </button>
+            )}
 
             {/* SEARCH */}
             <label className="text-sm font-medium text-slate-700">

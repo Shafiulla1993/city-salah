@@ -14,20 +14,13 @@ export async function proxy(request) {
   }
 
   // 🔁 Qibla canonical redirect
-  if (path === "/qibla") {
-    return NextResponse.redirect(new URL("/", request.url), 301);
-  }
-
+  // Legacy /qibla/mysore → /mysore/qibla
   if (path.startsWith("/qibla/")) {
-    const parts = path.split("/").filter(Boolean);
-    const citySlug = parts[1];
-
-    if (citySlug) {
-      return NextResponse.redirect(
-        new URL(`/${citySlug}/qibla`, request.url),
-        301,
-      );
-    }
+    const citySlug = path.split("/")[2];
+    return NextResponse.redirect(
+      new URL(`/${citySlug}/qibla`, request.url),
+      301,
+    );
   }
 
   const protectedPaths = ["/dashboard", "/super-admin", "/masjid-admin"];

@@ -1,4 +1,4 @@
-// src/app/qibla/QiblaClient.js
+// src/app/qibla/QiblaResolverClient.js
 
 "use client";
 
@@ -6,14 +6,16 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useMasjidStore } from "@/store/useMasjidStore";
 
-export default function QiblaClient() {
+export default function QiblaResolverClient() {
   const router = useRouter();
   const { detectMyCoordsOnly, coords, loadingLocation } = useMasjidStore();
 
+  // Trigger GPS on load (like nearest-masjid)
   useEffect(() => {
     detectMyCoordsOnly();
   }, []);
 
+  // When coords are available, resolve nearest AREA
   useEffect(() => {
     if (!coords) return;
 
@@ -25,6 +27,7 @@ export default function QiblaClient() {
       if (!res.ok) return;
 
       const data = await res.json();
+
       router.replace(`/${data.city.slug}/${data.area.slug}/qibla`);
     };
 

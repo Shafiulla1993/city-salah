@@ -180,6 +180,49 @@ export const useMasjidStore = create((set, get) => ({
     );
   },
 
+  /* ------------ GPS Only (No Resolve, No Redirect) ------------ */
+  detectMyCoordsOnly: async () => {
+    set({ loadingLocation: true });
+
+    if (!navigator.geolocation) {
+      set({ loadingLocation: false });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        set({
+          gpsAllowed: true,
+          coords: {
+            lat,
+            lng,
+            accuracy: pos.coords.accuracy,
+            source: "gps",
+          },
+        });
+
+        saveCache({
+          coords: {
+            lat,
+            lng,
+            accuracy: pos.coords.accuracy,
+            source: "gps",
+          },
+          source: "gps",
+        });
+
+        set({ loadingLocation: false });
+      },
+      () => {
+        set({ loadingLocation: false });
+      },
+      { enableHighAccuracy: false, timeout: 8000 },
+    );
+  },
+
   /* ------------ Init (Runs Once) ------------ */
 
   init: async (routerParams = {}) => {

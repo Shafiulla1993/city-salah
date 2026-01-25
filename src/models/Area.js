@@ -15,6 +15,8 @@ const AreaSchema = new Schema({
 
 // Compound unique index per city + slug
 AreaSchema.index({ city: 1, slug: 1 }, { unique: true });
+// Geo index for location queries
+AreaSchema.index({ center: "2dsphere" });
 
 AreaSchema.plugin(auditPlugin);
 
