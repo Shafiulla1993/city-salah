@@ -1,5 +1,5 @@
 // src/app/api/auth/send-verification/route.js
-// src/app/api/auth/send-verification/route.js
+
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -49,19 +49,21 @@ export async function POST(request) {
     if (user.emailVerified) {
       return NextResponse.json(
         { message: "Email already verified" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const rawToken = crypto.randomBytes(32).toString("hex");
-    const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
 
     user.emailVerifyToken = hashedToken;
     user.emailVerifyExpire = Date.now() + 1000 * 60 * 60 * 24;
     await user.save();
 
-    const baseUrl =
-      process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
     const verifyLink = `${baseUrl}/auth/verify-email?token=${rawToken}`;
 

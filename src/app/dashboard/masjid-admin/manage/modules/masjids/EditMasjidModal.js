@@ -4,7 +4,6 @@
 
 import { useEffect, useState } from "react";
 import Modal from "@/components/admin/Modal";
-import { mAdminAPI } from "@/lib/api/mAdmin";
 import { notify } from "@/lib/toast";
 import ContactPersonsForm from "./ContactPersonsForm";
 import PrayerRulesForm from "@/app/dashboard/super-admin/manage/modules/masjids/PrayerRulesForm";
@@ -20,6 +19,7 @@ export default function EditMasjidModal({
   const [form, setForm] = useState({
     imageUrl: "",
     imagePublicId: "",
+    address: "",
     contacts: {},
     prayerRules: {},
   });
@@ -32,60 +32,53 @@ export default function EditMasjidModal({
   useEffect(() => {
     if (!open || !masjidId) return;
 
-    async function load() {
-      setLoading(true);
+    (async () => {
       try {
-        const res = await mAdminAPI.getMasjidById(masjidId);
-        const m = res?.data;
-        if (!m) throw new Error("No masjid data");
+        setLoading(true);
 
-        /**
-         * Convert prayerTimings → editable rules shape
-         */
-        const timings = m.prayerTimings?.[0] || {};
+        const [mRes, rRes] = await Promise.all([
+          fetch(`/api/masjid-admin/masjids/${masjidId}`, {
+            credentials: "include",
+          }).then((r) => r.json()),
+          fetch(`/api/masjid-admin/masjids/${masjidId}/prayer-rules`, {
+            credentials: "include",
+          }).then((r) => r.json()),
+        ]);
+
+        const m = mRes.data;
+
+        const rulesArr = rRes?.data?.rules || [];
         const normalizedRules = {};
 
-        Object.entries(timings).forEach(([prayer, data]) => {
-          if (!data) return;
-
-          if (prayer === "maghrib") {
-            normalizedRules.maghrib = {
-              mode: "auto",
-              auto: {
-                azan_offset_minutes: data.azan === "AUTO" ? 0 : 0,
-                iqaamat_offset_minutes: data.iqaamat === "AUTO" ? 0 : 0,
-              },
-            };
-          } else {
-            normalizedRules[prayer] = {
-              mode: "manual",
-              manual: {
-                azan: data.azan || "",
-                iqaamat: data.iqaamat || "",
-              },
-            };
-          }
+        rulesArr.forEach((r) => {
+          normalizedRules[r.prayer] = {
+            mode: r.mode,
+            manual: r.manual
+              ? {
+                  azan: r.manual.azan || "",
+                  iqaamat: r.manual.iqaamat || "",
+                }
+              : undefined,
+            auto: r.auto,
+          };
         });
 
         setForm({
           imageUrl: m.imageUrl || "",
           imagePublicId: m.imagePublicId || "",
-          contacts: {
-            imam: m.contacts?.find((c) => c.role === "imam") || {},
-            mozin: m.contacts?.find((c) => c.role === "mozin") || {},
-            mutawalli: m.contacts?.find((c) => c.role === "mutawalli") || {},
-          },
+          address: m.address || "",
+          contacts: Object.fromEntries(
+            (m.contacts || []).map((c) => [c.role, c]),
+          ),
           prayerRules: normalizedRules,
         });
       } catch (err) {
-        console.error("EditMasjidModal load error:", err);
+        console.error(err);
         notify.error("Failed to load masjid");
       } finally {
         setLoading(false);
       }
-    }
-
-    load();
+    })();
   }, [open, masjidId]);
 
   /* ---------- IMAGE ---------- */
@@ -95,37 +88,32 @@ export default function EditMasjidModal({
     try {
       setLoading(true);
 
-      // 1️⃣ Upload (multipart)
-      const uploaded = await mAdminAPI.uploadMasjidImage(file);
+      const fd = new FormData();
+      fd.append("image", file);
 
-      console.log("Uploaded image:", uploaded); // 🔍 DEBUG
-
-      // 🔴 IMPORTANT: uploaded MUST contain imageUrl
-      if (!uploaded?.data?.imageUrl) {
-        throw new Error("Upload did not return imageUrl");
-      }
+      const uploadRes = await fetch("/api/masjid-admin/masjids/upload-image", {
+        method: "POST",
+        body: fd,
+        credentials: "include",
+      });
+      const uploaded = await uploadRes.json();
 
       const payload = {
         imageUrl: uploaded.data.imageUrl,
         imagePublicId: uploaded.data.imagePublicId,
       };
 
-      console.log("Saving image payload:", payload); // 🔍 DEBUG
+      await fetch(`/api/masjid-admin/masjids/${masjidId}/image`, {
+        method: "PUT",
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
 
-      // 2️⃣ Save (JSON)
-      await mAdminAPI.updateMasjidImage(masjidId, payload);
-
-      // 3️⃣ Update local state (preview + submit)
-      setForm((prev) => ({
-        ...prev,
-        imageUrl: payload.imageUrl,
-        imagePublicId: payload.imagePublicId,
-      }));
-
+      setForm((prev) => ({ ...prev, ...payload }));
       notify.success("Image updated");
     } catch (err) {
       console.error(err);
-      notify.error(err.message || "Image update failed");
+      notify.error("Image update failed");
     } finally {
       setLoading(false);
     }
@@ -134,26 +122,37 @@ export default function EditMasjidModal({
   /* ---------- SUBMIT ---------- */
   async function submit(e) {
     e.preventDefault();
-    setLoading(true);
 
     try {
-      const payload = {
-        imageUrl: form.imageUrl,
-        imagePublicId: form.imagePublicId,
-        contacts: Object.entries(form.contacts)
-          .filter(([, v]) => v?.name)
-          .map(([role, v]) => ({ role, ...v })),
-        prayerRules: form.prayerRules,
-      };
+      setLoading(true);
 
-      const res = await mAdminAPI.updateMasjid(masjidId, payload);
-      if (!res?.success) throw new Error(res.message);
+      // 1. Update address + contacts
+      await fetch(`/api/masjid-admin/masjids/${masjidId}/update`, {
+        method: "PUT",
+        credentials: "include",
+        body: JSON.stringify({
+          address: form.address,
+          contacts: Object.entries(form.contacts)
+            .filter(([, v]) => v?.name)
+            .map(([role, v]) => ({ role, ...v })),
+        }),
+      });
+
+      // 2. Update prayer rules
+      for (const [prayer, rule] of Object.entries(form.prayerRules)) {
+        await fetch(`/api/masjid-admin/masjids/${masjidId}/prayer-rules`, {
+          method: "PUT",
+          credentials: "include",
+          body: JSON.stringify({ prayer, ...rule }),
+        });
+      }
 
       notify.success("Masjid updated");
-      onUpdated?.(res.data);
+      onUpdated?.();
       onClose();
     } catch (err) {
-      notify.error(err.message || "Update failed");
+      console.error(err);
+      notify.error("Update failed");
     } finally {
       setLoading(false);
     }
@@ -181,14 +180,24 @@ export default function EditMasjidModal({
             />
           </div>
 
+          {/* ADDRESS */}
+          <div>
+            <label className="block mb-1 font-medium">Address</label>
+            <textarea
+              className="border rounded w-full p-2"
+              rows={2}
+              value={form.address}
+              onChange={(e) => update("address", e.target.value)}
+            />
+          </div>
+
           {/* CONTACTS */}
           <ContactPersonsForm
             contacts={form.contacts}
             onChange={(v) => update("contacts", v)}
           />
 
-          {/* PRAYERS */}
-
+          {/* PRAYER RULES */}
           <PrayerRulesForm
             value={form.prayerRules}
             onChange={(v) => update("prayerRules", v)}

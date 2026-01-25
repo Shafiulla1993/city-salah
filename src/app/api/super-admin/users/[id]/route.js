@@ -124,17 +124,26 @@ export const PUT = withAuth("super_admin", async (request, { params }) => {
 /**
  * DELETE /api/super-admin/users/:id
  */
-export const DELETE = withAuth("super_admin", async (_req, { params }) => {
+export const DELETE = withAuth("super_admin", async (req, ctx) => {
   await connectDB();
-  const { id } = await params;
 
-  if (!mongoose.isValidObjectId(id))
-    return Response.json(
-      { success: false, message: "Invalid user id" },
-      { status: 400 },
-    );
+  const { id } = await ctx.params;
 
-  await User.findByIdAndDelete(id);
+  if (!mongoose.isValidObjectId(id)) {
+    return {
+      status: 400,
+      json: { success: false, message: "Invalid user ID" },
+    };
+  }
 
-  return Response.json({ success: true });
+  const deleted = await User.findByIdAndDelete(id);
+
+  if (!deleted) {
+    return { status: 404, json: { success: false, message: "User not found" } };
+  }
+
+  return {
+    status: 200,
+    json: { success: true, message: "User deleted successfully" },
+  };
 });

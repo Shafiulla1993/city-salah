@@ -2,102 +2,76 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Modal from "@/components/admin/Modal";
-import { mAdminAPI } from "@/lib/api/mAdmin";
 import { notify } from "@/lib/toast";
 
 export default function EditAnnouncementModal({
   open,
   onClose,
-  announcementId,
+  announcement,
+  masjidId,
   onUpdated,
 }) {
+  const [title, setTitle] = useState(announcement.title);
+  const [body, setBody] = useState(announcement.body);
   const [loading, setLoading] = useState(false);
-  const [initial, setInitial] = useState(null);
-  const [form, setForm] = useState({ title: "", body: "", images: [] });
-
-  function update(k, v) {
-    setForm((s) => ({ ...s, [k]: v }));
-  }
-
-  useEffect(() => {
-    if (!open || !announcementId) return;
-    (async () => {
-      setLoading(true);
-      try {
-        const res = await mAdminAPI.getAnnouncementById(announcementId);
-        const a = res?.data;
-        setInitial(a);
-        setForm({ title: a.title, body: a.body, images: [] });
-      } catch {
-        notify.error("Failed to load");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [open, announcementId]);
 
   async function submit(e) {
     e.preventDefault();
-    if (!initial) return;
-
-    const fd = new FormData();
-    fd.append("title", form.title); // always include
-    fd.append("body", form.body); // always include
-    for (const f of form.images) fd.append("file", f);
-
     setLoading(true);
+
     try {
-      const res = await mAdminAPI.updateAnnouncement(announcementId, fd);
-      if (res?.success) {
-        notify.success("Announcement updated");
-        onUpdated?.();
-        onClose();
-      } else notify.error(res?.message || "Update failed");
+      const res = await fetch(
+        `/api/masjid-admin/masjids/${masjidId}/announcements/${announcement._id}`,
+        {
+          method: "PUT",
+          credentials: "include",
+          body: JSON.stringify({ title, body }),
+        },
+      );
+
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message);
+
+      notify.success("Announcement updated");
+      onUpdated();
+    } catch (err) {
+      notify.error(err.message || "Update failed");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Edit Announcement" size="lg">
-      {loading && !initial ? (
-        <div className="py-10 text-center">Loading...</div>
-      ) : (
-        <form onSubmit={submit} className="space-y-5">
-          <input
-            className="border rounded w-full p-2"
-            value={form.title}
-            onChange={(e) => update("title", e.target.value)}
-          />
-          <textarea
-            className="border rounded w-full p-2"
-            rows={4}
-            value={form.body}
-            onChange={(e) => update("body", e.target.value)}
-          />
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={(e) => update("images", Array.from(e.target.files || []))}
-          />
+    <Modal open={open} onClose={onClose} title="Edit Announcement">
+      <form onSubmit={submit} className="space-y-4">
+        <input
+          className="border p-2 w-full rounded"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
 
-          <div className="flex justify-end gap-3">
-            <button
-              className="border px-4 py-2 rounded-lg"
-              type="button"
-              onClick={onClose}
-            >
-              Cancel
-            </button>
-            <button className="bg-slate-700 text-white px-4 py-2 rounded-lg">
-              {loading ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
-        </form>
-      )}
+        <textarea
+          className="border p-2 w-full rounded"
+          rows={4}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+        />
+
+        <div className="flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="border px-4 py-2 rounded"
+          >
+            Cancel
+          </button>
+          <button className="bg-slate-700 text-white px-4 py-2 rounded">
+            {loading ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </form>
     </Modal>
   );
 }

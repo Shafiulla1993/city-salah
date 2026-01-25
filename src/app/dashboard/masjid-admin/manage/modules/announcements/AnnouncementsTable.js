@@ -2,67 +2,72 @@
 
 "use client";
 
+import { useState } from "react";
+import EditAnnouncementModal from "./EditAnnouncementModal";
+import DeleteAnnouncementModal from "./DeleteAnnouncementModal";
+
 export default function AnnouncementsTable({
   announcements = [],
-  onEdit,
-  onDelete,
+  masjidId,
+  onRefresh,
 }) {
+  const [edit, setEdit] = useState(null);
+  const [del, setDel] = useState(null);
+
   if (!announcements.length)
-    return (
-      <p className="text-center text-gray-500 py-6">No announcements found.</p>
-    );
+    return <p className="text-center text-gray-500 py-6">No announcements</p>;
 
   return (
-    <div className="rounded-xl border shadow overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead className="bg-slate-200/70 text-slate-800">
-          <tr>
-            <th className="px-4 py-3 text-left">Title</th>
-            <th className="px-4 py-3 text-left">Body</th>
-            <th className="px-4 py-3 text-left">Created / Expiry</th>
-            <th className="px-4 py-3 text-right">Actions</th>
-          </tr>
-        </thead>
+    <div className="space-y-3">
+      {announcements.map((a) => (
+        <div
+          key={a._id}
+          className="border rounded p-3 flex justify-between items-start"
+        >
+          <div>
+            <p className="font-semibold">{a.title}</p>
+            <p className="text-sm text-gray-600">{a.body}</p>
+          </div>
 
-        <tbody className="divide-y divide-gray-200">
-          {announcements.map((a) => {
-            const created = new Date(a.createdAt);
-            const expires = new Date(created.getTime() + 24 * 60 * 60 * 1000); // +1 day
+          <div className="flex gap-2">
+            <button
+              className="text-blue-600 text-sm"
+              onClick={() => setEdit(a)}
+            >
+              Edit
+            </button>
+            <button className="text-red-600 text-sm" onClick={() => setDel(a)}>
+              Delete
+            </button>
+          </div>
+        </div>
+      ))}
 
-            return (
-              <tr key={a._id} className="hover:bg-slate-100 transition">
-                <td className="px-4 py-3 font-medium">{a.title}</td>
-                <td className="px-4 py-3 max-w-[400px] line-clamp-2">
-                  {a.body}
-                </td>
+      {edit && (
+        <EditAnnouncementModal
+          open
+          announcement={edit}
+          masjidId={masjidId}
+          onClose={() => setEdit(null)}
+          onUpdated={() => {
+            setEdit(null);
+            onRefresh();
+          }}
+        />
+      )}
 
-                <td className="px-4 py-3">
-                  {created.toLocaleString()}
-                  <br />
-                  <span className="text-xs text-red-700 font-medium">
-                    Expires: {expires.toLocaleString()}
-                  </span>
-                </td>
-
-                <td className="px-4 py-3 text-right space-x-2">
-                  <button
-                    onClick={() => onEdit(a._id)}
-                    className="px-3 py-1 rounded bg-slate-700 text-white text-xs hover:bg-slate-800"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => onDelete(a._id)}
-                    className="px-3 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      {del && (
+        <DeleteAnnouncementModal
+          open
+          announcement={del}
+          masjidId={masjidId}
+          onClose={() => setDel(null)}
+          onDeleted={() => {
+            setDel(null);
+            onRefresh();
+          }}
+        />
+      )}
     </div>
   );
 }

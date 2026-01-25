@@ -5,50 +5,99 @@ import { useEffect, useState } from "react";
 import Modal from "@/components/admin/Modal";
 import { Input } from "@/components/form/Input";
 import MultiSelect from "@/components/form/MultiSelect";
+import PasswordInput from "@/components/form/PasswordInput";
 import { notify } from "@/lib/toast";
+
+const emptyForm = {
+  name: "",
+  email: "",
+  password: "",
+  role: "public",
+  phone: "",
+  city: "",
+  area: "",
+  masjidId: [],
+};
 
 export default function AddUserModal({ open, onClose, onCreated }) {
   const [loading, setLoading] = useState(false);
+
   const [cities, setCities] = useState([]);
   const [areas, setAreas] = useState([]);
   const [masjids, setMasjids] = useState([]);
 
-  const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    password: "",
-    role: "public",
-    city: "",
-    area: "",
-    masjidId: [],
-  });
+  // User location
+  const [form, setForm] = useState(emptyForm);
+
+  // Masjid filter (UI only)
+  const [filterCity, setFilterCity] = useState("");
+  const [filterArea, setFilterArea] = useState("");
 
   const update = (k, v) => setForm((s) => ({ ...s, [k]: v }));
 
+  /* -------- RESET ON OPEN -------- */
+  useEffect(() => {
+    if (open) {
+      setForm(emptyForm);
+      setFilterCity("");
+      setFilterArea("");
+    }
+  }, [open]);
+
+  /* -------- LOAD MASTER DATA -------- */
   useEffect(() => {
     if (!open) return;
+
     Promise.all([
-      fetch("/api/super-admin/cities").then((r) => r.json()),
-      fetch("/api/super-admin/masjids").then((r) => r.json()),
-    ]).then(([c, m]) => {
+      fetch("/api/super-admin/cities?limit=1000", {
+        credentials: "include",
+      }).then((r) => r.json()),
+      fetch("/api/super-admin/areas?limit=5000", {
+        credentials: "include",
+      }).then((r) => r.json()),
+      fetch("/api/super-admin/masjids?limit=5000", {
+        credentials: "include",
+      }).then((r) => r.json()),
+    ]).then(([c, a, m]) => {
       setCities(c.data || []);
+      setAreas(a.data || []);
       setMasjids(m.data || []);
     });
   }, [open]);
 
-  useEffect(() => {
-    if (!form.city) return setAreas([]);
-    fetch(`/api/super-admin/areas?city=${form.city}`)
-      .then((r) => r.json())
-      .then((a) => setAreas(a.data || []));
-  }, [form.city]);
+  /* -------- USER AREA FILTER -------- */
+  const userAreas = areas.filter((a) => a.city?._id === form.city);
 
+  /* -------- MASJID FILTER -------- */
+  const filterAreas = areas.filter((a) => a.city?._id === filterCity);
+
+  const filteredMasjids = masjids.filter((m) => {
+    if (!filterCity) return false;
+    if (filterCity && !filterArea)
+      return String(m.city?._id) === String(filterCity);
+    return (
+      String(m.city?._id) === String(filterCity) &&
+      String(m.area?._id) === String(filterArea)
+    );
+  });
+
+  /* -------- SUBMIT -------- */
   async function submit(e) {
     e.preventDefault();
 
-    if (!form.name || !form.phone || !form.email || !form.password)
-      return notify.error("Name, phone, email and password are required");
+    if (
+      !form.name ||
+      !form.email ||
+      !form.password ||
+      !form.city ||
+      !form.area
+    ) {
+      return notify.error("Fill all required fields");
+    }
+
+    if (form.role === "masjid_admin" && !form.masjidId.length) {
+      return notify.error("Assign at least one masjid to Masjid Admin");
+    }
 
     setLoading(true);
     try {
@@ -58,13 +107,15 @@ export default function AddUserModal({ open, onClose, onCreated }) {
         credentials: "include",
         body: JSON.stringify(form),
       });
-      const json = await res.json();
 
+      const json = await res.json();
       if (json.success) {
         notify.success("User created");
         onCreated?.();
         onClose();
-      } else notify.error(json.message || "Create failed");
+      } else {
+        notify.error(json.message || "Create failed");
+      }
     } finally {
       setLoading(false);
     }
@@ -76,32 +127,35 @@ export default function AddUserModal({ open, onClose, onCreated }) {
         <div className="grid grid-cols-2 gap-3">
           <Input
             label="Name"
-            value={form.name}
+            value={form.name || ""}
             onChange={(e) => update("name", e.target.value)}
           />
-          <Input
-            label="Phone"
-            value={form.phone}
-            onChange={(e) => update("phone", e.target.value)}
-          />
+
           <Input
             label="Email"
-            value={form.email}
+            value={form.email || ""}
             onChange={(e) => update("email", e.target.value)}
           />
+
           <Input
+            label="Phone"
+            value={form.phone || ""}
+            onChange={(e) => update("phone", e.target.value)}
+          />
+
+          <PasswordInput
             label="Password"
-            type="password"
-            value={form.password}
+            value={form.password || ""}
             onChange={(e) => update("password", e.target.value)}
           />
         </div>
 
+        {/* USER LOCATION */}
         <div className="grid grid-cols-3 gap-3">
           <select
+            className="border px-3 py-2 rounded"
             value={form.role}
             onChange={(e) => update("role", e.target.value)}
-            className="border px-3 py-2 rounded"
           >
             <option value="public">Public</option>
             <option value="masjid_admin">Masjid Admin</option>
@@ -109,11 +163,14 @@ export default function AddUserModal({ open, onClose, onCreated }) {
           </select>
 
           <select
-            value={form.city}
-            onChange={(e) => update("city", e.target.value)}
             className="border px-3 py-2 rounded"
+            value={form.city}
+            onChange={(e) => {
+              update("city", e.target.value);
+              update("area", "");
+            }}
           >
-            <option value="">City</option>
+            <option value="">User City</option>
             {cities.map((c) => (
               <option key={c._id} value={c._id}>
                 {c.name}
@@ -122,12 +179,13 @@ export default function AddUserModal({ open, onClose, onCreated }) {
           </select>
 
           <select
-            value={form.area}
-            onChange={(e) => update("area", e.target.value)}
             className="border px-3 py-2 rounded"
+            value={form.area}
+            disabled={!form.city}
+            onChange={(e) => update("area", e.target.value)}
           >
-            <option value="">Area</option>
-            {areas.map((a) => (
+            <option value="">User Area</option>
+            {userAreas.map((a) => (
               <option key={a._id} value={a._id}>
                 {a.name}
               </option>
@@ -135,15 +193,60 @@ export default function AddUserModal({ open, onClose, onCreated }) {
           </select>
         </div>
 
+        {/* MASJID ASSIGNMENT (ONLY FOR MASJID ADMIN) */}
         {form.role === "masjid_admin" && (
-          <MultiSelect
-            options={masjids.map((m) => ({ value: m._id, label: m.name }))}
-            value={form.masjidId}
-            onChange={(v) => update("masjidId", v)}
-          />
+          <div className="space-y-3 border rounded-lg p-4 bg-slate-50">
+            <p className="font-semibold text-slate-700">Assign Masjids</p>
+
+            <div className="grid grid-cols-2 gap-3">
+              <select
+                className="border px-3 py-2 rounded"
+                value={filterCity}
+                onChange={(e) => {
+                  setFilterCity(e.target.value);
+                  setFilterArea("");
+                  update("masjidId", []);
+                }}
+              >
+                <option value="">Filter City</option>
+                {cities.map((c) => (
+                  <option key={c._id} value={c._id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                className="border px-3 py-2 rounded"
+                value={filterArea}
+                disabled={!filterCity}
+                onChange={(e) => {
+                  setFilterArea(e.target.value);
+                  update("masjidId", []);
+                }}
+              >
+                <option value="">Filter Area</option>
+                {filterAreas.map((a) => (
+                  <option key={a._id} value={a._id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <MultiSelect
+              options={filteredMasjids.map((m) => ({
+                value: m._id,
+                label: `${m.name} (${m.area?.name})`,
+              }))}
+              value={form.masjidId}
+              onChange={(v) => update("masjidId", v)}
+              placeholder="Select masjids"
+            />
+          </div>
         )}
 
-        <div className="flex justify-end gap-3">
+        <div className="flex justify-end gap-3 pt-4">
           <button type="button" onClick={onClose}>
             Cancel
           </button>
@@ -151,7 +254,7 @@ export default function AddUserModal({ open, onClose, onCreated }) {
             className="bg-slate-700 text-white px-4 py-2 rounded"
             disabled={loading}
           >
-            {loading ? "Saving..." : "Create"}
+            {loading ? "Saving..." : "Create User"}
           </button>
         </div>
       </form>
