@@ -15,11 +15,11 @@ export async function generateMetadata({ params }) {
   return {
     title: `Masjids in ${areaSlug.replace(/-/g, " ")}, ${citySlug.replace(
       /-/g,
-      " "
+      " ",
     )} | CitySalah`,
     description: `Find masjids in ${areaSlug.replace(
       /-/g,
-      " "
+      " ",
     )}, ${citySlug.replace(/-/g, " ")}.`,
     alternates: {
       canonical: `https://citysalah.in/city/${citySlug}/area/${areaSlug}`,
@@ -42,11 +42,11 @@ export default async function AreaPage({ params }) {
   if (!area) notFound();
 
   const masjids = await serverFetch(
-    `/api/public/masjids?mode=index&cityId=${city._id}`
+    `/api/public/masjids?mode=index&cityId=${city._id}`,
   );
 
   const areaMasjids = masjids.filter(
-    (m) => String(m.areaSlug) === String(area.slug)
+    (m) => String(m.areaSlug) === String(area.slug),
   );
 
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([

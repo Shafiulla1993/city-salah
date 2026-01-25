@@ -13,6 +13,23 @@ export async function proxy(request) {
     return NextResponse.redirect(new URL("/", request.url), 301);
   }
 
+  // 🔁 Qibla canonical redirect
+  if (path === "/qibla") {
+    return NextResponse.redirect(new URL("/", request.url), 301);
+  }
+
+  if (path.startsWith("/qibla/")) {
+    const parts = path.split("/").filter(Boolean);
+    const citySlug = parts[1];
+
+    if (citySlug) {
+      return NextResponse.redirect(
+        new URL(`/${citySlug}/qibla`, request.url),
+        301,
+      );
+    }
+  }
+
   const protectedPaths = ["/dashboard", "/super-admin", "/masjid-admin"];
   const isProtected = protectedPaths.some((p) => path.startsWith(p));
 
@@ -29,7 +46,10 @@ export async function proxy(request) {
     }
 
     // 🔐 Role based protection
-    if (path.startsWith("/dashboard/super-admin") && decoded.role !== "super_admin") {
+    if (
+      path.startsWith("/dashboard/super-admin") &&
+      decoded.role !== "super_admin"
+    ) {
       return NextResponse.redirect(new URL("/forbidden", request.url));
     }
 
@@ -55,7 +75,7 @@ export async function proxy(request) {
           message: "Too many requests, please try again later.",
           retryAfter: result.retryAfter,
         },
-        { status: 429 }
+        { status: 429 },
       );
     }
   }
@@ -65,6 +85,7 @@ export async function proxy(request) {
 
 export const proxyConfig = {
   matcher: [
+    "/qibla/:path*",
     "/dashboard/:path*",
     "/super-admin/:path*",
     "/masjid-admin/:path*",

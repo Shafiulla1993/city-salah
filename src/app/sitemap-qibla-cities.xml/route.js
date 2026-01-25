@@ -6,18 +6,17 @@ export async function GET() {
   const base = "https://citysalah.in";
   const now = new Date().toISOString();
 
-  // Fetch all cities
   const cities = await serverFetch("/api/public/cities");
 
   const urls = cities
     .map(
       (c) => `
     <url>
-      <loc>${base}/qibla/${c.slug}</loc>
+      <loc>${base}/${c.slug}/qibla</loc>
       <lastmod>${now}</lastmod>
       <changefreq>weekly</changefreq>
       <priority>0.7</priority>
-    </url>`
+    </url>`,
     )
     .join("");
 
@@ -26,6 +25,6 @@ export async function GET() {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls}
 </urlset>`,
-    { headers: { "Content-Type": "application/xml" } }
+    { headers: { "Content-Type": "application/xml" } },
   );
 }

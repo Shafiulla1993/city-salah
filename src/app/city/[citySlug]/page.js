@@ -35,7 +35,7 @@ export default async function CityPage({ params }) {
   const areas = await serverFetch(`/api/public/areas?cityId=${city._id}`);
 
   const masjids = await serverFetch(
-    `/api/public/masjids?mode=index&cityId=${city._id}`
+    `/api/public/masjids?mode=index&cityId=${city._id}`,
   );
 
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
