@@ -6,25 +6,49 @@ const GeneralAnnouncementSchema = new Schema({
   title: { type: String, required: true },
   body: { type: String, required: true },
 
-  // Targets: arrays so one announcement can target multiple cities/areas/masjids.
+  // Targets (empty = global)
   cities: [{ type: Schema.Types.ObjectId, ref: "City" }],
   areas: [{ type: Schema.Types.ObjectId, ref: "Area" }],
   masjids: [{ type: Schema.Types.ObjectId, ref: "Masjid" }],
 
-  images: [{ type: String }], // Cloudinary URLs
+  // Cloudinary URLs
+  images: [{ type: String }],
 
-  // Scheduling
-  startDate: { type: Date, required: true }, // when announcement becomes active
-  endDate: { type: Date, required: true },   // when announcement becomes inactive
+  // Schedule
+  startDate: { type: Date, required: true },
+  endDate: { type: Date, required: true },
 
-  // meta
+  // Draft / Publish
+  status: {
+    type: String,
+    enum: ["draft", "published"],
+    default: "draft",
+    index: true,
+  },
+
+  // TTL for drafts (auto delete after 30 minutes)
+  expiresAt: {
+    type: Date,
+    index: { expireAfterSeconds: 0 },
+  },
+
+  // Meta
   createdBy: { type: Schema.Types.ObjectId, ref: "User" },
-  createdAt: { type: Date, default: Date.now },
   updatedBy: { type: Schema.Types.ObjectId, ref: "User" },
+  createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+});
 
-  // soft / manual flags (optional) - kept for admin UI
-  active: { type: Boolean, default: true }, // admin can toggle; computed by date on read
+// Automatically manage expiresAt based on status
+GeneralAnnouncementSchema.pre("save", function (next) {
+  if (this.status === "draft") {
+    // 30 minutes TTL
+    this.expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+  } else {
+    // Published = no auto delete
+    this.expiresAt = null;
+  }
+  next();
 });
 
 GeneralAnnouncementSchema.plugin(auditPlugin);

@@ -1,51 +1,79 @@
 // src/app/api/super-admin/thoughts/route.js
-import connectDB from "@/lib/db";
 import { withAuth } from "@/lib/middleware/withAuth";
-import { parseMultipart } from "@/lib/middleware/parseMultipart";
-import { uploadFileToCloudinary } from "@/lib/cloudinary";
-import fs from "fs/promises";
-import {
-  getThoughtsController,
-  createThoughtController,
-} from "@/server/controllers/superadmin/thought.controller";
+import ThoughtOfDay from "@/models/ThoughtOfDay";
 
-export const GET = withAuth("super_admin", async (request) => {
-  await connectDB();
-  const url = new URL(request.url);
-  const query = Object.fromEntries(url.searchParams.entries());
-  const result = await getThoughtsController({ query });
-  return result; // 🔥 DO NOT wrap with Response.json
+export const GET = withAuth("super_admin", async (req) => {
+  const url = new URL(req.url);
+  const status = url.searchParams.get("status");
+  const search = url.searchParams.get("search");
+
+  const filter = {};
+
+  if (status) filter.status = status;
+  if (search) filter.text = { $regex: search, $options: "i" };
+
+  // Auto-archive expired published thoughts
+  await ThoughtOfDay.updateMany(
+    { status: "published", endDate: { $lt: new Date() } },
+    { $set: { status: "archived" } },
+  );
+
+  const data = await ThoughtOfDay.find(filter).sort({ startDate: -1 }).lean();
+
+  return Response.json({ success: true, data });
 });
 
-export const POST = withAuth("super_admin", async (request, ctx) => {
-  await connectDB();
+export const POST = withAuth("super_admin", async (req, ctx) => {
+  const { fields } = await import("@/lib/middleware/parseMultipart").then((m) =>
+    m.parseMultipart(req),
+  );
   const user = ctx.user;
 
-  const { fields, files } = await parseMultipart(request).catch(() => ({
-    fields: {},
-    files: {},
-  }));
+  const { text, startDate, endDate, status = "draft", images = [] } = fields;
 
-  const body = { ...fields };
-
-  const images = [];
-  const fileArray = Array.isArray(files.file)
-    ? files.file
-    : files.file
-    ? [files.file]
-    : [];
-
-  for (const f of fileArray) {
-    const uploaded = await uploadFileToCloudinary(
-      f.filepath || f.path,
-      "thoughts"
+  if (!text || !startDate || !endDate) {
+    return Response.json(
+      { success: false, message: "Text and date range required" },
+      { status: 400 },
     );
-    images.push(uploaded.secure_url);
-    await fs.unlink(f.filepath || f.path).catch(() => {});
   }
 
-  if (images.length) body.images = images;
+  const s = new Date(startDate);
+  const e = new Date(endDate);
 
-  const result = await createThoughtController({ body, user });
-  return result; // 🔥 DO NOT wrap with Response.json
+  if (s > e) {
+    return Response.json(
+      { success: false, message: "Invalid date range" },
+      { status: 400 },
+    );
+  }
+
+  if (status === "published") {
+    const clash = await ThoughtOfDay.findOne({
+      status: "published",
+      startDate: { $lte: e },
+      endDate: { $gte: s },
+    });
+
+    if (clash) {
+      return Response.json(
+        {
+          success: false,
+          message: "Another thought already active in this range",
+        },
+        { status: 400 },
+      );
+    }
+  }
+
+  const doc = await ThoughtOfDay.create({
+    text,
+    images: Array.isArray(images) ? images : [images],
+    startDate: s,
+    endDate: e,
+    status,
+    createdBy: user._id,
+  });
+
+  return Response.json({ success: true, data: doc }, { status: 201 });
 });

@@ -3,7 +3,6 @@
 
 import { useState } from "react";
 import Modal from "@/components/admin/Modal";
-import { adminAPI } from "@/lib/api/sAdmin";
 import { notify } from "@/lib/toast";
 
 export default function DeleteThoughtModal({
@@ -17,14 +16,24 @@ export default function DeleteThoughtModal({
   async function handleDelete() {
     if (!thoughtId) return;
     setLoading(true);
+
     try {
-      const res = await adminAPI.deleteThought(thoughtId);
-      if (res?.success) {
-        notify.success("Deleted");
-        onDeleted?.(thoughtId);
+      const res = await fetch(`/api/super-admin/thoughts/${thoughtId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      const data = await res.json();
+
+      if (data?.success) {
+        notify.success("Thought deleted");
+        onDeleted?.();
         onClose();
-      } else notify.error(res?.message || "Delete failed");
-    } catch {
+      } else {
+        notify.error(data?.message || "Delete failed");
+      }
+    } catch (err) {
+      console.error(err);
       notify.error("Delete failed");
     } finally {
       setLoading(false);
@@ -33,7 +42,7 @@ export default function DeleteThoughtModal({
 
   return (
     <Modal open={open} onClose={onClose} title="Delete Thought" size="sm">
-      <div className="space-y-6">
+      <div className="space-y-4">
         <p className="text-gray-700">
           Are you sure you want to delete this thought?
         </p>

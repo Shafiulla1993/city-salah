@@ -1,21 +1,17 @@
 // src/app/dashboard/super-admin/manage/modules/announcements/AddAnnouncementModal.js
 
 "use client";
-import { useState } from "react";
+
+import { useEffect, useState } from "react";
 import Modal from "@/components/admin/Modal";
 import { notify } from "@/lib/toast";
-import { adminAPI } from "@/lib/api/sAdmin";
 import CheckboxMultiSelect from "@/components/admin/CheckboxMultiSelect";
 
-export default function AddAnnouncementModal({
-  open,
-  onClose,
-  onCreated,
-  cities = [],
-  areas = [],
-  masjids = [],
-}) {
-  const [loading, setLoading] = useState(false);
+export default function AddAnnouncementModal({ open, onClose, onCreated }) {
+  const [cities, setCities] = useState([]);
+  const [areas, setAreas] = useState([]);
+  const [masjids, setMasjids] = useState([]);
+
   const [form, setForm] = useState({
     title: "",
     body: "",
@@ -27,134 +23,165 @@ export default function AddAnnouncementModal({
     images: [],
   });
 
-  const update = (k, v) => setForm((s) => ({ ...s, [k]: v }));
+  useEffect(() => {
+    if (!open) return;
 
-  async function submit(e) {
-    e.preventDefault();
-    if (!form.title.trim()) return notify.error("Title is required");
-    if (!form.body.trim()) return notify.error("Body is required");
-    if (!form.startDate || !form.endDate)
-      return notify.error("Date range is required");
+    setForm({
+      title: "",
+      body: "",
+      startDate: "",
+      endDate: "",
+      cityIds: [],
+      areaIds: [],
+      masjidIds: [],
+      images: [],
+    });
 
+    (async () => {
+      const [c, a, m] = await Promise.all([
+        fetch("/api/super-admin/cities", { credentials: "include" }),
+        fetch("/api/super-admin/areas?limit=2000", { credentials: "include" }),
+        fetch("/api/super-admin/masjids?limit=5000", {
+          credentials: "include",
+        }),
+      ]);
+
+      setCities((await c.json()).data || []);
+      setAreas((await a.json()).data || []);
+      setMasjids((await m.json()).data || []);
+    })();
+  }, [open]);
+
+  async function uploadImage(file) {
+    const fd = new FormData();
+    fd.append("file", file);
+
+    const res = await fetch("/api/uploads/announcement-image", {
+      method: "POST",
+      credentials: "include",
+      body: fd,
+    });
+
+    const data = await res.json();
+    return data.url;
+  }
+
+  async function handleSubmit(status = "draft") {
     const fd = new FormData();
     fd.append("title", form.title);
     fd.append("body", form.body);
     fd.append("startDate", form.startDate);
     fd.append("endDate", form.endDate);
+    fd.append("status", status);
 
     form.cityIds.forEach((id) => fd.append("cities[]", id));
     form.areaIds.forEach((id) => fd.append("areas[]", id));
     form.masjidIds.forEach((id) => fd.append("masjids[]", id));
-    form.images.forEach((f) => fd.append("images", f));
+    form.images.forEach((url) => fd.append("images", url));
 
-    setLoading(true);
-    try {
-      const res = await adminAPI.createAnnouncement(fd);
-      if (res?.success) {
-        notify.success("Announcement created");
-        onCreated?.();
-        onClose();
-        setForm({
-          title: "",
-          body: "",
-          startDate: "",
-          endDate: "",
-          cityIds: [],
-          areaIds: [],
-          masjidIds: [],
-          images: [],
-        });
-      } else notify.error(res?.message || "Create failed");
-    } catch {
-      notify.error("Create failed");
-    } finally {
-      setLoading(false);
+    const res = await fetch("/api/super-admin/general-announcements", {
+      method: "POST",
+      credentials: "include",
+      body: fd,
+    });
+
+    const data = await res.json();
+
+    if (data?.success) {
+      const detail = await fetch(
+        `/api/super-admin/general-announcements/${data.data._id}`,
+        { credentials: "include" },
+      ).then((r) => r.json());
+
+      notify.success(
+        status === "published" ? "Announcement Published" : "Draft Saved",
+      );
+      onCreated?.(detail.data);
+      onClose();
+    } else {
+      notify.error(data?.message || "Save failed");
     }
   }
 
   return (
     <Modal open={open} onClose={onClose} title="Add Announcement" size="lg">
-      <form onSubmit={submit} className="space-y-4">
-        {/* Title */}
+      <div className="space-y-4">
         <input
-          type="text"
+          className="w-full border px-3 py-2 rounded"
           placeholder="Title"
-          className="w-full border rounded-lg px-3 py-2 text-sm"
           value={form.title}
-          onChange={(e) => update("title", e.target.value)}
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
         />
 
-        {/* Body */}
         <textarea
+          className="w-full border px-3 py-2 rounded"
           rows={4}
-          className="w-full border rounded-lg px-3 py-2 text-sm"
-          placeholder="Enter message"
+          placeholder="Body"
           value={form.body}
-          onChange={(e) => update("body", e.target.value)}
+          onChange={(e) => setForm({ ...form, body: e.target.value })}
         />
 
-        {/* Dates */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <input
             type="date"
+            className="border px-3 py-2 rounded"
             value={form.startDate}
-            onChange={(e) => update("startDate", e.target.value)}
-            className="border rounded-lg px-3 py-2 w-full text-sm"
+            onChange={(e) => setForm({ ...form, startDate: e.target.value })}
           />
           <input
             type="date"
+            className="border px-3 py-2 rounded"
             value={form.endDate}
-            onChange={(e) => update("endDate", e.target.value)}
-            className="border rounded-lg px-3 py-2 w-full text-sm"
+            onChange={(e) => setForm({ ...form, endDate: e.target.value })}
           />
         </div>
 
-        {/* Multi-selects */}
         <CheckboxMultiSelect
-          label="Cities (optional)"
+          label="Cities"
           items={cities}
           selected={form.cityIds}
-          onChange={(val) => update("cityIds", val)}
+          onChange={(v) => setForm({ ...form, cityIds: v })}
         />
         <CheckboxMultiSelect
-          label="Areas (optional)"
+          label="Areas"
           items={areas}
           selected={form.areaIds}
-          onChange={(val) => update("areaIds", val)}
+          onChange={(v) => setForm({ ...form, areaIds: v })}
         />
         <CheckboxMultiSelect
-          label="Masjids (optional)"
+          label="Masjids"
           items={masjids}
           selected={form.masjidIds}
-          onChange={(val) => update("masjidIds", val)}
+          onChange={(v) => setForm({ ...form, masjidIds: v })}
         />
 
-        {/* Images */}
         <input
           type="file"
           multiple
           accept="image/*"
-          onChange={(e) => update("images", Array.from(e.target.files || []))}
-          className="text-sm"
+          onChange={async (e) => {
+            const files = Array.from(e.target.files || []);
+            const urls = [];
+            for (const f of files) urls.push(await uploadImage(f));
+            setForm((s) => ({ ...s, images: [...s.images, ...urls] }));
+          }}
         />
 
-        {/* Buttons */}
         <div className="flex justify-end gap-3">
           <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 border rounded-lg"
+            onClick={() => handleSubmit("draft")}
+            className="px-4 py-2 border rounded"
           >
-            Cancel
+            Save Draft
           </button>
           <button
-            type="submit"
-            className="px-4 py-2 rounded-lg bg-slate-700 text-white"
+            onClick={() => handleSubmit("published")}
+            className="px-4 py-2 bg-slate-700 text-white rounded"
           >
-            {loading ? "Saving..." : "Create"}
+            Publish
           </button>
         </div>
-      </form>
+      </div>
     </Modal>
   );
 }

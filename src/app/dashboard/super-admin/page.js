@@ -2,56 +2,69 @@
 
 "use client";
 
-import React, { useEffect, useState } from "react";
-import StatsCards from "./components/StatsCards";
-import QuickActions from "./components/QuickActions";
-import { adminAPI } from "@/lib/api/sAdmin";
+import { useEffect, useState } from "react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import StatsCardsSkeleton from "./components/skeletons/StatsCardsSkeleton";
-import QuickActionsSkeleton from "./components/skeletons/QuickActionsSkeleton";
+import AdminTabs from "@/components/admin/AdminTabs";
 import AdminCard from "@/components/admin/AdminCard";
+import StatsCards from "./components/StatsCards";
+import StatsCardsSkeleton from "./components/skeletons/StatsCardsSkeleton";
 
-export default function SuperAdminHome() {
+import UsersTab from "./manage/tabs/UsersTab";
+import CitiesTab from "./manage/tabs/CitiesTab";
+import AreasTab from "./manage/tabs/AreasTab";
+import MasjidsTab from "./manage/tabs/MasjidsTab";
+import TimingsTab from "./manage/tabs/TimingsTab";
+import ThoughtsTab from "./manage/tabs/ThoughtsTab";
+import GeneralAnnouncementTab from "./manage/tabs/GeneralAnnouncementTab";
+
+export default function SuperAdminDashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState("users");
+
+  const tabs = [
+    { key: "users", label: "Users" },
+    { key: "cities", label: "Cities" },
+    { key: "areas", label: "Areas" },
+    { key: "masjids", label: "Masjids" },
+    { key: "announcements", label: "Announcements" },
+    { key: "thoughts", label: "Thoughts" },
+    { key: "timings", label: "Prayer Timings" },
+  ];
 
   useEffect(() => {
-    let mounted = true;
-
-    async function load() {
-      setLoading(true);
-      try {
-        const data = await adminAPI.getDashboard();
-        if (!mounted) return;
-        setStats(data);
-      } catch (err) {
-        console.error("Dashboard fetch error:", err);
-      } finally {
-        if (mounted) setLoading(false);
-      }
+    async function loadStats() {
+      const res = await fetch("/api/super-admin/dashboard", {
+        credentials: "include",
+      });
+      const data = await res.json();
+      setStats(data);
+      setLoading(false);
     }
 
-    load();
-    return () => (mounted = false);
+    loadStats();
   }, []);
 
   return (
     <ProtectedRoute role="super_admin">
       <div className="space-y-6">
-        <header>
-          <h1 className="text-2xl font-bold text-slate-800">Super Admin Dashboard</h1>
-        </header>
-
+        {/* 🔢 Always on top */}
         <AdminCard>
           {loading ? <StatsCardsSkeleton /> : <StatsCards stats={stats} />}
         </AdminCard>
 
-        <AdminCard title="Quick Actions">
-          {loading ? <QuickActionsSkeleton /> : <QuickActions />}
-        </AdminCard>
+        {/* 📑 Tabs strip */}
+        <AdminTabs tabs={tabs} active={tab} onChange={setTab} />
 
-        <AdminCard title="Recent Activity">
-          <p className="text-gray-600">(coming soon)</p>
+        {/* 📂 Active panel */}
+        <AdminCard>
+          {tab === "users" && <UsersTab />}
+          {tab === "cities" && <CitiesTab />}
+          {tab === "areas" && <AreasTab />}
+          {tab === "masjids" && <MasjidsTab />}
+          {tab === "announcements" && <GeneralAnnouncementTab />}
+          {tab === "thoughts" && <ThoughtsTab />}
+          {tab === "timings" && <TimingsTab />}
         </AdminCard>
       </div>
     </ProtectedRoute>

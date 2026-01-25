@@ -1,59 +1,100 @@
 // src/app/api/super-admin/thoughts/[id]/route.js
-import connectDB from "@/lib/db";
 import { withAuth } from "@/lib/middleware/withAuth";
-import {
-  getThoughtController,
-  updateThoughtController,
-  deleteThoughtController,
-} from "@/server/controllers/superadmin/thought.controller";
-import { parseMultipart } from "@/lib/middleware/parseMultipart";
-import { uploadFileToCloudinary } from "@/lib/cloudinary";
-import fs from "fs/promises";
+import ThoughtOfDay from "@/models/ThoughtOfDay";
+import cloudinary from "@/lib/cloudinary";
 
-export const GET = withAuth("super_admin", async (request, ctx) => {
-  await connectDB();
-  const { id } = await ctx.params; // ✅ MUST AWAIT
-  const result = await getThoughtController({ id });
-  return Response.json(result.json, { status: result.status });
+function extractPublicId(url) {
+  const clean = url.split("?")[0];
+  const parts = clean.split("/");
+  const file = parts.pop();
+  const folder = parts.pop();
+  const name = file.split(".")[0];
+  return `${folder}/${name}`;
+}
+
+export const GET = withAuth("super_admin", async (req, { params }) => {
+  const { id } = await params;
+
+  const doc = await ThoughtOfDay.findById(id);
+  if (!doc)
+    return Response.json(
+      { success: false, message: "Not found" },
+      { status: 404 },
+    );
+
+  return Response.json({ success: true, data: doc });
 });
 
-export const PUT = withAuth("super_admin", async (request, ctx) => {
-  await connectDB();
-  const { id } = await ctx.params; // ✅ MUST AWAIT
-  const user = ctx.user;
+export const PUT = withAuth("super_admin", async (req, { params, user }) => {
+  const { id } = await params;
+  const { fields } = await import("@/lib/middleware/parseMultipart").then((m) =>
+    m.parseMultipart(req),
+  );
 
-  const { fields, files } = await parseMultipart(request).catch(() => ({
-    fields: {},
-    files: {},
-  }));
-
-  const body = { ...fields };
-  const images = [];
-
-  const fileArray = Array.isArray(files?.file)
-    ? files.file
-    : files?.file
-    ? [files.file]
-    : [];
-
-  for (const f of fileArray) {
-    const uploaded = await uploadFileToCloudinary(
-      f.filepath || f.path,
-      "thoughts"
+  const doc = await ThoughtOfDay.findById(id);
+  if (!doc)
+    return Response.json(
+      { success: false, message: "Not found" },
+      { status: 404 },
     );
-    images.push(uploaded.secure_url);
-    await fs.unlink(f.filepath || f.path).catch(() => {});
+
+  const { text, startDate, endDate, status, images } = fields;
+
+  const s = startDate ? new Date(startDate) : doc.startDate;
+  const e = endDate ? new Date(endDate) : doc.endDate;
+
+  if (status === "published") {
+    const clash = await ThoughtOfDay.findOne({
+      _id: { $ne: id },
+      status: "published",
+      startDate: { $lte: e },
+      endDate: { $gte: s },
+    });
+
+    if (clash) {
+      return Response.json(
+        { success: false, message: "Another thought overlaps" },
+        { status: 400 },
+      );
+    }
   }
 
-  if (images.length) body.images = images;
+  if (text !== undefined) doc.text = text;
+  if (startDate) doc.startDate = s;
+  if (endDate) doc.endDate = e;
+  if (status) doc.status = status;
+  if (images) doc.images = Array.isArray(images) ? images : [images];
 
-  const result = await updateThoughtController({ id, body, user });
-  return Response.json(result.json, { status: result.status });
+  doc.updatedBy = user._id;
+  doc.updatedAt = new Date();
+  await doc.save();
+
+  return Response.json({ success: true, data: doc });
 });
 
-export const DELETE = withAuth("super_admin", async (request, ctx) => {
-  await connectDB();
-  const { id } = await ctx.params; // ✅ MUST AWAIT
-  const result = await deleteThoughtController({ id });
-  return Response.json(result.json, { status: result.status });
+export const DELETE = withAuth("super_admin", async (req, { params }) => {
+  const { id } = await params;
+
+  const doc = await ThoughtOfDay.findById(id);
+  if (!doc)
+    return Response.json(
+      { success: false, message: "Not found" },
+      { status: 404 },
+    );
+
+  // 🔥 delete images from Cloudinary
+  if (Array.isArray(doc.images)) {
+    for (const url of doc.images) {
+      try {
+        const publicId = extractPublicId(url);
+        await cloudinary.uploader.destroy(publicId);
+      } catch (err) {
+        console.error("Cloudinary delete failed:", err);
+      }
+    }
+  }
+
+  await doc.deleteOne();
+
+  return Response.json({ success: true, message: "Deleted" });
 });

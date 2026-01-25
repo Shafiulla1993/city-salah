@@ -4,7 +4,6 @@
 
 import { useState } from "react";
 import Modal from "@/components/admin/Modal";
-import { adminAPI } from "@/lib/api/sAdmin";
 import { notify } from "@/lib/toast";
 
 export default function DeleteAnnouncementModal({
@@ -18,14 +17,24 @@ export default function DeleteAnnouncementModal({
   async function handleDelete() {
     if (!announcementId) return;
     setLoading(true);
+
     try {
-      const res = await adminAPI.deleteAnnouncement(announcementId);
-      if (res?.success) {
+      const res = await fetch(
+        `/api/super-admin/general-announcements/${announcementId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        },
+      );
+
+      const data = await res.json();
+
+      if (data?.success) {
         notify.success("Announcement deleted");
         onDeleted?.(announcementId);
         onClose();
       } else {
-        notify.error(res?.message || "Delete failed");
+        notify.error(data?.message || "Delete failed");
       }
     } catch (err) {
       console.error(err);
@@ -38,24 +47,17 @@ export default function DeleteAnnouncementModal({
   return (
     <Modal open={open} onClose={onClose} title="Delete Announcement" size="sm">
       <div className="space-y-4">
-        <p className="text-gray-700 text-sm">
-          Are you sure you want to delete this announcement?
-        </p>
+        <p>Are you sure you want to delete this announcement?</p>
         <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg border text-sm"
-          >
+          <button onClick={onClose} className="px-4 py-2 border rounded">
             Cancel
           </button>
           <button
-            type="button"
             onClick={handleDelete}
             disabled={loading}
-            className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm"
+            className="px-4 py-2 bg-red-600 text-white rounded"
           >
-            {loading ? "Deleting…" : "Yes, delete"}
+            {loading ? "Deleting…" : "Yes, Delete"}
           </button>
         </div>
       </div>

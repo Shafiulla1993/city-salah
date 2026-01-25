@@ -1,70 +1,88 @@
 // src/app/api/super-admin/general-announcements/route.js
+
 import { withAuth } from "@/lib/middleware/withAuth";
 import { parseMultipart } from "@/lib/middleware/parseMultipart";
-import { uploadFileToCloudinary } from "@/lib/cloudinary";
-import fs from "fs/promises";
-import {
-  getGeneralAnnouncementsController,
-  createGeneralAnnouncementController,
-} from "@/server/controllers/superadmin/generalAnnouncements.controller";
+import GeneralAnnouncement from "@/models/GeneralAnnouncement";
+import City from "@/models/City";
+import Area from "@/models/Area";
+import Masjid from "@/models/Masjid";
+import mongoose from "mongoose";
 
-// Convert incoming values into an array safely
-const fixList = (raw) => {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw;
+// helpers
+const one = (v) => (Array.isArray(v) ? v[0] : v);
+const normalizeIds = (v) => {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.map(String);
   try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed;
+    const p = JSON.parse(v);
+    if (Array.isArray(p)) return p.map(String);
   } catch {}
-  return String(raw)
+  return String(v)
     .split(",")
     .map((x) => x.trim())
     .filter(Boolean);
 };
 
-export const GET = withAuth("super_admin", async (request) => {
-  const url = request.nextUrl;
-  const query = Object.fromEntries(url.searchParams.entries());
-  return await getGeneralAnnouncementsController({ query });
-});
+async function validateIds(raw, Model) {
+  const ids = normalizeIds(raw);
+  if (!ids.length) return [];
+  const found = await Model.find({ _id: { $in: ids } })
+    .select("_id")
+    .lean();
+  return found.map((d) => d._id);
+}
 
-export const POST = withAuth("super_admin", async (request, ctx) => {
-  const user = ctx.user;
+/* =========================
+   GET – List
+========================= */
+export const GET = withAuth("super_admin", async (req) => {
+  const q = Object.fromEntries(req.nextUrl.searchParams.entries());
+  const filter = {};
 
-  const { fields, files } = await parseMultipart(request).catch(() => ({
-    fields: {},
-    files: {},
-  }));
-
-  const body = { ...fields };
-
-  if (Array.isArray(body.title)) body.title = body.title[0];
-  if (Array.isArray(body.body)) body.body = body.body[0];
-
-  // Multi-select IDs
-  body.cities = fixList(fields["cities[]"] || fields["cities"]);
-  body.areas = fixList(fields["areas[]"] || fields["areas"]);
-  body.masjids = fixList(fields["masjids[]"] || fields["masjids"]);
-
-  // Upload images
-  const uploaded = [];
-  const fileInputs = files?.images || files?.file;
-  const fileArray = Array.isArray(fileInputs)
-    ? fileInputs
-    : fileInputs
-    ? [fileInputs]
-    : [];
-
-  for (const f of fileArray) {
-    const up = await uploadFileToCloudinary(
-      f.filepath || f.path,
-      "announcements"
-    );
-    uploaded.push(up.secure_url || up.url);
-    await fs.unlink(f.filepath || f.path).catch(() => {});
+  if (q.search) {
+    filter.$or = [
+      { title: new RegExp(q.search, "i") },
+      { body: new RegExp(q.search, "i") },
+    ];
   }
 
-  body.images = uploaded;
+  const now = new Date();
+  if (q.status === "active") {
+    filter.startDate = { $lte: now };
+    filter.endDate = { $gte: now };
+  }
 
-  return await createGeneralAnnouncementController({ body, user });
+  const data = await GeneralAnnouncement.find(filter)
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return Response.json({ success: true, data });
+});
+
+/* =========================
+   POST – Create Draft / Publish
+========================= */
+export const POST = withAuth("super_admin", async (req, { user }) => {
+  const { fields } = await parseMultipart(req);
+
+  const title = one(fields.title);
+  const body = one(fields.body);
+  const startDate = new Date(one(fields.startDate));
+  const endDate = new Date(one(fields.endDate));
+  const status = one(fields.status) || "draft";
+
+  const doc = await GeneralAnnouncement.create({
+    title,
+    body,
+    startDate,
+    endDate,
+    status,
+    cities: await validateIds(fields["cities[]"], City),
+    areas: await validateIds(fields["areas[]"], Area),
+    masjids: await validateIds(fields["masjids[]"], Masjid),
+    images: normalizeIds(fields.images),
+    createdBy: user._id,
+  });
+
+  return Response.json({ success: true, data: doc }, { status: 201 });
 });

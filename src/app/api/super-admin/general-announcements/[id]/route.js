@@ -1,81 +1,110 @@
 // src/app/api/super-admin/general-announcements/[id]/route.js
 import { withAuth } from "@/lib/middleware/withAuth";
 import { parseMultipart } from "@/lib/middleware/parseMultipart";
-import { uploadFileToCloudinary } from "@/lib/cloudinary";
-import fs from "fs/promises";
-import {
-  getGeneralAnnouncementController,
-  updateGeneralAnnouncementController,
-  deleteGeneralAnnouncementController,
-} from "@/server/controllers/superadmin/generalAnnouncements.controller";
+import GeneralAnnouncement from "@/models/GeneralAnnouncement";
+import City from "@/models/City";
+import Area from "@/models/Area";
+import Masjid from "@/models/Masjid";
+import mongoose from "mongoose";
+import cloudinary from "@/lib/cloudinary";
 
-// Convert incoming field to clean array
-const fixList = (raw) => {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw;
+function extractPublicId(url) {
+  // Example:
+  // https://res.cloudinary.com/demo/image/upload/v1700000000/announcements/abc123.jpg
+  const withoutQuery = url.split("?")[0];
+  const parts = withoutQuery.split("/");
+
+  const filename = parts.pop(); // abc123.jpg
+  const folder = parts.pop(); // announcements
+  const name = filename.split(".")[0]; // abc123
+
+  return folder ? `${folder}/${name}` : name;
+}
+
+const one = (v) => (Array.isArray(v) ? v[0] : v);
+const normalizeIds = (v) => {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.map(String);
   try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed;
+    const p = JSON.parse(v);
+    if (Array.isArray(p)) return p.map(String);
   } catch {}
-  return String(raw)
+  return String(v)
     .split(",")
     .map((x) => x.trim())
     .filter(Boolean);
 };
 
-export const GET = withAuth("super_admin", async (request, ctx) => {
-  const { id } = await ctx.params;
-  return await getGeneralAnnouncementController({ id });
+async function validateIds(raw, Model) {
+  const ids = normalizeIds(raw);
+  if (!ids.length) return [];
+  const found = await Model.find({ _id: { $in: ids } })
+    .select("_id")
+    .lean();
+  return found.map((d) => d._id);
+}
+
+export const GET = withAuth("super_admin", async (req, { params }) => {
+  const { id } = await params;
+  if (!mongoose.isValidObjectId(id))
+    return Response.json({ success: false }, { status: 400 });
+
+  const data = await GeneralAnnouncement.findById(id).lean();
+  return Response.json({ success: true, data });
 });
 
-export const PUT = withAuth("super_admin", async (request, ctx) => {
-  const { id } = await ctx.params;
-  const user = ctx.user;
+export const PUT = withAuth("super_admin", async (req, { params, user }) => {
+  const { id } = await params;
+  const ann = await GeneralAnnouncement.findById(id);
+  if (!ann) return Response.json({ success: false }, { status: 404 });
 
-  const { fields, files } = await parseMultipart(request).catch(() => ({
-    fields: {},
-    files: {},
-  }));
+  const { fields } = await parseMultipart(req);
 
-  const body = { ...fields };
-  if (Array.isArray(body.title)) body.title = body.title[0];
-  if (Array.isArray(body.body)) body.body = body.body[0];
+  ann.title = one(fields.title) ?? ann.title;
+  ann.body = one(fields.body) ?? ann.body;
+  ann.startDate = one(fields.startDate) ?? ann.startDate;
+  ann.endDate = one(fields.endDate) ?? ann.endDate;
+  ann.status = one(fields.status) ?? ann.status;
 
-  // Multi-select targets
-  body.cities = fixList(fields["cities[]"] || fields["cities"]);
-  body.areas = fixList(fields["areas[]"] || fields["areas"]);
-  body.masjids = fixList(fields["masjids[]"] || fields["masjids"]);
+  ann.cities = await validateIds(fields["cities[]"], City);
+  ann.areas = await validateIds(fields["areas[]"], Area);
+  ann.masjids = await validateIds(fields["masjids[]"], Masjid);
+  ann.images = normalizeIds(fields.images);
 
-  // Existing images to keep
-  let existingImages = [];
-  if (fields.images) {
-    try {
-      existingImages = JSON.parse(fields.images);
-    } catch {
-      existingImages = fixList(fields.images);
+  ann.updatedBy = user._id;
+  ann.updatedAt = new Date();
+
+  await ann.save();
+  return Response.json({ success: true, data: ann });
+});
+
+export const DELETE = withAuth("super_admin", async (req, { params }) => {
+  const { id } = await params;
+
+  const ann = await GeneralAnnouncement.findById(id);
+  if (!ann) {
+    return Response.json(
+      { success: false, message: "Announcement not found" },
+      { status: 404 },
+    );
+  }
+
+  // 🔥 Delete images from Cloudinary
+  if (Array.isArray(ann.images)) {
+    for (const url of ann.images) {
+      try {
+        const publicId = extractPublicId(url);
+        await cloudinary.uploader.destroy(publicId);
+      } catch (err) {
+        console.error("Failed to delete Cloudinary image:", url, err);
+      }
     }
   }
 
-  // Upload new images
-  const uploaded = [];
-  const input = files?.images || files?.file || files?.files;
-  const fileArr = Array.isArray(input) ? input : input ? [input] : [];
+  await ann.deleteOne();
 
-  for (const f of fileArr) {
-    const up = await uploadFileToCloudinary(
-      f.filepath || f.path,
-      "announcements"
-    );
-    uploaded.push(up.secure_url || up.url);
-    await fs.unlink(f.filepath || f.path).catch(() => {});
-  }
-
-  body.images = [...existingImages, ...uploaded];
-
-  return await updateGeneralAnnouncementController({ id, body, user });
-});
-
-export const DELETE = withAuth("super_admin", async (request, ctx) => {
-  const { id } = await ctx.params;
-  return await deleteGeneralAnnouncementController({ id });
+  return Response.json({
+    success: true,
+    message: "Announcement and images deleted",
+  });
 });
