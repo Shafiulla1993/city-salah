@@ -1,25 +1,11 @@
 // src/app/qibla/page.js
 
-import QiblaClient from "./QiblaClient";
+import { redirect } from "next/navigation";
 
 export const metadata = {
-  title: "Qibla Direction Finder | Find Qibla from Anywhere | CitySalah",
-  description:
-    "Find the Qibla direction from anywhere in the world using your device location and compass. CitySalah helps you locate the direction of the Kaaba in Makkah.",
+  robots: "noindex, follow",
 };
 
-export default function QiblaPage() {
-  return (
-    <main className="flex flex-col text-white">
-      <section className="max-w-3xl mx-auto px-4 pt-6 pb-2 text-center">
-        <h1 className="text-xl font-semibold">Qibla Direction Finder</h1>
-
-        <p className="mt-2 text-sm text-white/80">
-          Find the direction of the Kaaba in Makkah from anywhere in the world.
-        </p>
-      </section>
-
-      <QiblaClient />
-    </main>
-  );
+export default function QiblaRootRedirect() {
+  redirect("/nearest-masjid");
 }
