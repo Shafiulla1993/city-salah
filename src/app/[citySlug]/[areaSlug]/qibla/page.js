@@ -1,10 +1,11 @@
 // src/app/[citySlug]/[areaSlug]/qibla/page.js
 
 import { serverFetch } from "@/lib/http/serverFetch";
-import QiblaCompassClient from "@/app/qibla/QiblaCompassClient";
+import QiblaClient from "@/app/qibla/QiblaClient";
 
 export async function generateMetadata({ params }) {
   const { citySlug, areaSlug } = await params;
+
   const data = await serverFetch(
     `/api/public/areas/by-slug?citySlug=${citySlug}&areaSlug=${areaSlug}`,
   );
@@ -46,10 +47,5 @@ export default async function Page({ params }) {
     `/api/public/areas/by-slug?citySlug=${citySlug}&areaSlug=${areaSlug}`,
   );
 
-  return (
-    <QiblaCompassClient
-      initialLat={data.area.center.lat}
-      initialLng={data.area.center.lng}
-    />
-  );
+  return <QiblaClient cityName={data.city.name} areaName={data.area.name} />;
 }

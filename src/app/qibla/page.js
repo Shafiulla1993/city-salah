@@ -7,6 +7,6 @@ export const metadata = {
   robots: "noindex, follow",
 };
 
-export default function QiblaPage() {
+export default function Page() {
   return <QiblaResolverClient />;
 }

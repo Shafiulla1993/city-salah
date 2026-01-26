@@ -2,52 +2,46 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useMasjidStore } from "@/store/useMasjidStore";
 
 export default function QiblaResolverClient() {
   const router = useRouter();
-  const { detectMyCoordsOnly, coords, loadingLocation } = useMasjidStore();
+  const startedRef = useRef(false);
 
-  // Trigger GPS on load (like nearest-masjid)
   useEffect(() => {
-    detectMyCoordsOnly();
-  }, []);
+    if (startedRef.current) return;
+    startedRef.current = true;
 
-  // When coords are available, resolve nearest AREA
-  useEffect(() => {
-    if (!coords) return;
+    if (!navigator.geolocation) return;
 
-    const resolveArea = async () => {
-      const res = await fetch(
-        `/api/public/areas/nearest?lat=${coords.lat}&lng=${coords.lng}`,
-      );
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
 
-      if (!res.ok) return;
+        const res = await fetch(
+          `/api/public/areas/nearest?lat=${lat}&lng=${lng}`,
+        );
 
-      const data = await res.json();
+        if (!res.ok) return;
 
-      router.replace(`/${data.city.slug}/${data.area.slug}/qibla`);
-    };
-
-    resolveArea();
-  }, [coords]);
+        const data = await res.json();
+        router.replace(`/${data.city.slug}/${data.area.slug}/qibla`);
+      },
+      () => {
+        // Permission denied or error
+      },
+      { enableHighAccuracy: true },
+    );
+  }, [router]);
 
   return (
-    <section className="px-4 py-24 text-center text-white max-w-md mx-auto">
-      {loadingLocation ? (
-        <>
-          <h2 className="text-lg font-semibold mb-2">
-            Detecting your location…
-          </h2>
-          <p className="text-sm opacity-80">
-            Finding your area to show accurate Qibla direction.
-          </p>
-        </>
-      ) : (
-        <p className="text-sm opacity-80">Resolving your area…</p>
-      )}
+    <section className="py-24 text-center text-white">
+      <h2 className="text-lg font-semibold mb-2">Detecting your location…</h2>
+      <p className="text-sm opacity-80">
+        Finding your area to show accurate Qibla direction.
+      </p>
     </section>
   );
 }
