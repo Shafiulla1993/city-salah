@@ -7,11 +7,11 @@ import { useRouter } from "next/navigation";
 
 export default function QiblaResolverClient() {
   const router = useRouter();
-  const startedRef = useRef(false);
+  const started = useRef(false);
 
   useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
+    if (started.current) return;
+    started.current = true;
 
     if (!navigator.geolocation) return;
 
@@ -24,13 +24,16 @@ export default function QiblaResolverClient() {
           `/api/public/areas/nearest?lat=${lat}&lng=${lng}`,
         );
 
-        if (!res.ok) return;
+        if (!res.ok) {
+          router.replace(`/qibla/your-location`);
+          return;
+        }
 
         const data = await res.json();
         router.replace(`/${data.city.slug}/${data.area.slug}/qibla`);
       },
       () => {
-        // Permission denied or error
+        router.replace(`/qibla/your-location`);
       },
       { enableHighAccuracy: true },
     );

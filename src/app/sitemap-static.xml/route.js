@@ -6,13 +6,14 @@ export async function GET() {
   const now = new Date().toISOString();
 
   const urls = [
-    "/", // Home
-    "/masjid", // Masjid search page
+    "/",
+    "/masjid",
     "/nearest-masjid",
     "/auqatus-salah",
     "/updates",
     "/contact",
-    "/qibla",
+    "/qibla", // GPS entry (noindex but allowed in sitemap)
+    "/qibla/your-location", // Fallback canonical
   ];
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -25,7 +26,7 @@ export async function GET() {
     <lastmod>${now}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
-  </url>`
+  </url>`,
     )
     .join("")}
 </urlset>`;
