@@ -8,21 +8,13 @@ import { authCookie } from "@/lib/auth/cookies";
 export async function proxy(request) {
   const path = request.nextUrl.pathname;
 
-  // 🛡️ SEO & Bot Protection (fix undefined/undefined URLs forever)
-  if (path.startsWith("/undefined/undefined")) {
-    return NextResponse.redirect(new URL("/", request.url), 301);
-  }
+  // 🚫 REMOVE ALL QIBLA REWRITE LOGIC (LOCKED)
+  // Qibla routing is now handled by Next.js pages:
+  // /qibla
+  // /qibla/your-location
+  // /city/area/qibla
 
-  // 🔁 Qibla canonical redirect
-  // Legacy /qibla/mysore → /mysore/qibla
-  if (path.startsWith("/qibla/")) {
-    const citySlug = path.split("/")[2];
-    return NextResponse.redirect(
-      new URL(`/${citySlug}/qibla`, request.url),
-      301,
-    );
-  }
-
+  // 🔐 Protected routes
   const protectedPaths = ["/dashboard", "/super-admin", "/masjid-admin"];
   const isProtected = protectedPaths.some((p) => path.startsWith(p));
 
@@ -38,7 +30,6 @@ export async function proxy(request) {
       return NextResponse.redirect(new URL("/auth/login", request.url));
     }
 
-    // 🔐 Role based protection
     if (
       path.startsWith("/dashboard/super-admin") &&
       decoded.role !== "super_admin"
@@ -54,7 +45,7 @@ export async function proxy(request) {
     }
   }
 
-  // 🚦 Rate limit only public APIs
+  // 🚦 Rate limit public APIs
   if (path.startsWith("/api/public")) {
     const result = await rateLimit(request, {
       keyPrefix: "public",
@@ -64,10 +55,7 @@ export async function proxy(request) {
 
     if (!result.success) {
       return NextResponse.json(
-        {
-          message: "Too many requests, please try again later.",
-          retryAfter: result.retryAfter,
-        },
+        { message: "Too many requests, please try again later." },
         { status: 429 },
       );
     }

@@ -13,7 +13,10 @@ export default function QiblaResolverClient() {
     if (started.current) return;
     started.current = true;
 
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      router.replace("/qibla/your-location");
+      return;
+    }
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -25,15 +28,17 @@ export default function QiblaResolverClient() {
         );
 
         if (!res.ok) {
-          router.replace(`/qibla/your-location`);
+          router.replace("/qibla/your-location"); // 👈 force absolute path
           return;
         }
 
         const data = await res.json();
+
+        // city first, area second
         router.replace(`/${data.city.slug}/${data.area.slug}/qibla`);
       },
       () => {
-        router.replace(`/qibla/your-location`);
+        router.replace("/qibla/your-location"); // 👈 force absolute path
       },
       { enableHighAccuracy: true },
     );
