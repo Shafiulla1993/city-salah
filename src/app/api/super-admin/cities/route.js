@@ -12,7 +12,7 @@ export const GET = withAuth("super_admin", async (request) => {
   const searchParams = request.nextUrl.searchParams;
 
   const page = Number(searchParams.get("page")) || 1;
-  const limit = Number(searchParams.get("limit")) || 10;
+  const limit = Number(searchParams.get("limit")) || 100;
   const search = searchParams.get("search") || "";
   const sortParam = searchParams.get("sort") || "-createdAt"; // name | -name | createdAt | -createdAt
 

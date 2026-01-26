@@ -1,7 +1,5 @@
 // src/app/dashboard/super-admin/manage/tabs/TimingsTab.js
 
-// src/app/dashboard/super-admin/manage/tabs/TimingsTab.js
-
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -30,7 +28,9 @@ export default function TimingsTab() {
     async function loadBase() {
       try {
         const [cityRes, areaRes] = await Promise.all([
-          fetch("/api/super-admin/cities", { credentials: "include" }),
+          fetch("/api/super-admin/cities?limit=1000", {
+            credentials: "include",
+          }),
           fetch("/api/super-admin/areas?limit=2000", {
             credentials: "include",
           }),
