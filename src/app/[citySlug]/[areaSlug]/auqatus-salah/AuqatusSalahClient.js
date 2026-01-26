@@ -48,11 +48,10 @@ export default function AuqatusSalahClient({ citySlug, areaSlug }) {
     try {
       setLoading(true);
 
-      const dayKey = date.slice(5); // MM-DD
       const qs = new URLSearchParams({
         citySlug: selectedCity,
         areaSlug: selectedArea,
-        dayKey,
+        date, // ✅ send full YYYY-MM-DD
       }).toString();
 
       const res = await fetch(`/api/public/prayer-timings/today?${qs}`, {
