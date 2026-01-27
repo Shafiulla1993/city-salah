@@ -1,5 +1,4 @@
 // src/components/Navbar.js
-
 "use client";
 
 import { useState } from "react";
@@ -20,24 +19,41 @@ export default function Navbar() {
   const masjidLabel = isMasjidDetail ? "Find Masjid" : "Nearest Masjid";
   const masjidHref = isMasjidDetail ? "/masjid" : "/nearest-masjid";
 
-  const NavItem = ({ href, label }) => {
-    const active = pathname.includes(href);
-    return (
+  const isActive = (href) => pathname.includes(href);
+
+  const NavItem = ({ href, label }) => (
+    <Link
+      href={href}
+      onClick={() => setOpen(false)}
+      className={`block px-3 py-2 font-bold text-white ${
+        isActive(href) ? "border-b-2 border-emerald-400" : ""
+      }`}
+    >
+      {label}
+    </Link>
+  );
+
+  const AuthButton = () =>
+    loggedIn ? (
       <Link
-        href={href}
-        className={`px-3 py-2 font-bold text-white ${
-          active ? "border-b-2 border-emerald-400" : ""
-        }`}
+        href="/auth/logout"
+        className="bg-red-600 text-white px-3 py-1.5 rounded font-bold"
       >
-        {label}
+        Logout
+      </Link>
+    ) : (
+      <Link
+        href="/auth/login"
+        className="bg-emerald-600 text-white px-3 py-1.5 rounded font-bold"
+      >
+        Login
       </Link>
     );
-  };
 
   return (
     <header className="sticky top-0 z-50 bg-[#0F2A44]/95 backdrop-blur border-b border-white/20">
       <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
-        {/* Logo */}
+        {/* LOGO */}
         <Link href="/" className="flex items-center">
           <Image
             src="/Design-logo-White.png"
@@ -48,41 +64,20 @@ export default function Navbar() {
           />
         </Link>
 
-        {/* Mobile Right */}
+        {/* MOBILE RIGHT: Ramzan + Auth + Hamburger */}
         <div className="flex items-center gap-2 md:hidden">
           <Link href="/ramzan-timetable" className="font-bold text-white">
             Ramzan
           </Link>
 
-          <Link
-            href="/dashboard"
-            className="font-bold text-white border border-white/40 px-2 py-1 rounded"
-          >
-            Dashboard
-          </Link>
-
-          {loggedIn ? (
-            <Link
-              href="/auth/logout"
-              className="bg-red-600 text-white px-2 py-1 rounded font-bold"
-            >
-              Logout
-            </Link>
-          ) : (
-            <Link
-              href="/auth/login"
-              className="bg-emerald-600 text-white px-2 py-1 rounded font-bold"
-            >
-              Login
-            </Link>
-          )}
+          <AuthButton />
 
           <button onClick={() => setOpen(!open)} className="text-white">
-            {open ? <FiX size={20} /> : <FiMenu size={20} />}
+            {open ? <FiX size={22} /> : <FiMenu size={22} />}
           </button>
         </div>
 
-        {/* Desktop Menu */}
+        {/* DESKTOP NAV */}
         <nav className="hidden md:flex items-center gap-2">
           <NavItem href={masjidHref} label={masjidLabel} />
           <NavItem href="/qibla" label="Qibla" />
@@ -90,33 +85,20 @@ export default function Navbar() {
           <NavItem href="/ramzan-timetable" label="Ramzan Timetable" />
           <NavItem href="/updates" label="Updates" />
           <NavItem href="/dashboard" label="Dashboard" />
-
-          {loggedIn ? (
-            <Link
-              href="/auth/logout"
-              className="ml-2 bg-red-600 text-white px-3 py-1 rounded font-bold"
-            >
-              Logout
-            </Link>
-          ) : (
-            <Link
-              href="/auth/login"
-              className="ml-2 bg-emerald-600 text-white px-3 py-1 rounded font-bold"
-            >
-              Login
-            </Link>
-          )}
+          <AuthButton />
         </nav>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* MOBILE DRAWER (Dashboard inside here) */}
       {open && (
         <div className="md:hidden bg-[#0F2A44] border-t border-white/20">
-          <nav className="flex flex-col p-4 gap-2">
+          <nav className="flex flex-col p-4 gap-1">
             <NavItem href={masjidHref} label={masjidLabel} />
             <NavItem href="/qibla" label="Qibla" />
             <NavItem href="/auqatus-salah" label="Auqatus Salah" />
+            <NavItem href="/ramzan-timetable" label="Ramzan Timetable" />
             <NavItem href="/updates" label="Updates" />
+            <NavItem href="/dashboard" label="Dashboard" />
           </nav>
         </div>
       )}
