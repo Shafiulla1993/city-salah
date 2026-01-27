@@ -56,12 +56,13 @@ export default function Navbar() {
         {/* LOGO */}
         <Link href="/" className="flex items-center">
           <Image
-            src="/Design-logo-White.png"
-            alt="CitySalah"
-            width={140}
-            height={36}
-            priority
-          />
+              src="/Design-logo-White.png"
+              alt="CitySalah"
+              width={160}
+              height={44}
+              className="h-9 w-auto"
+              priority
+            />
         </Link>
 
         {/* MOBILE RIGHT: Ramzan + Auth + Hamburger */}
