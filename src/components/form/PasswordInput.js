@@ -3,45 +3,47 @@
 
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export default function PasswordInput({ label, ...props }) {
+export default function PasswordInput({ label, className, ...props }) {
   const [showPassword, setShowPassword] = useState(false);
 
-  // ----- DESKTOP (HOLD to reveal) -----
+  // Desktop: hold to reveal
   const handleMouseDown = () => setShowPassword(true);
   const handleMouseUp = () => setShowPassword(false);
   const handleMouseLeave = () => setShowPassword(false);
 
-  // ----- MOBILE (TOGGLE to reveal) -----
-  const handleTouchStart = () => setShowPassword((prev) => !prev); // toggle
+  // Mobile: tap to toggle
+  const handleTouchStart = () => setShowPassword((prev) => !prev);
 
   return (
-    <div className="flex flex-col gap-1 w-full">
-      {label && <label className="font-semibold text-slate-800">{label}</label>}
+    <div className="flex flex-col">
+      {label && <label className="mb-1 font-medium">{label}</label>}
 
-      <div className="relative w-full">
+      <div className="relative">
         <input
           {...props}
           type={showPassword ? "text" : "password"}
-          className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 outline-none text-slate-800"
           autoComplete="current-password"
+          className={cn(
+            "flex h-9 w-full rounded-md border border-input bg-white px-3 py-1 text-base shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 pr-10",
+            className,
+          )}
         />
 
         <button
           type="button"
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600"
-          // Desktop hold
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseLeave}
-          // Mobile tap toggle
           onTouchStart={handleTouchStart}
           tabIndex={-1}
         >
           {showPassword ? (
-            <EyeOff className="w-5 h-5" />
+            <EyeOff className="w-4 h-4" />
           ) : (
-            <Eye className="w-5 h-5" />
+            <Eye className="w-4 h-4" />
           )}
         </button>
       </div>

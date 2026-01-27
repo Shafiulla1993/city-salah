@@ -2,11 +2,8 @@
 
 "use client";
 
-import React from "react";
-
-/* ---------------- Time format ---------------- */
 function to12Hour(time) {
-  if (time === null || time === undefined) return "--";
+  if (!time) return "--";
 
   if (typeof time === "number") {
     const m = time % 60;
@@ -28,60 +25,56 @@ function to12Hour(time) {
   return "--";
 }
 
-/* ---------------- Compact Card ---------------- */
-function PrayerTimeCard({ title, start, end, highlight }) {
+function PrayerCard({ title, start, end, isCurrent }) {
   return (
     <div
       className={`
-        rounded-lg border shadow-sm
-        px-3 py-2
-        flex flex-col justify-between
-        ${
-          highlight
-            ? "bg-green-200 border-green-400"
-            : "bg-slate-200 border-slate-900"
-        }
+        relative bg-white rounded-2xl overflow-hidden border shadow-xl
+        ${isCurrent ? "ring-2 ring-emerald-500 scale-[1.02]" : ""}
       `}
     >
-      {/* Title */}
-      <div className="text-sm font-bold text-slate-900 leading-tight">
+      {/* Header strip */}
+      <div
+        className={`
+          px-4 py-2 text-white text-sm font-semibold text-center
+          ${isCurrent ? "bg-emerald-700" : "bg-slate-900"}
+        `}
+      >
         {title}
       </div>
 
-      {/* Times */}
-      <div className="mt-1 space-y-0.5">
-        <div className="text-md font-bold text-slate-700">
-          <span className="font-semibold">Start:</span> {to12Hour(start)}
+      {/* Body */}
+      <div className="px-2 py-4 grid grid-cols-2 gap-2">
+        {/* Start */}
+        <div className="text-left">
+          <div className="text-sm font-medium text-sky-700">Starts</div>
+          <div className="text-lg font-bold text-sky-900 whitespace-nowrap">
+            {to12Hour(start)}
+          </div>
         </div>
-        <div className="text-md font-bold text-slate-700">
-          <span className="font-semibold">End:</span> {to12Hour(end)}
+
+        {/* End */}
+        <div className="text-right">
+          <div className="text-sm font-medium text-rose-700">Ends</div>
+          <div className="text-lg font-bold text-rose-800 whitespace-nowrap">
+            {to12Hour(end)}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-/* ---------------- Grid ---------------- */
 export default function AuqatusCards({ slots = [] }) {
-  if (!slots.length) return null;
-
   return (
-    <div
-      className="
-        grid
-        grid-cols-2          /* ✅ mobile: 2 cards per row */
-        sm:grid-cols-3       /* tablet */
-        lg:grid-cols-4       /* desktop */
-        gap-3                /* tighter spacing */
-      "
-    >
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
       {slots.map((s, idx) => (
-        <PrayerTimeCard
-          key={`${s.label}-${idx}`} // ✅ FIXED KEY
+        <PrayerCard
+          key={`${s.label}-${idx}`}
           title={s.label}
           start={s.start}
           end={s.end}
-          highlight={s.highlight}
+          isCurrent={s.highlight}
         />
       ))}
     </div>

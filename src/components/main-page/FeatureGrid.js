@@ -1,7 +1,10 @@
 // src/app/components/main-page/FeatureGrid.js
 
+"use client";
+
 import Link from "next/link";
 import FeatureCard from "./FeatureCard";
+import { useAuth } from "@/context/AuthContext";
 
 const features = [
   {
@@ -50,10 +53,29 @@ const features = [
 ];
 
 export default function FeatureGrid() {
+  const { loggedIn, user } = useAuth();
+
+  const adminFeature =
+    loggedIn && (user?.role === "super_admin" || user?.role === "masjid_admin")
+      ? [
+          {
+            title: "Admin Dashboard",
+            description: "Manage masjid, timings & announcements.",
+            href:
+              user.role === "super_admin"
+                ? "/dashboard/super-admin"
+                : "/dashboard/masjid-admin",
+            icon: "/icons/admin.svg",
+          },
+        ]
+      : [];
+
+  const allFeatures = [...adminFeature, ...features];
+
   return (
     <section className="px-4 py-4">
       <div className="max-w-6xl mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 place-content-center">
-        {features.map((feature) => (
+        {allFeatures.map((feature) => (
           <Link
             key={feature.title}
             href={feature.comingSoon ? "#" : feature.href}
