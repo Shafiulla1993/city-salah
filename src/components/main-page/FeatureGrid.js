@@ -21,7 +21,6 @@ const features = [
     description: "Sehri & Iftar timings for your nearby masjid. (Coming Soon)",
     href: "/ramzan-timetable",
     icon: "/icons/ramadan-icon.svg",
-    comingSoon: true,
   },
   {
     title: "Qibla Finder",

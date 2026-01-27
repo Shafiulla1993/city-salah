@@ -10,10 +10,11 @@ export async function GET() {
     "/masjid",
     "/nearest-masjid",
     "/auqatus-salah",
+    "/ramzan-timetable",
     "/updates",
     "/contact",
-    "/qibla", // GPS entry (noindex but allowed in sitemap)
-    "/qibla/your-location", // Fallback canonical
+    "/qibla",
+    "/qibla/your-location",
   ];
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -24,8 +25,8 @@ export async function GET() {
   <url>
     <loc>${base}${u}</loc>
     <lastmod>${now}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
   </url>`,
     )
     .join("")}

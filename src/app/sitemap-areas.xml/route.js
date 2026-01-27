@@ -1,6 +1,5 @@
 // src/app/sitemap-areas.xml/route.js
 
-// src/app/sitemap-areas.xml/route.js
 import { serverFetch } from "@/lib/http/serverFetch";
 
 export async function GET() {
@@ -17,6 +16,18 @@ export async function GET() {
     <lastmod>${now}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>${base}/${a.citySlug}/${a.slug}/auqatus-salah</loc>
+    <lastmod>${now}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>${base}/${a.citySlug}/${a.slug}/ramzan-timetable</loc>
+    <lastmod>${now}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
   </url>
   <url>
     <loc>${base}/${a.citySlug}/${a.slug}/qibla</loc>
