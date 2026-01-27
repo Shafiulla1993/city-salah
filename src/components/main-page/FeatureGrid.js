@@ -17,10 +17,11 @@ const features = [
     icon: "/icons/search-masjid.svg",
   },
   {
-    title: "Latest Updates",
-    description: "Get announcements & news from local masjids.",
-    href: "/updates",
-    icon: "/icons/announcements.svg",
+    title: "Ramzan Timetable",
+    description: "Sehri & Iftar timings for your nearby masjid. (Coming Soon)",
+    href: "/ramzan-timetable",
+    icon: "/icons/ramadan-icon.svg",
+    comingSoon: true,
   },
   {
     title: "Qibla Finder",
@@ -29,17 +30,23 @@ const features = [
     icon: "/icons/qibla-finder.svg",
   },
   {
+    title: "Salah Timings",
+    description: "See accurate prayer times.",
+    href: "/auqatus-salah",
+    icon: "/icons/salah-timings.svg",
+  },
+  {
+    title: "Latest Updates",
+    description: "Get announcements & news from local masjids.",
+    href: "/updates",
+    icon: "/icons/announcements.svg",
+  },
+  {
     title: "Community Discussion",
     description: "Join the talk with the community.",
     href: "/community",
     icon: "/icons/community.svg",
     comingSoon: true,
-  },
-  {
-    title: "Salah Timings",
-    description: "See accurate prayer times.",
-    href: "/auqatus-salah",
-    icon: "/icons/salah-timings.svg",
   },
 ];
 
