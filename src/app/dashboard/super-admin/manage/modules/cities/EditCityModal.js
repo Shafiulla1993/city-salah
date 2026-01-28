@@ -31,7 +31,12 @@ export default function EditCityModal({ open, onClose, cityId, onUpdated }) {
 
       const c = data.data;
       setInitial(c);
-      setForm({ name: c.name || "", timezone: c.timezone || "Asia/Kolkata" });
+      setForm({
+        name: c.name || "",
+        timezone: c.timezone || "Asia/Kolkata",
+        lat: c.coords?.lat?.toString() || "",
+        lon: c.coords?.lon?.toString() || "",
+      });
     } catch (err) {
       console.error(err);
       notify.error("Failed to load city");
@@ -49,12 +54,20 @@ export default function EditCityModal({ open, onClose, cityId, onUpdated }) {
     if (!initial) return;
 
     const payload = {};
+
     if (form.name !== initial.name) payload.name = form.name;
     if (form.timezone !== initial.timezone) payload.timezone = form.timezone;
 
+    const initialLat = initial.coords?.lat?.toString() || "";
+    const initialLon = initial.coords?.lon?.toString() || "";
+
+    if (form.lat !== initialLat || form.lon !== initialLon) {
+      payload.lat = form.lat;
+      payload.lon = form.lon;
+    }
+
     if (Object.keys(payload).length === 0) {
       notify.info("No changes made");
-      onClose();
       return;
     }
 
@@ -96,6 +109,16 @@ export default function EditCityModal({ open, onClose, cityId, onUpdated }) {
           label="Timezone"
           value={form.timezone}
           onChange={(e) => update("timezone", e.target.value)}
+        />
+        <Input
+          label="Latitude"
+          value={form.lat}
+          onChange={(e) => update("lat", e.target.value)}
+        />
+        <Input
+          label="Longitude"
+          value={form.lon}
+          onChange={(e) => update("lon", e.target.value)}
         />
 
         <div className="flex justify-end gap-3">

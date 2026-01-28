@@ -42,6 +42,10 @@ export const PUT = withAuth("super_admin", async (request, { params }) => {
     };
   }
 
+  if (body.lat && body.lon) {
+    city.coords = { lat: Number(body.lat), lon: Number(body.lon) };
+  }
+
   if (body.name && body.name.trim() !== city.name) {
     city.name = body.name.trim();
     city.slug = generateSlug(body.name);

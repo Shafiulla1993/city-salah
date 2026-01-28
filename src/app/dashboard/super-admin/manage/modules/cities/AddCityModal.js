@@ -8,7 +8,12 @@ import { notify } from "@/lib/toast";
 
 export default function AddCityModal({ open, onClose, onCreated }) {
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ name: "", timezone: "Asia/Kolkata" });
+  const [form, setForm] = useState({
+    name: "",
+    timezone: "Asia/Kolkata",
+    lat: "",
+    lon: "",
+  });
 
   function update(k, v) {
     setForm((s) => ({ ...s, [k]: v }));
@@ -37,7 +42,7 @@ export default function AddCityModal({ open, onClose, onCreated }) {
       notify.success("City created");
       onCreated?.(data.data);
       onClose();
-      setForm({ name: "", timezone: "Asia/Kolkata" });
+      setForm({ name: "", timezone: "Asia/Kolkata", lat: "", lon: "" });
     } catch (err) {
       console.error(err);
       notify.error("Create failed");
@@ -58,6 +63,16 @@ export default function AddCityModal({ open, onClose, onCreated }) {
           label="Timezone"
           value={form.timezone}
           onChange={(e) => update("timezone", e.target.value)}
+        />
+        <Input
+          label="Latitude"
+          value={form.lat}
+          onChange={(e) => update("lat", e.target.value)}
+        />
+        <Input
+          label="Longitude"
+          value={form.lon}
+          onChange={(e) => update("lon", e.target.value)}
         />
 
         <div className="flex justify-end gap-3">

@@ -8,6 +8,8 @@ import ContactPersonsForm from "./ContactPersonsForm";
 import PrayerRulesForm from "./PrayerRulesForm";
 import MasjidLocationPicker from "./MasjidLocationPicker";
 import { notify } from "@/lib/toast";
+import AddAreaModal from "../areas/AddAreaModal";
+import AddCityModal from "../cities/AddCityModal";
 
 export default function MasjidForm({
   form,
@@ -29,6 +31,8 @@ export default function MasjidForm({
   const [addingArea, setAddingArea] = useState(false);
   const [newCity, setNewCity] = useState("");
   const [newArea, setNewArea] = useState("");
+  const [openCityModal, setOpenCityModal] = useState(false);
+  const [openAreaModal, setOpenAreaModal] = useState(false);
 
   const filteredAreas = areas.filter(
     (a) => !form.city || a.city?._id === form.city,
@@ -110,9 +114,9 @@ export default function MasjidForm({
         {!addingCity ? (
           <div className="flex gap-2">
             <select
-              className="border px-3 py-2 rounded w-full"
+              className="flex-1 border px-3 py-2 rounded"
               value={form.city}
-              onChange={(e) => update("city", e.target.value)}
+              onChange={(e) => setForm({ ...form, city: e.target.value })}
             >
               <option value="">Select City</option>
               {cities.map((c) => (
@@ -123,10 +127,10 @@ export default function MasjidForm({
             </select>
             <button
               type="button"
-              className="px-3 rounded bg-slate-100 text-sm"
-              onClick={() => setAddingCity(true)}
+              onClick={() => setOpenCityModal(true)}
+              className="px-2 py-1 rounded bg-emerald-600 text-white text-sm"
             >
-              + New
+              +
             </button>
           </div>
         ) : (
@@ -159,27 +163,28 @@ export default function MasjidForm({
       <div>
         <label className="block mb-1 font-medium">Area *</label>
         {!addingArea ? (
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <select
-              className="border px-3 py-2 rounded w-full"
+              className="flex-1 border px-3 py-2 rounded"
               value={form.area}
-              onChange={(e) => update("area", e.target.value)}
-              disabled={!form.city}
+              onChange={(e) => setForm({ ...form, area: e.target.value })}
             >
               <option value="">Select Area</option>
-              {filteredAreas.map((a) => (
-                <option key={a._id} value={a._id}>
-                  {a.name}
-                </option>
-              ))}
+              {areas
+                .filter((a) => a.city?._id === form.city)
+                .map((a) => (
+                  <option key={a._id} value={a._id}>
+                    {a.name}
+                  </option>
+                ))}
             </select>
+
             <button
               type="button"
-              disabled={!form.city}
-              className="px-3 rounded bg-slate-100 text-sm disabled:opacity-50"
-              onClick={() => setAddingArea(true)}
+              onClick={() => setOpenAreaModal(true)}
+              className="px-2 py-1 rounded bg-emerald-600 text-white text-sm"
             >
-              + New
+              +
             </button>
           </div>
         ) : (
@@ -255,6 +260,25 @@ export default function MasjidForm({
         onSelect={(lat, lng) => {
           update("lat", lat);
           update("lng", lng);
+        }}
+      />
+      <AddCityModal
+        open={openCityModal}
+        onClose={() => setOpenCityModal(false)}
+        onCreated={(city) => {
+          onCityAdded(city._id); // refreshCities
+          setForm((f) => ({ ...f, city: city._id }));
+          setOpenCityModal(false);
+        }}
+      />
+
+      <AddAreaModal
+        open={openAreaModal}
+        onClose={() => setOpenAreaModal(false)}
+        onCreated={(area) => {
+          onAreaAdded(area.city._id, area._id); // refreshAreas
+          setForm((f) => ({ ...f, area: area._id }));
+          setOpenAreaModal(false);
         }}
       />
     </div>

@@ -54,12 +54,19 @@ export const POST = withAuth("super_admin", async (request) => {
   await connectDB();
 
   const body = await request.json().catch(() => ({}));
-  const { name, timezone } = body;
+  const { name, timezone, lat, lon } = body;
 
   if (!name || !name.trim()) {
     return {
       status: 400,
       json: { success: false, message: "City name is required" },
+    };
+  }
+
+  if (!lat || !lon) {
+    return {
+      status: 400,
+      json: { success: false, message: "Latitude & Longitude required" },
     };
   }
 
@@ -77,6 +84,7 @@ export const POST = withAuth("super_admin", async (request) => {
     name: name.trim(),
     slug,
     timezone: timezone || "Asia/Kolkata",
+    coords: { lat: Number(lat), lon: Number(lon) },
   });
 
   return {

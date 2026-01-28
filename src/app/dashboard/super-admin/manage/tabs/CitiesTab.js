@@ -23,6 +23,7 @@ export default function CitiesTab() {
   const [delId, setDelId] = useState(null);
 
   const loaderRef = useRef();
+  const fetchingRef = useRef(false);
 
   useEffect(() => {
     loadCities(1, true);
@@ -66,6 +67,7 @@ export default function CitiesTab() {
     } catch (err) {
       console.error("loadCities error:", err);
     } finally {
+      fetchingRef.current = false; // unlock
       setLoading(false);
     }
   }
@@ -73,7 +75,13 @@ export default function CitiesTab() {
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loading) {
+        if (
+          entries[0].isIntersecting &&
+          hasMore &&
+          !loading &&
+          !fetchingRef.current
+        ) {
+          fetchingRef.current = true; // lock
           setPage((p) => p + 1);
         }
       },
