@@ -79,7 +79,6 @@ export default function MasjidDetailsLayout({
   const coords = masjid?.location?.coordinates;
   const lat = coords?.[1];
   const lng = coords?.[0];
-  
 
   return (
     <div className="mx-auto max-w-7xl pt-6 space-y-4">
@@ -90,9 +89,9 @@ export default function MasjidDetailsLayout({
             {masjid.name}
           </h1>
           <h2 className="text-base font-semibold text-white mt-1 drop-shadow">
-            Masjid in {masjid.area?.name}, {masjid.city?.name} – Prayer Timings & Location
+            Masjid in {masjid.area?.name}, {masjid.city?.name} – Prayer Timings
+            & Location
           </h2>
-
         </div>
 
         <button
@@ -134,6 +133,18 @@ export default function MasjidDetailsLayout({
               </a>
             )}
           </GlassCard>
+
+          {/* CONTACTS */}
+          {(imam || mozin || mutawalli) && (
+            <GlassCard>
+              <h3 className="font-bold mb-3">Masjid Contacts</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <ContactCard title="Imam" contact={imam} />
+                <ContactCard title="Mozin" contact={mozin} />
+                <ContactCard title="Zimmedar" contact={mutawalli} />
+              </div>
+            </GlassCard>
+          )}
         </div>
 
         {/* RIGHT */}
@@ -196,25 +207,13 @@ export default function MasjidDetailsLayout({
             </GlassCard>
           )}
 
-          {/* CONTACTS */}
-          {(imam || mozin || mutawalli) && (
-            <GlassCard>
-              <h3 className="font-bold mb-3">Masjid Contacts</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <ContactCard title="Imam" contact={imam} />
-                <ContactCard title="Mozin" contact={mozin} />
-                <ContactCard title="Zimmedar" contact={mutawalli} />
-              </div>
-            </GlassCard>
-          )}
-
           {/* GENERAL PRAYER TIMINGS (OLD POSITION) */}
           {generalTimings?.length > 0 && (
             <GlassCard>
               <h3 className="font-bold mb-2 text-slate-800">
                 Auqatus Salah (Area)
               </h3>
-              <AuqatusCards slots={generalTimings} />
+              <AuqatusCards slots={generalTimings} variant="compact" />
             </GlassCard>
           )}
         </div>

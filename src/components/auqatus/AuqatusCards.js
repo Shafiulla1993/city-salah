@@ -25,38 +25,65 @@ function to12Hour(time) {
   return "--";
 }
 
-function PrayerCard({ title, start, end, isCurrent }) {
+function PrayerCard({ title, start, end, isCurrent, compact }) {
   return (
     <div
       className={`
-        relative bg-white rounded-2xl overflow-hidden border shadow-xl
-        ${isCurrent ? "ring-2 ring-emerald-500 scale-[1.02]" : ""}
+        relative bg-white rounded-xl border shadow-md
+-       ${compact ? "p-2" : "p-0"}
++       ${compact ? "p-1" : "p-0"}
+        ${isCurrent ? "ring-2 ring-emerald-500" : ""}
       `}
     >
-      {/* Header strip */}
       <div
         className={`
-          px-4 py-2 text-white text-sm font-semibold text-center
-          ${isCurrent ? "bg-emerald-700" : "bg-slate-900"}
+          text-center font-semibold
+-         ${compact ? "text-xs py-1" : "text-sm py-2"}
++         ${compact ? "text-[11px] py-[2px]" : "text-sm py-2"}
+          ${isCurrent ? "bg-emerald-700 text-white" : "bg-slate-900 text-white"}
+          rounded-t-xl
         `}
       >
         {title}
       </div>
 
-      {/* Body */}
-      <div className="px-2 py-4 grid grid-cols-2 gap-2">
-        {/* Start */}
+      <div
+        className={`grid grid-cols-2 ${compact ? "px-1 py-1" : "px-3 py-3"}`}
+      >
         <div className="text-left">
-          <div className="text-sm font-medium text-sky-700">Starts</div>
-          <div className="text-lg font-bold text-sky-900 whitespace-nowrap">
+          <div
+            className={`${compact ? "text-[10px]" : "text-xs"} text-sky-700`}
+          >
+            Starts
+          </div>
+          <div
+            className={`font-bold whitespace-nowrap ${
+              -compact
+                ? "text-sm"
+                : "text-lg" + compact
+                  ? "text-base"
+                  : "text-lg"
+            } text-sky-900`}
+          >
             {to12Hour(start)}
           </div>
         </div>
 
-        {/* End */}
         <div className="text-right">
-          <div className="text-sm font-medium text-rose-700">Ends</div>
-          <div className="text-lg font-bold text-rose-800 whitespace-nowrap">
+          <div
+            className={`${compact ? "text-[10px]" : "text-xs"} text-rose-700`}
+          >
+            Ends
+          </div>
+          <div
+            className={`font-bold whitespace-nowrap ${
+              -compact
+                ? "text-sm"
+                : "text-xl" + compact
+                  ? "text-base"
+                  : "text-lg"
+            } text-rose-800`}
+          >
             {to12Hour(end)}
           </div>
         </div>
@@ -65,9 +92,16 @@ function PrayerCard({ title, start, end, isCurrent }) {
   );
 }
 
-export default function AuqatusCards({ slots = [] }) {
+export default function AuqatusCards({ slots = [], variant = "full" }) {
+  const compact = variant === "compact";
+
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+    <div
+      className={`
+        grid gap-3
+        ${compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4"}
+      `}
+    >
       {slots.map((s, idx) => (
         <PrayerCard
           key={`${s.label}-${idx}`}
@@ -75,6 +109,7 @@ export default function AuqatusCards({ slots = [] }) {
           start={s.start}
           end={s.end}
           isCurrent={s.highlight}
+          compact={compact}
         />
       ))}
     </div>
