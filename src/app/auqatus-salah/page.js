@@ -8,8 +8,7 @@ import { useMasjidStore } from "@/store/useMasjidStore";
 
 export default function AuqatusSalahResolver() {
   const router = useRouter();
-
-  const { init, initializing, selectedCitySlug, selectedAreaSlug } =
+  const { init, initializing, citySlug, areaSlug, detectMyLocation, coords } =
     useMasjidStore();
 
   useEffect(() => {
@@ -19,14 +18,34 @@ export default function AuqatusSalahResolver() {
   useEffect(() => {
     if (initializing) return;
 
-    if (selectedCitySlug && selectedAreaSlug) {
-      router.replace(`/${selectedCitySlug}/${selectedAreaSlug}/auqatus-salah`);
+    if (citySlug && areaSlug) {
+      router.replace(`/${citySlug}/${areaSlug}/auqatus-salah`);
       return;
     }
 
-    // fallback
-    router.replace(`/mysore/rajiv-nagar/auqatus-salah`);
-  }, [initializing, selectedCitySlug, selectedAreaSlug, router]);
+    detectMyLocation();
+  }, [initializing, citySlug, areaSlug, detectMyLocation, router]);
+
+  useEffect(() => {
+    if (!coords?.lat || !coords?.lng) return;
+
+    const resolve = async () => {
+      const res = await fetch(
+        `/api/location/resolve?lat=${coords.lat}&lng=${coords.lng}`,
+      );
+      const data = await res.json();
+
+      if (data.success && data.type === "area") {
+        router.replace(`/${data.citySlug}/${data.areaSlug}/auqatus-salah`);
+      } else if (data.success && data.type === "city") {
+        router.replace(`/${data.citySlug}/auqatus-salah`);
+      } else {
+        router.replace("/auqatus-salah/your-location");
+      }
+    };
+
+    resolve();
+  }, [coords, router]);
 
   return null;
 }

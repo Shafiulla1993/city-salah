@@ -25,8 +25,10 @@ export default function MasjidClientPage({ citySlug, areaSlug, masjidSlug }) {
 
       setMasjidTimings(timingsRes.data);
 
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
       const generalRes = await fetch(
-        `/api/public/prayer-timings/today?citySlug=${citySlug}&areaSlug=${areaSlug}`,
+        `/api/public/prayer-timings/today?citySlug=${citySlug}&areaSlug=${areaSlug}&date=${today}`,
         { cache: "no-store" },
       ).then((r) => r.json());
 
@@ -41,33 +43,35 @@ export default function MasjidClientPage({ citySlug, areaSlug, masjidSlug }) {
 
   return (
     <>
-  {/* SEO Visible Content */}
-  <section className="sr-only">
-    <h1>
-      {masjid.masjid.name} Masjid in {masjid.area.name}, {masjid.city.name}
-    </h1>
+      {/* SEO Visible Content */}
+      <section className="sr-only">
+        <h1>
+          {masjid.masjid.name} Masjid in {masjid.area.name}, {masjid.city.name}
+        </h1>
 
-    <p>
-      {masjid.masjid.name} is a mosque located in {masjid.area.name}, {masjid.city.name}.
-      Find daily prayer timings for Fajr, Zohar, Asr, Maghrib and Isha, Jumma time,
-      address and directions.
-    </p>
+        <p>
+          {masjid.masjid.name} is a mosque located in {masjid.area.name},{" "}
+          {masjid.city.name}. Find daily prayer timings for Fajr, Zohar, Asr,
+          Maghrib and Isha, Jumma time, address and directions.
+        </p>
 
-    <h2>Prayer Timings of {masjid.masjid.name} in {masjid.area.name}</h2>
-    <h3>Nearest Masjid in {masjid.area.name}, {masjid.city.name}</h3>
-  </section>
+        <h2>
+          Prayer Timings of {masjid.masjid.name} in {masjid.area.name}
+        </h2>
+        <h3>
+          Nearest Masjid in {masjid.area.name}, {masjid.city.name}
+        </h3>
+      </section>
 
-  <MasjidDetailsLayout
-  masjid={{
-    ...masjid.masjid,
-    city: masjid.city,
-    area: masjid.area,
-  }}
-  masjidTimings={masjidTimings}
-  generalTimings={generalTimings}
-/>
-
-</>
-
+      <MasjidDetailsLayout
+        masjid={{
+          ...masjid.masjid,
+          city: masjid.city,
+          area: masjid.area,
+        }}
+        masjidTimings={masjidTimings}
+        generalTimings={generalTimings}
+      />
+    </>
   );
 }
