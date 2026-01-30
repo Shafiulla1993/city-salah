@@ -6,16 +6,19 @@ import { serverFetch } from "@/lib/http/serverFetch";
 export default async function MasjidResolver({ params }) {
   const { slug } = await params;
 
-  // Legacy lookup: search index
+  // handle legacy slug-id format
+  const cleanSlug = slug.includes("-")
+    ? slug.split("-").slice(0, -1).join("-")
+    : slug;
+
   const rows = await serverFetch("/api/public/masjids?mode=index").catch(
     () => [],
   );
 
-  const masjid = rows.find((m) => m.slug === slug);
+  const masjid = rows.find((m) => m.slug === cleanSlug);
   if (!masjid) notFound();
 
-  // 301 redirect to canonical URL
   permanentRedirect(
-    `/${masjid.citySlug}/${masjid.areaSlug}/masjid/${masjid.slug}`
+    `/${masjid.citySlug}/${masjid.areaSlug}/masjid/${masjid.slug}`,
   );
 }
