@@ -1,5 +1,5 @@
-// src/app/[citySlug]/ramzan-timetable/page.js
-import RamzanCityClient from "./RamzanCityClient";
+// src/app/[citySlug]/qibla/page.js
+import QiblaClient from "@/app/qibla/QiblaClient";
 import { buildBreadcrumbJsonLd } from "@/lib/seo/breadcrumbs";
 
 export async function generateMetadata({ params }) {
@@ -7,20 +7,19 @@ export async function generateMetadata({ params }) {
   const cityName = citySlug.replace(/-/g, " ");
 
   const keywords = [
-    `ramzan timetable ${cityName}`,
-    `sehri time in ${cityName}`,
-    `iftar time in ${cityName}`,
-    `ramadan fasting time ${cityName}`,
-    `today sehri iftar ${cityName}`,
+    `qibla direction in ${cityName}`,
+    `kaaba direction in ${cityName}`,
+    `prayer direction ${cityName}`,
+    `qibla compass ${cityName}`,
   ];
 
   return {
-    title: `Ramzan Sehri & Iftar Timetable in ${cityName} | CitySalah`,
-    description: `Complete Ramzan Sehri and Iftar timetable for ${cityName} with daily fasting times.`,
+    title: `Qibla Direction in ${cityName} | Kaaba Direction`,
+    description: `Find the accurate Qibla direction in ${cityName} using compass-based guidance for daily prayers.`,
     keywords,
     robots: "index, follow",
     alternates: {
-      canonical: `https://citysalah.in/${citySlug}/ramzan-timetable`,
+      canonical: `https://citysalah.in/${citySlug}/qibla`,
     },
   };
 }
@@ -34,8 +33,8 @@ export default async function Page({ params }) {
     { name: "Home", url: "https://citysalah.in" },
     { name: cityName, url: `https://citysalah.in/${citySlug}` },
     {
-      name: "Ramzan Timetable",
-      url: `https://citysalah.in/${citySlug}/ramzan-timetable`,
+      name: "Qibla Direction",
+      url: `https://citysalah.in/${citySlug}/qibla`,
     },
   ]);
 
@@ -50,7 +49,7 @@ export default async function Page({ params }) {
       />
 
       {/* ✅ EXISTING FEATURE — untouched */}
-      <RamzanCityClient citySlug={citySlug} />
+      <QiblaClient cityName={cityName} areaName="Your Area" />
     </>
   );
 }

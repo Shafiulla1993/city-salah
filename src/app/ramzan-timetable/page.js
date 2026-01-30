@@ -1,10 +1,17 @@
 // src/app/ramzan-timetable/page.js
+import RamzanResolverClient from "./RamzanResolverClient";
 
 export const metadata = {
-  robots: "noindex, nofollow",
+  description: "Redirecting to Ramzan Sehri and Iftar timetable for your area.",
+  keywords: [
+    "ramzan timetable",
+    "sehri iftar time",
+    "sehri time",
+    "iftar time",
+    "ramadan fasting time",
+  ],
+  robots: "noindex, follow",
 };
-
-import RamzanResolverClient from "./RamzanResolverClient";
 
 export default function Page() {
   return <RamzanResolverClient />;

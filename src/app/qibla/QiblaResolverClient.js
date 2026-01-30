@@ -24,23 +24,32 @@ export default function QiblaResolverClient() {
         const lng = pos.coords.longitude;
 
         const res = await fetch(
-          `/api/public/areas/nearest?lat=${lat}&lng=${lng}`,
+          `/api/public/auqatus/resolve?lat=${lat}&lng=${lng}`,
         );
 
         if (!res.ok) {
-          router.replace("/qibla/your-location"); // 👈 force absolute path
+          router.replace("/qibla/your-location");
           return;
         }
 
         const data = await res.json();
 
-        // city first, area second
-        router.replace(`/${data.city.slug}/${data.area.slug}/qibla`);
+        if (!data.success || !data.citySlug) {
+          router.replace("/qibla/your-location");
+          return;
+        }
+
+        if (data.type === "area") {
+          router.replace(`/${data.citySlug}/${data.areaSlug}/qibla`);
+        } else {
+          // city or geo-city
+          router.replace(`/${data.citySlug}/qibla`);
+        }
       },
       () => {
-        router.replace("/qibla/your-location"); // 👈 force absolute path
+        router.replace("/qibla/your-location");
       },
-      { enableHighAccuracy: true },
+      { enableHighAccuracy: true, timeout: 10000 },
     );
   }, [router]);
 
@@ -48,7 +57,7 @@ export default function QiblaResolverClient() {
     <section className="py-24 text-center text-white">
       <h2 className="text-lg font-semibold mb-2">Detecting your location…</h2>
       <p className="text-sm opacity-80">
-        Finding your area to show accurate Qibla direction.
+        Finding your city to show Qibla direction.
       </p>
     </section>
   );

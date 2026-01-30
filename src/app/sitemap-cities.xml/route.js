@@ -16,24 +16,28 @@ export async function GET() {
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
+
   <url>
     <loc>${base}/${c.slug}/auqatus-salah</loc>
     <lastmod>${now}</lastmod>
     <changefreq>daily</changefreq>
-    <priority>0.9</priority>
+    <priority>1.0</priority>
   </url>
+
   <url>
     <loc>${base}/${c.slug}/ramzan-timetable</loc>
     <lastmod>${now}</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
+
   <url>
     <loc>${base}/${c.slug}/qibla</loc>
     <lastmod>${now}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
-  </url>`,
+  </url>
+`,
     )
     .join("");
 
@@ -42,6 +46,8 @@ export async function GET() {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls}
 </urlset>`,
-    { headers: { "Content-Type": "application/xml" } },
+    {
+      headers: { "Content-Type": "application/xml" },
+    },
   );
 }
