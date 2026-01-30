@@ -75,51 +75,51 @@ export default function LoginClient() {
   }
 
   async function handleResendVerification() {
-  setLoading(true);
-  setError("");
-  setInfo("");
+    setLoading(true);
+    setError("");
+    setInfo("");
 
-  try {
-    const res = await fetch("/api/auth/send-verification", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: verifyEmail }),   // 👈 IMPORTANT
-    });
+    try {
+      const res = await fetch("/api/auth/send-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: verifyEmail }), // 👈 IMPORTANT
+      });
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
 
-    setInfo("Verification email sent. Please check your inbox.");
-  } catch (err) {
-    setError(err.message || "Failed to send verification email");
-  } finally {
-    setLoading(false);
+      setInfo("Verification email sent. Please check your inbox.");
+    } catch (err) {
+      setError(err.message || "Failed to send verification email");
+    } finally {
+      setLoading(false);
+    }
   }
-}
-
 
   async function handleAttachEmail() {
-  setModalError("");
-  setModalInfo("");
+    setModalError("");
+    setModalInfo("");
 
-  try {
-    const res = await fetch("/api/auth/attach-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        phone: form.identifier, 
-        email: legacyEmail,
-      }),
-    });
+    try {
+      const res = await fetch("/api/auth/attach-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: form.identifier,
+          email: legacyEmail,
+        }),
+      });
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Failed to send verification");
+      const data = await res.json();
+      if (!res.ok)
+        throw new Error(data.message || "Failed to send verification");
 
-    setModalInfo("Verification link sent. Please check your email.");
-  } catch (err) {
-    setModalError(err.message || "Failed to attach email");
+      setModalInfo("Verification link sent. Please check your email.");
+    } catch (err) {
+      setModalError(err.message || "Failed to attach email");
+    }
   }
-}
 
   return (
     <div className="w-full min-h-[80vh] flex items-center justify-center px-4 py-8">
@@ -183,13 +183,19 @@ export default function LoginClient() {
           <div className="text-sm text-center text-slate-600 space-y-2">
             <p>
               New here?{" "}
-              <a href="/auth/register" className="text-teal-700 font-semibold underline">
+              <a
+                href="/auth/register"
+                className="text-teal-700 font-semibold underline"
+              >
                 Create an account
               </a>
             </p>
             <p>
               Forgot your password?{" "}
-              <a href="/auth/forgot-password" className="text-teal-700 font-semibold underline">
+              <a
+                href="/auth/forgot-password"
+                className="text-teal-700 font-semibold underline"
+              >
                 Reset it here
               </a>
             </p>
@@ -200,7 +206,9 @@ export default function LoginClient() {
       {needEmail && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm space-y-4">
-            <h2 className="text-lg font-bold text-teal-700">Verify Your Email</h2>
+            <h2 className="text-lg font-bold text-teal-700">
+              Verify Your Email
+            </h2>
 
             {modalError && (
               <div className="bg-red-50 border border-red-200 text-red-800 px-3 py-2 rounded text-sm">

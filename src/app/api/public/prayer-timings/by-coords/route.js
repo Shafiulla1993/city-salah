@@ -1,8 +1,8 @@
-// src/app/api/ppublic/rayer-timings/today/route.js
+// src/app/api/public/prayer-timings/by-coords/route.js
 
+import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 
-import City from "@/models/City";
 import Area from "@/models/Area";
 import GeneralPrayerTiming from "@/models/GeneralPrayerTiming";
 
@@ -29,51 +29,35 @@ export async function GET(req) {
     await connectDB();
 
     const { searchParams } = new URL(req.url);
-    const citySlug = searchParams.get("citySlug");
-    const areaSlug = searchParams.get("areaSlug");
-    const dateStr = searchParams.get("date");
+    const lat = Number(searchParams.get("lat"));
+    const lng = Number(searchParams.get("lng"));
 
-    if (!citySlug || !dateStr) {
-      return Response.json(
-        { success: false, message: "citySlug and date required" },
+    if (!lat || !lng) {
+      return NextResponse.json(
+        { success: false, message: "lat/lng required" },
         { status: 400 },
       );
     }
 
-    const city = await City.findOne({ slug: citySlug });
-    if (!city) {
-      return Response.json(
-        { success: false, message: "City not found" },
+    const area = await Area.findOne({
+      "center.coordinates.0": { $ne: null },
+      "center.coordinates.1": { $ne: null },
+    }).populate("city");
+
+    if (!area?.city) {
+      return NextResponse.json(
+        { success: false, message: "No city resolved" },
         { status: 404 },
       );
     }
 
-    let area = null;
-    if (areaSlug) {
-      area = await Area.findOne({ slug: areaSlug, city: city._id });
-    }
-
-    let lat, lng;
-
-    if (area?.center?.coordinates?.length === 2) {
-      lng = area.center.coordinates[0];
-      lat = area.center.coordinates[1];
-    } else if (city?.coords?.lat && city?.coords?.lon) {
-      lat = city.coords.lat;
-      lng = city.coords.lon;
-    } else {
-      return Response.json(
-        { success: false, message: "No coordinates found" },
-        { status: 400 },
-      );
-    }
-
-    const date = new Date(dateStr);
-    const dayKey = getDayKey(date);
+    const city = area.city;
+    const today = new Date();
+    const dayKey = getDayKey(today);
 
     const hijriOffset = await getHijriOffset({
       cityId: city._id,
-      areaId: area?._id || null,
+      areaId: area._id,
     });
 
     const timezoneOffset =
@@ -83,12 +67,12 @@ export async function GET(req) {
 
     const cached = await GeneralPrayerTiming.findOne({
       city: city._id,
-      area: area?._id || null,
+      area: area._id,
       dayKey,
     }).lean();
 
     if (cached?.hijri && cached?.slots?.length) {
-      return Response.json({
+      return NextResponse.json({
         success: true,
         hijri: cached.hijri,
         rozaNumber: cached.rozaNumber,
@@ -99,18 +83,18 @@ export async function GET(req) {
     const auqatus = computeAuqatusFromCoords({
       lat,
       lng,
-      date,
+      date: today,
       timezoneOffset,
     });
 
-    const hijri = computeHijri(date, hijriOffset);
+    const hijri = computeHijri(today, hijriOffset);
     const rozaNumber = hijri.month === 9 ? hijri.day : null;
 
     await GeneralPrayerTiming.updateOne(
-      { city: city._id, area: area?._id || null, dayKey },
+      { city: city._id, area: area._id, dayKey },
       {
         city: city._id,
-        area: area?._id || null,
+        area: area._id,
         dayKey,
         hijri,
         rozaNumber,
@@ -120,15 +104,15 @@ export async function GET(req) {
       { upsert: true },
     );
 
-    return Response.json({
+    return NextResponse.json({
       success: true,
       hijri,
       rozaNumber,
       slots: auqatus,
     });
   } catch (err) {
-    console.error("prayer-timings/today error:", err);
-    return Response.json(
+    console.error("prayer-timings/by-coords error:", err);
+    return NextResponse.json(
       { success: false, message: err.message || "Internal error" },
       { status: 500 },
     );

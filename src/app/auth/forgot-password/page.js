@@ -24,7 +24,9 @@ export default function ForgotPasswordPage() {
       });
 
       const data = await res.json();
-      setMessage(data.message || "If the email exists, a reset link has been sent.");
+      setMessage(
+        data.message || "If the email exists, a reset link has been sent.",
+      );
     } catch {
       setMessage("Something went wrong. Please try again.");
     } finally {

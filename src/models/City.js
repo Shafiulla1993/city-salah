@@ -12,6 +12,11 @@ const CitySchema = new mongoose.Schema({
     lon: { type: Number, required: true },
   },
 
+  timezoneOffset: {
+    type: Number,
+    required: true, // example: 5.5, -5, 1, 9
+  },
+
   createdAt: { type: Date, default: Date.now },
 });
 

@@ -2,17 +2,25 @@
 
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
+
 import City from "@/models/City";
 import Area from "@/models/Area";
-import RamzanConfig from "@/models/RamzanConfig";
 import GeneralPrayerTiming from "@/models/GeneralPrayerTiming";
 
-/* ---------------- DayKey Helpers ---------------- */
+import { getHijriOffset } from "@/lib/hijri/getHijriOffset";
+import { computeHijri } from "@/lib/hijri/computeHijri";
+import { computeAuqatusFromCoords } from "@/lib/prayer/prayTimesEngine";
 
-function getDayKeyFromDate(d) {
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${mm}-${dd}`;
+/* ---------------- helpers ---------------- */
+
+function getDayKey(date) {
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${m}-${d}`;
+}
+
+function addMin(min, add) {
+  return (min + add + 1440) % 1440;
 }
 
 function minutesToTime(min) {
@@ -21,134 +29,167 @@ function minutesToTime(min) {
   const period = h24 >= 12 ? "PM" : "AM";
   let h = h24 % 12;
   if (h === 0) h = 12;
-  return `${h}:${m.toString().padStart(2, "0")} ${period}`;
+  return `${h}:${String(m).padStart(2, "0")} ${period}`;
 }
 
-/* ---------------- API ---------------- */
+/* ---------------- handler ---------------- */
 
-export async function GET(request) {
-  try {
-    await connectDB();
+export async function GET(req) {
+  await connectDB();
 
-    const { searchParams } = new URL(request.url);
+  const { searchParams } = new URL(req.url);
+  const citySlug = searchParams.get("citySlug");
+  const areaSlug = searchParams.get("areaSlug");
 
-    const citySlug = searchParams.get("citySlug");
-    const areaSlug = searchParams.get("areaSlug");
-
-    if (!citySlug) {
-      return NextResponse.json(
-        { success: false, message: "citySlug is required" },
-        { status: 400 },
-      );
-    }
-
-    /* Resolve City */
-    const city = await City.findOne({ slug: citySlug }).lean();
-    if (!city) {
-      return NextResponse.json(
-        { success: false, message: "City not found" },
-        { status: 404 },
-      );
-    }
-
-    /* Resolve Area (optional) */
-    let area = null;
-    if (areaSlug) {
-      area = await Area.findOne({ slug: areaSlug, city: city._id }).lean();
-    }
-
-    /* Load Active Ramzan Config */
-    let config = null;
-
-    if (area) {
-      config = await RamzanConfig.findOne({
-        city: city._id,
-        area: area._id,
-        active: true,
-      }).lean();
-    }
-
-    if (!config) {
-      config = await RamzanConfig.findOne({
-        city: city._id,
-        area: null,
-        active: true,
-      }).lean();
-    }
-
-    if (!config) {
-      return NextResponse.json({
-        success: true,
-        city: city.slug,
-        area: area?.slug || null,
-        ramzanActive: false,
-        days: [],
-      });
-    }
-
-    const start = new Date(config.startDate);
-    const end = new Date(config.endDate);
-
-    const result = [];
-
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const dayKey = getDayKeyFromDate(d);
-
-      let timing = null;
-
-      /* 1) Area-specific source */
-      if (config.sourceArea) {
-        timing = await GeneralPrayerTiming.findOne({
-          city: config.sourceCity,
-          area: config.sourceArea,
-          dayKey,
-        }).lean();
-      }
-
-      /* 2) City fallback */
-      if (!timing) {
-        timing = await GeneralPrayerTiming.findOne({
-          city: config.sourceCity,
-          area: null,
-          dayKey,
-        }).lean();
-      }
-
-      if (!timing) continue;
-
-      const sehriEnd = timing.slots.find((s) => s.name === "sehri_end")?.time;
-      const maghrib = timing.slots.find(
-        (s) => s.name === "maghrib_start",
-      )?.time;
-
-      if (sehriEnd == null || maghrib == null) continue;
-
-      result.push({
-        date: new Date(d),
-        dayKey,
-        sehriEnd,
-        iftar: maghrib + config.iftarOffsetMinutes,
-        sehriEndText: minutesToTime(sehriEnd),
-        iftarText: minutesToTime(maghrib + config.iftarOffsetMinutes),
-      });
-    }
-
-    return NextResponse.json({
-      success: true,
-      city: city.slug,
-      area: area?.slug || null,
-      ramzanActive: true,
-      startDate: config.startDate,
-      endDate: config.endDate,
-      iftarOffsetMinutes: config.iftarOffsetMinutes,
-      days: result,
-      source: "daykey",
-    });
-  } catch (error) {
-    console.error("Public Ramzan Timetable API Error:", error);
+  if (!citySlug) {
     return NextResponse.json(
-      { success: false, message: "Server error" },
-      { status: 500 },
+      { success: false, message: "citySlug required" },
+      { status: 400 },
     );
   }
+
+  /* ---------- resolve city / area ---------- */
+
+  const city = await City.findOne({ slug: citySlug }).lean();
+  if (!city) {
+    return NextResponse.json(
+      { success: false, message: "City not found" },
+      { status: 404 },
+    );
+  }
+
+  let area = null;
+  if (areaSlug) {
+    area = await Area.findOne({ slug: areaSlug, city: city._id }).lean();
+  }
+
+  if (!area && areaSlug) {
+    return NextResponse.json(
+      { success: false, message: "Area not found" },
+      { status: 404 },
+    );
+  }
+
+  /* ---------- coords (canonical only) ---------- */
+
+  let lat, lng;
+
+  if (area?.center?.coordinates?.length === 2) {
+    lng = area.center.coordinates[0];
+    lat = area.center.coordinates[1];
+  } else if (city?.coords?.lat && city?.coords?.lon) {
+    lat = city.coords.lat;
+    lng = city.coords.lon;
+  } else {
+    return NextResponse.json(
+      { success: false, message: "No coordinates available" },
+      { status: 400 },
+    );
+  }
+
+  /* ---------- hijri offset ---------- */
+
+  const hijriOffset = await getHijriOffset({
+    cityId: city._id,
+    areaId: area?._id || null,
+  });
+
+  /* ---------- step 1: find ramzan window ---------- */
+  /**
+   * We don’t guess dates.
+   * We scan forward day-by-day until Hijri month changes.
+   */
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const ramzanDays = [];
+  let date = new Date(today);
+
+  while (true) {
+    const hijri = computeHijri(date, hijriOffset);
+
+    if (hijri.month !== 9) {
+      if (ramzanDays.length > 0) break; // ramzan ended
+      date.setDate(date.getDate() + 1);
+      continue; // not yet started
+    }
+
+    ramzanDays.push(new Date(date));
+    date.setDate(date.getDate() + 1);
+
+    if (ramzanDays.length > 31) break; // safety guard
+  }
+
+  /* ---------- step 2: ensure daily cache ---------- */
+
+  for (const d of ramzanDays) {
+    const dayKey = getDayKey(d);
+
+    const exists = await GeneralPrayerTiming.findOne({
+      city: city._id,
+      area: area?._id || null,
+      dayKey,
+    }).lean();
+
+    if (exists) continue;
+
+    const auqatus = computeAuqatusFromCoords({
+      lat,
+      lng,
+      date: d,
+      timezoneOffset:
+        typeof city.timezoneOffset === "number"
+          ? city.timezoneOffset
+          : Math.round((lng / 15) * 2) / 2,
+    });
+
+    const hijri = computeHijri(d, hijriOffset);
+    const rozaNumber = hijri.day;
+
+    await GeneralPrayerTiming.create({
+      city: city._id,
+      area: area?._id || null,
+      dayKey,
+      hijri,
+      rozaNumber,
+      slots: auqatus,
+    });
+  }
+
+  /* ---------- step 3: read full ramzan ---------- */
+
+  const rows = await GeneralPrayerTiming.find({
+    city: city._id,
+    area: area?._id || null,
+    "hijri.month": 9,
+  })
+    .sort({ dayKey: 1 })
+    .lean();
+
+  const days = rows.map((r) => {
+    const map = Object.fromEntries(r.slots.map((s) => [s.name, s.time]));
+
+    const sehriEnd = map.sehri_end;
+    const iftar = addMin(map.maghrib_start, 2);
+
+    return {
+      dayKey: r.dayKey,
+      date: `${new Date().getFullYear()}-${r.dayKey}`,
+      hijri: r.hijri,
+      rozaNumber: r.rozaNumber,
+      sehriEnd,
+      iftar,
+      sehriEndText: minutesToTime(sehriEnd),
+      iftarText: minutesToTime(iftar),
+    };
+  });
+
+  return NextResponse.json({
+    success: true,
+    city: city.slug,
+    area: area?.slug || null,
+    ramzanActive: days.length > 0,
+    days,
+  });
 }

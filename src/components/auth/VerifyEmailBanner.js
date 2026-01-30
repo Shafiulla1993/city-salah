@@ -35,7 +35,7 @@ export default function VerifyEmailBanner() {
       if (!res.ok) throw new Error(data.message || "Failed to send email");
 
       router.push(
-        `/auth/verify-email?masked=${encodeURIComponent(maskEmail(user.email))}`
+        `/auth/verify-email?masked=${encodeURIComponent(maskEmail(user.email))}`,
       );
     } catch (err) {
       setMessage(err.message || "Failed to send verification email");

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import AuqatusCards from "@/components/auqatus/AuqatusCards";
 import { AuqatusTimingsLoader } from "@/components/masjid/loaders";
 import { normalizeGeneralTimings } from "@/lib/helpers/normalizeGeneralTimings";
+import HijriHeader from "@/components/auqatus/HijriHeader";
 
 export default function AuqatusSalahClient({ citySlug, areaSlug }) {
   const router = useRouter();
@@ -17,6 +18,7 @@ export default function AuqatusSalahClient({ citySlug, areaSlug }) {
   const [selectedArea, setSelectedArea] = useState(areaSlug);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [timings, setTimings] = useState(null);
+  const [hijri, setHijri] = useState(null);
   const [loading, setLoading] = useState(true);
 
   /* ---------------- Load Cities ---------------- */
@@ -60,6 +62,7 @@ export default function AuqatusSalahClient({ citySlug, areaSlug }) {
 
       const data = await res.json();
       setTimings(data?.success ? data : null);
+      setHijri(data?.hijri || null);
     } catch (e) {
       console.error("Awqatus load error:", e);
       setTimings(null);
@@ -133,6 +136,8 @@ export default function AuqatusSalahClient({ citySlug, areaSlug }) {
             onChange={(e) => setDate(e.target.value)}
           />
         </div>
+
+        <HijriHeader hijri={hijri} />
 
         {/* Title */}
         <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mt-4">

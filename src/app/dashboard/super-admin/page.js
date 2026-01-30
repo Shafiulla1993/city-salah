@@ -13,10 +13,9 @@ import UsersTab from "./manage/tabs/UsersTab";
 import CitiesTab from "./manage/tabs/CitiesTab";
 import AreasTab from "./manage/tabs/AreasTab";
 import MasjidsTab from "./manage/tabs/MasjidsTab";
-import TimingsTab from "./manage/tabs/TimingsTab";
 import ThoughtsTab from "./manage/tabs/ThoughtsTab";
 import GeneralAnnouncementTab from "./manage/tabs/GeneralAnnouncementTab";
-import RamzanTab from "./manage/tabs/RamzanTab";
+import HijriTab from "./manage/tabs/HijriTab";
 
 export default function SuperAdminDashboard() {
   const [stats, setStats] = useState(null);
@@ -30,8 +29,7 @@ export default function SuperAdminDashboard() {
     { key: "masjids", label: "Masjids" },
     { key: "announcements", label: "Announcements" },
     { key: "thoughts", label: "Thoughts" },
-    { key: "timings", label: "Prayer Timings" },
-    { key: "ramzan", label: "Ramzan Timetable" },
+    { key: "hijri", label: "Hijri Control" },
   ];
 
   useEffect(() => {
@@ -66,8 +64,7 @@ export default function SuperAdminDashboard() {
           {tab === "masjids" && <MasjidsTab />}
           {tab === "announcements" && <GeneralAnnouncementTab />}
           {tab === "thoughts" && <ThoughtsTab />}
-          {tab === "timings" && <TimingsTab />}
-          {tab === "ramzan" && <RamzanTab />}
+          {tab === "hijri" && <HijriTab />}
         </AdminCard>
       </div>
     </ProtectedRoute>

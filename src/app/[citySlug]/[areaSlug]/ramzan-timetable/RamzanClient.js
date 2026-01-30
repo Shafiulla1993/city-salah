@@ -11,72 +11,77 @@ export default function RamzanClient({ citySlug, areaSlug }) {
 
   const [cities, setCities] = useState([]);
   const [areas, setAreas] = useState([]);
-  const [selectedCity, setSelectedCity] = useState(citySlug);
-  const [selectedArea, setSelectedArea] = useState(areaSlug);
   const [days, setDays] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  /* load cities */
   useEffect(() => {
     fetch("/api/public/cities")
       .then((r) => r.json())
       .then(setCities);
   }, []);
 
+  /* load areas for city */
   useEffect(() => {
-    const city = cities.find((c) => c.slug === selectedCity);
+    const city = cities.find((c) => c.slug === citySlug);
     if (!city) return;
 
     fetch(`/api/public/areas?cityId=${city._id}`)
       .then((r) => r.json())
       .then(setAreas);
-  }, [cities, selectedCity]);
+  }, [cities, citySlug]);
 
-  useEffect(() => {
-    setSelectedCity(citySlug);
-    setSelectedArea(areaSlug);
-  }, [citySlug, areaSlug]);
-
+  /* load ramzan month */
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const qs = new URLSearchParams({
-        citySlug: selectedCity,
-        areaSlug: selectedArea,
-      }).toString();
 
-      const res = await fetch(`/api/public/ramzan-timetable?${qs}`, {
-        cache: "no-store",
-      });
-      const json = await res.json();
-      setDays(json?.days || []);
+      const res = await fetch(
+        `/api/public/ramzan-timetable?citySlug=${citySlug}&areaSlug=${areaSlug}`,
+      );
+      const data = await res.json();
+
+      // 🔁 city-only fallback
+      if (!data.success && areaSlug) {
+        router.replace(`/${citySlug}/ramzan-timetable`);
+        return;
+      }
+
+      setDays(data.days || []);
       setLoading(false);
     }
 
-    if (selectedCity && selectedArea) load();
-  }, [selectedCity, selectedArea]);
+    load();
+  }, [citySlug, areaSlug, router]);
 
+  /* handlers */
   const onCityChange = async (slug) => {
     const city = cities.find((c) => c.slug === slug);
     if (!city) return;
+
     const res = await fetch(`/api/public/areas?cityId=${city._id}`);
     const list = await res.json();
-    if (!list.length) return;
-    router.push(`/${slug}/${list[0].slug}/ramzan-timetable`);
+
+    if (list.length) {
+      router.push(`/${slug}/${list[0].slug}/ramzan-timetable`);
+    } else {
+      router.push(`/${slug}/ramzan-timetable`);
+    }
   };
 
   const onAreaChange = (slug) => {
-    router.push(`/${selectedCity}/${slug}/ramzan-timetable`);
+    router.push(`/${citySlug}/${slug}/ramzan-timetable`);
   };
 
   return (
-    <div className="w-full min-h-screen px-3 pb-12 bg-gradient-to-r from-neutral-200 to-neutral-400">
+    <div className="w-full min-h-screen px-3 pb-12 bg-slate-100">
       <div className="max-w-5xl mx-auto space-y-4">
-        {/* Top Bar */}
-        <div className="sticky top-16 z-30 bg-white/90 backdrop-blur border rounded-full px-4 py-3 shadow flex flex-wrap gap-3 items-center justify-center">
+        {/* Top selector */}
+        <div className="sticky top-16 z-30 bg-white/90 backdrop-blur border rounded-full px-4 py-3 shadow flex gap-3 justify-center">
           <select
-            className="h-10 min-w-[140px] text-center text-sm font-medium border rounded-full px-4"
-            value={selectedCity}
+            value={citySlug}
             onChange={(e) => onCityChange(e.target.value)}
+            className="h-10 min-w-[140px] text-center border rounded-full px-4"
           >
             {cities.map((c) => (
               <option key={c.slug} value={c.slug}>
@@ -85,21 +90,23 @@ export default function RamzanClient({ citySlug, areaSlug }) {
             ))}
           </select>
 
-          <select
-            className="h-10 min-w-[160px] text-center text-sm font-medium border rounded-full px-4"
-            value={selectedArea}
-            onChange={(e) => onAreaChange(e.target.value)}
-          >
-            {areas.map((a) => (
-              <option key={a.slug} value={a.slug}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+          {areas.length > 0 && (
+            <select
+              value={areaSlug}
+              onChange={(e) => onAreaChange(e.target.value)}
+              className="h-10 min-w-[160px] text-center border rounded-full px-4"
+            >
+              {areas.map((a) => (
+                <option key={a.slug} value={a.slug}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mt-4">
-          Ramzan Sehri & Iftar Timetable – {areaSlug.replace(/-/g, " ")},{" "}
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
+          Ramzan Sehri & Iftar – {areaSlug?.replace(/-/g, " ")},{" "}
           {citySlug.replace(/-/g, " ")}
         </h1>
 
@@ -107,12 +114,8 @@ export default function RamzanClient({ citySlug, areaSlug }) {
           <div className="text-center text-slate-500">
             Loading Ramzan timings…
           </div>
-        ) : days.length ? (
-          <RamzanCards days={days} />
         ) : (
-          <div className="text-center text-slate-600 italic">
-            Ramzan timetable not configured for this location
-          </div>
+          <RamzanCards days={days} />
         )}
       </div>
     </div>

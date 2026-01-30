@@ -81,7 +81,6 @@ export default function RegisterPage() {
       // Show instruction popup
       setShowVerifyPopup(true);
 
-
       setShowVerifyPopup(true); // show instruction popup
     } catch (err) {
       setError(err.message || "Registration failed");
@@ -192,7 +191,10 @@ export default function RegisterPage() {
               activate your account.
             </p>
 
-            <Button onClick={() => setShowVerifyPopup(false)} className="w-full">
+            <Button
+              onClick={() => setShowVerifyPopup(false)}
+              className="w-full"
+            >
               OK
             </Button>
           </div>

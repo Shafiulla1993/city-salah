@@ -233,7 +233,8 @@ export default function ProfilePage() {
           ) : (
             <>
               <p className="text-amber-700">
-                Your email is not verified. Please verify to secure your account.
+                Your email is not verified. Please verify to secure your
+                account.
               </p>
               <Button
                 type="button"

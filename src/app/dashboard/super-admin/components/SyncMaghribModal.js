@@ -38,7 +38,7 @@ export default function SyncMaghribModal({ open, onClose }) {
       : "ALL cities";
 
     const confirm = window.confirm(
-      `This will sync Maghrib timings for ${scopeLabel} on ${date}.\n\nContinue?`
+      `This will sync Maghrib timings for ${scopeLabel} on ${date}.\n\nContinue?`,
     );
     if (!confirm) return;
 
@@ -52,7 +52,7 @@ export default function SyncMaghribModal({ open, onClose }) {
       if (res?.success) {
         if (res.skipped > 0) {
           notify.warning(
-            `Synced ${res.updated}. Skipped ${res.skipped} masjids (missing offsets)`
+            `Synced ${res.updated}. Skipped ${res.skipped} masjids (missing offsets)`,
           );
         } else {
           notify.success(`Maghrib synced for ${res.updated} masjids`);

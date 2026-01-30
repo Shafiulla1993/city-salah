@@ -6,37 +6,30 @@ export async function reverseGeocode(lat, lng) {
     url.searchParams.set("format", "json");
     url.searchParams.set("lat", lat);
     url.searchParams.set("lon", lng);
-    url.searchParams.set("zoom", 10);
-    url.searchParams.set("addressdetails", 1);
 
     const res = await fetch(url.toString(), {
       headers: {
         "User-Agent": "CitySalah/1.0 (info@citysalah.in)",
+        "Accept-Language": "en", // 🔴 THIS
       },
     });
 
     if (!res.ok) return null;
-
     const data = await res.json();
     const addr = data.address || {};
 
-    const city =
-      addr.city ||
-      addr.town ||
-      addr.village ||
-      addr.municipality ||
-      addr.county ||
-      null;
-
     return {
-      cityName: city,
+      cityName:
+        addr.city ||
+        addr.town ||
+        addr.village ||
+        addr.municipality ||
+        addr.city_district ||
+        null,
       state: addr.state || null,
-      country: addr.country || null,
-      lat,
-      lng,
+      county: addr.county || null,
     };
-  } catch (e) {
-    console.error("Reverse geocode failed:", e);
+  } catch {
     return null;
   }
 }

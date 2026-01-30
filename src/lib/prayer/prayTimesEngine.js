@@ -4,44 +4,58 @@ import PrayTimes from "praytimes";
 
 /* ----------------- Helpers ----------------- */
 
+// "05:23" → minutes from midnight
 function toMinutes(t) {
-  // "05:23" -> minutes from midnight
+  if (!t || typeof t !== "string") return null;
   const [h, m] = t.split(":").map(Number);
   return h * 60 + m;
 }
 
+// add/subtract minutes safely across midnight
 function add(min, offset) {
+  if (min === null || min === undefined) return null;
   return (min + offset + 1440) % 1440;
 }
 
 /* ----------------- Core ----------------- */
 
+/**
+ * Computes Auqatus Salah (general prayer windows)
+ * PURE function – no DB, no Hijri, no Ramzan
+ */
 export function computeAuqatusFromCoords({
   lat,
   lng,
   date = new Date(),
-  method = "Karachi", // Default for India
-  sehriBuffer = 10, // minutes before Fajr
-  ishraqDelay = 10, // minutes after Sunrise
-  chashtDuration = 120, // Ishraq -> Chasht
+  timezoneOffset, // REQUIRED
+  method = "Karachi",
+  sehriBuffer = 10,
+  ishraqDelay = 10,
+  chashtDuration = 120,
 }) {
-  // Shafi Asr
+  if (typeof timezoneOffset !== "number") {
+    throw new Error("timezoneOffset is required and must be numeric");
+  }
+
+  const tz = timezoneOffset;
+
   const ptShafi = new PrayTimes(method);
-  ptShafi.adjust({ asr: 1 }); // Shadow = 1
-  const shafiTimes = ptShafi.getTimes(date, [lat, lng], 5.5);
+  ptShafi.adjust({ asr: 1 });
 
-  // Hanafi Asr
+  const shafi = ptShafi.getTimes(date, [lat, lng], tz);
+
   const ptHanafi = new PrayTimes(method);
-  ptHanafi.adjust({ asr: 2 }); // Shadow = 2
-  const hanafiTimes = ptHanafi.getTimes(date, [lat, lng], 5.5);
+  ptHanafi.adjust({ asr: 2 });
 
-  const fajr = toMinutes(shafiTimes.fajr);
-  const sunrise = toMinutes(shafiTimes.sunrise);
-  const dhuhr = toMinutes(shafiTimes.dhuhr);
-  const asrShafi = toMinutes(shafiTimes.asr);
-  const asrHanafi = toMinutes(hanafiTimes.asr);
-  const maghrib = toMinutes(shafiTimes.maghrib);
-  const isha = toMinutes(shafiTimes.isha);
+  const hanafi = ptHanafi.getTimes(date, [lat, lng], tz);
+
+  const fajr = toMinutes(shafi.fajr);
+  const sunrise = toMinutes(shafi.sunrise);
+  const dhuhr = toMinutes(shafi.dhuhr);
+  const asrShafi = toMinutes(shafi.asr);
+  const asrHanafi = toMinutes(hanafi.asr);
+  const maghrib = toMinutes(shafi.maghrib);
+  const isha = toMinutes(shafi.isha);
 
   const sehriEnd = add(fajr, -sehriBuffer);
   const ishraqStart = add(sunrise, ishraqDelay);
@@ -62,7 +76,7 @@ export function computeAuqatusFromCoords({
     { name: "chasht_end", time: chashtEnd },
 
     { name: "zohar_start", time: dhuhr },
-    { name: "zohar_end", time: asrShafi },
+    { name: "zohar_end", time: asrHanafi },
 
     { name: "asar_shafi_start", time: asrShafi },
     { name: "asar_shafi_end", time: maghrib },
@@ -74,6 +88,6 @@ export function computeAuqatusFromCoords({
     { name: "maghrib_end", time: isha },
 
     { name: "isha_start", time: isha },
-    { name: "isha_end", time: fajr }, // next day fajr (same as your model)
+    { name: "isha_end", time: fajr }, // next day
   ];
 }

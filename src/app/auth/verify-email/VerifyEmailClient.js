@@ -76,9 +76,7 @@ export default function VerifyEmailClient() {
           Verification email sent. Please check your inbox.
         </p>
       ) : (
-        <Button onClick={handleResend}>
-          Send Verification Link
-        </Button>
+        <Button onClick={handleResend}>Send Verification Link</Button>
       )}
     </div>
   );
